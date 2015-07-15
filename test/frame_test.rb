@@ -27,4 +27,24 @@ class FrameTest < Minitest::Test
     assert_equal(frame.payload, "abc")
     assert_equal(buffer, "next_frame_data")
   end
+
+  # Frame#assemble
+  def test_assemble
+    frame = Plum::Frame.new(length: 4, type_value: 5, flags_value: 0x5f, stream_id: 0x678, payload: "payl")
+    bin = "\x00\x00\x04" << "\x05" << "\x5f" << "\x00\x00\x06\x78" << "payl"
+    assert_equal(frame.assemble, bin)
+  end
+
+  # Frame#generate
+  def test_new
+    frame = Plum::Frame.new(type: :data,
+                            stream_id: 12345,
+                            flags: [:end_stream, :padded],
+                            payload: "ぺいろーど")
+    assert_equal(frame.payload, "ぺいろーど")
+    assert_equal(frame.length, "ぺいろーど".bytesize)
+    assert_equal(frame.type_value, 0x00) # DATA
+    assert_equal(frame.flags_value, 0x09) # 0x01 | 0x08
+    assert_equal(frame.stream_id, 12345)
+  end
 end
