@@ -28,7 +28,7 @@ class HPACKDecoderTest < Minitest::Test
   # C.2.1
   def test_hpack_decode_indexing
     encoded = "\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0d\x63\x75\x73\x74\x6f\x6d\x2d\x68\x65\x61\x64\x65\x72".b
-    result = Plum::HPACK::Decoder.new(nil).decode(encoded)
+    result = new_decoder.decode(encoded)
     assert_equal([["custom-key", "custom-header"]], result)
   end
 
@@ -49,7 +49,7 @@ class HPACKDecoderTest < Minitest::Test
   # C.2.4
   def test_hpack_decode_index
     encoded = "\x82".b
-    result = Plum::HPACK::Decoder.new(nil).decode(encoded)
+    result = new_decoder.new(nil).decode(encoded)
     assert_equal([[":method", "GET"]], result)
   end
 
