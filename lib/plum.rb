@@ -1,5 +1,5 @@
 require "plum/version"
-
-module Plum
-  # Your code goes here...
-end
+require "plum/hpack"
+require "plum/hpack/huffman"
+require "plum/hpack/context"
+require "plum/hpack/decoder"
