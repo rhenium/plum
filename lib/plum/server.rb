@@ -1,19 +1,29 @@
 module Plum
   class Server
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+    DEFAULT_SETTINGS = {
+      header_table_size:      4096,     # octets
+      enable_push:            1,        # 1: enabled, 0: disabled
+      max_concurrent_streams: 1 << 30,  # (1 << 31) / 2
+      initial_window_size:    65535,    # octets; <= 2 ** 31 - 1
+      max_frame_size:         16384,    # octets; <= 2 ** 24 - 1
+      max_header_list_size:   (1 << 32) - 1 # Fixnum
+    }
     
     attr_reader :hpack_encoder, :hpack_decoder
+    attr_reader :local_settings, :remote_settings
     attr_accessor :on_stream, :on_frame, :on_send_frame, :on_connection_error
 
-    def initialize(socket, settings = nil)
+    def initialize(socket, local_settings = {})
       @socket = socket
-      @settings = nil
+      @local_settings = DEFAULT_SETTINGS.merge(local_settings)
       @buffer = ""
       @streams = {}
       @state = :waiting_for_connetion_preface
       @last_stream_id = 0
-      @hpack_decoder = HPACK::Decoder.new(65536)
-      @hpack_encoder = HPACK::Encoder.new(65536)
+      @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
+      @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
     end
 
     def send(frame)
@@ -22,16 +32,9 @@ module Plum
     end
 
     def start
-      settings_payload = @settings
-      settings_frame = Frame.new(type: :settings,
-                                 stream_id: 0,
-                                 payload: settings_payload)
-      send(settings_frame)
+      send_settings(@local_settings)
 
-      until @socket.eof?
-        @buffer << @socket.readpartial(1024)
-        process
-      end
+      process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       on(:connection_error, e)
       data = [@last_stream_id & ~(1 << 31)].pack("N")
@@ -48,8 +51,17 @@ module Plum
       cb.call(*args) if cb
     end
 
+    def send_settings(**kwargs)
+      payload = kwargs.map {|key, value| [Frame::SETTINGS_TYPE[key], value].pack("nN") }.join
+      frame = Frame.new(type: :settings,
+                        stream_id: 0x00,
+                        payload: payload)
+      send(frame)
+    end
+
     private
-    def process
+    def process(new_data)
+      @buffer << new_data.b
       if @state == :waiting_for_connetion_preface
         return if @buffer.size < 24
         if @buffer.slice!(0, 24) != CLIENT_CONNECTION_PREFACE
@@ -93,7 +105,14 @@ module Plum
     end
 
     def process_settings(frame)
-      # apply settings (MUST)
+      payload = frame.payload.dup
+      received = (frame.length / (2 + 4)).times.map {
+        id, val = payload.slice!(0, 6).unpack("nN")
+        [Frame::SETTINGS_TYPE.key(id), val]
+      }
+      @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)
+      @hpack_encoder.context.limit = @remote_settings[:header_table_size]
+
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)
     end

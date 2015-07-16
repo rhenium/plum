@@ -43,6 +43,15 @@ module Plum
       }
     }
 
+    SETTINGS_TYPE = {
+      header_table_size:      0x01,
+      enable_push:            0x02,
+      max_concurrent_streams: 0x03,
+      initial_window_size:    0x04,
+      max_frame_size:         0x05,
+      max_header_list_size:   0x06
+    }
+
     # RFC7540: 4.1 Frame format
     # +-----------------------------------------------+
     # |                 Length (24)                   |
