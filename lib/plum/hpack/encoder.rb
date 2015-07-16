@@ -1,10 +1,10 @@
 module Plum
   module HPACK
     class Encoder
-      attr_reader :context
+      include HPACK::Context
 
       def initialize(dynamic_table_limit)
-        @context = Context.new(dynamic_table_limit)
+        super
       end
 
       # currently only support 0x0000XXXX type (without indexing)

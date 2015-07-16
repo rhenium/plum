@@ -111,7 +111,7 @@ module Plum
         [Frame::SETTINGS_TYPE.key(id), val]
       }
       @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)
-      @hpack_encoder.context.limit = @remote_settings[:header_table_size]
+      @hpack_encoder.limit = @remote_settings[:header_table_size]
 
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)

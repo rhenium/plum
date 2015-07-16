@@ -1,10 +1,10 @@
 module Plum
   module HPACK
     class Decoder
-      attr_reader :context
+      include HPACK::Context
 
       def initialize(dynamic_table_limit)
-        @context = Context.new(dynamic_table_limit)
+        super
       end
 
       def decode(str)
@@ -13,7 +13,7 @@ module Plum
         while str.size > 0
           headers << parse!(str)
         end
-        headers
+        headers.compact
       end
 
       private
@@ -50,7 +50,7 @@ module Plum
           if index == 0
             raise HPACKError.new("index can't be 0 in indexed heaeder field representation")
           else
-            @context.fetch(index)
+            fetch(index)
           end
         elsif first_byte & 0b11000000 == 0b01000000
           # +---+---+---+---+---+---+---+---+
@@ -78,13 +78,13 @@ module Plum
             lname = read_integer!(str, 7)
             name = read_string!(str, lname, hname)
           else
-            name, = @context.fetch(index)
+            name, = fetch(index)
           end
 
           hval = (str[0].ord >> 7) == 1
           lval = read_integer!(str, 7)
           val = read_string!(str, lval, hval)
-          @context.add(name, val)
+          store(name, val)
 
           [name, val]
         elsif first_byte & 0b11110000 == 0b00000000 || # without indexing
@@ -114,7 +114,7 @@ module Plum
             lname = read_integer!(str, 7)
             name = read_string!(str, lname, hname)
           else
-            name, = @context.fetch(index)
+            name, = fetch(index)
           end
 
           hval = (str[0].ord >> 7) == 1
@@ -123,7 +123,7 @@ module Plum
 
           [name, val]
         elsif first_byte & 0b11100000 == 0b00100000
-          @context.limit = read_integer!(str, 5)
+          self.limit = read_integer!(str, 5)
           nil
         else
           raise HPACKError.new("invalid header firld representation")
