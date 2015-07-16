@@ -48,7 +48,17 @@ loop do
     log(id, frame.stream_id, "send: #{frame.inspect}")
   end
 
+  plum.on_connection_error = proc do |exception|
+    puts exception
+    puts exception.backtrace
+  end
+
   plum.on_stream = proc do |stream|
+    stream.on_stream_error = proc do |exception|
+      puts exception
+      puts exception.backtrace
+    end
+
     headers = data = nil
 
     stream.on_open = proc do

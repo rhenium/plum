@@ -1,7 +1,7 @@
 module Plum
   class Stream
     attr_reader :id, :state, :priority
-    attr_accessor :on_headers, :on_data, :on_close, :on_open, :on_complete
+    attr_accessor :on_headers, :on_data, :on_close, :on_open, :on_complete, :on_stream_error
 
     def initialize(con, id)
       @connection = con

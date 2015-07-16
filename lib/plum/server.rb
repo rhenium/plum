@@ -3,7 +3,7 @@ module Plum
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
     
     attr_reader :hpack_encoder, :hpack_decoder
-    attr_accessor :on_stream, :on_frame, :on_send_frame
+    attr_accessor :on_stream, :on_frame, :on_send_frame, :on_connection_error
 
     def initialize(socket, settings = nil)
       @socket = socket
