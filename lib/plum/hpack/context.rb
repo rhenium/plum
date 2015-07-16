@@ -23,7 +23,7 @@ module Plum
       end
 
       def fetch(index)
-        STATIC_TABLE[index - 1] || @dynamic_table[index - STATIC_TABLE.size - 1] or raise HPACKError.new("invalid index")
+        STATIC_TABLE[index - 1] || @dynamic_table[index - STATIC_TABLE.size - 1] or raise HPACKError.new("invalid index: #{index}")
       end
 
       def limit=(value)
