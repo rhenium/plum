@@ -1,4 +1,5 @@
 require "plum/version"
+require "plum/error"
 require "plum/hpack"
 require "plum/hpack/huffman"
 require "plum/hpack/context"
