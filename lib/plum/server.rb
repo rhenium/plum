@@ -13,7 +13,6 @@ module Plum
     
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
-    attr_accessor :on_stream, :on_frame, :on_send_frame, :on_connection_error
 
     def initialize(socket, local_settings = {})
       @socket = socket
@@ -24,10 +23,11 @@ module Plum
       @last_stream_id = 0
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
+      @callbacks = Hash.new {|hash, key| hash[key] = [] }
     end
 
     def send(frame)
-      on(:send_frame, frame)
+      callback(:send_frame, frame)
       @socket.write(frame.assemble)
     end
 
@@ -36,7 +36,7 @@ module Plum
 
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
-      on(:connection_error, e)
+      callback(:connection_error, e)
       data = [@last_stream_id & ~(1 << 31)].pack("N")
       data << [e.http2_error_code].pack("N")
       data << ""
@@ -44,11 +44,6 @@ module Plum
                         stream_id: 0,
                         payload: data)
       send(error)
-    end
-
-    def on(name, *args)
-      cb = instance_variable_get("@on_#{name}")
-      cb.call(*args) if cb
     end
 
     def send_settings(**kwargs)
@@ -59,7 +54,15 @@ module Plum
       send(frame)
     end
 
+    def on(name, &blk)
+      @callbacks[name] << blk
+    end
+
     private
+    def callback(name, *args)
+      @callbacks[name].each {|cb| cb.call(*args) }
+    end
+
     def process(new_data)
       @buffer << new_data.b
       if @state == :waiting_for_connetion_preface
@@ -73,7 +76,7 @@ module Plum
       end
 
       while frame = Frame.parse!(@buffer)
-        on(:frame, frame)
+        callback(:frame, frame)
 
         if @state == :waiting_for_settings && frame.type != :settings
           raise Plum::ConnectionError.new(:protocol_error)
@@ -130,7 +133,7 @@ module Plum
       @streams.select {|id, s| s.state == :idle }.each {|id, s| s.close }
       stream = Stream.new(self, frame.stream_id)
       @streams[frame.stream_id] = stream
-      on(:stream, stream)
+      callback(:stream, stream)
       stream.on_frame(frame)
     end
   end

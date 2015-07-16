@@ -40,43 +40,43 @@ loop do
 
   plum = Plum::Server.new(sock)
 
-  plum.on_frame = proc do |frame|
+  plum.on(:frame) do |frame|
     log(id, frame.stream_id, "recv: #{frame.inspect}")
   end
 
-  plum.on_send_frame = proc do |frame|
+  plum.on(:send_frame) do |frame|
     log(id, frame.stream_id, "send: #{frame.inspect}")
   end
 
-  plum.on_connection_error = proc do |exception|
+  plum.on(:connection_error) do |exception|
     puts exception
     puts exception.backtrace
   end
 
-  plum.on_stream = proc do |stream|
-    stream.on_stream_error = proc do |exception|
+  plum.on(:stream) do |stream|
+    stream.on(:stream_error) do |exception|
       puts exception
       puts exception.backtrace
     end
 
     headers = data = nil
 
-    stream.on_open = proc do
+    stream.on(:open) do
       headers = nil
       data = ""
     end
 
-    stream.on_headers = proc do |headers_|
+    stream.on(:headers) do |headers_|
       log(id, stream.id, headers_.map {|name, value| "#{name}: #{value}" })
       headers = headers_
     end
 
-    stream.on_data = proc do |data_|
+    stream.on(:data) do |data_|
       log(id, stream.id, data_)
       data << data_
     end
 
-    stream.on_complete = proc do
+    stream.on(:complete) do
       case [headers[":method"], headers[":path"]]
       when ["GET", "/"]
         body = "Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>"

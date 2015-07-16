@@ -1,7 +1,6 @@
 module Plum
   class Stream
     attr_reader :id, :state, :priority
-    attr_accessor :on_headers, :on_data, :on_close, :on_open, :on_complete, :on_stream_error
 
     def initialize(con, id)
       @connection = con
@@ -9,6 +8,7 @@ module Plum
       @state = :idle
       @continuation = false
       @header_fragment = nil
+      @callbacks = Hash.new {|hash, key| hash[key] = [] }
     end
 
     def on_frame(frame)
@@ -32,11 +32,11 @@ module Plum
       end
 
       if frame.flags.include?(:end_stream)
-        on(:complete)
+        callback(:complete)
         @state = :half_closed
       end
     rescue Plum::StreamError => e
-      on(:stream_error, e)
+      callback(:stream_error, e)
       send Frame.new(type: :rst_stream,
                      stream_id: id,
                      payload: [e.http2_error_code].pack("N"))
@@ -66,9 +66,13 @@ module Plum
       @state = :closed
     end
 
-    def on(name, *args)
-      cb = instance_variable_get("@on_#{name}")
-      cb.call(*args) if cb
+    def on(name, &blk)
+      @callbacks[name] << blk
+    end
+
+    private
+    def callback(name, *args)
+      @callbacks[name].each {|cb| cb.call(*args) }
     end
 
     private
@@ -78,11 +82,11 @@ module Plum
       end
 
       body = extract_padded(frame)
-      on(:data, body)
+      callback(:data, body)
     end
 
     def process_headers(frame)
-      on(:open)
+      callback(:open)
       @state = :open
 
       payload = extract_padded(frame)
@@ -91,7 +95,7 @@ module Plum
       end
 
       if frame.flags.include?(:end_headers)
-        on(:headers, @connection.hpack_decoder.decode(payload).to_h)
+        callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
       else
         @header_fragment = payload
         @continuation = true
