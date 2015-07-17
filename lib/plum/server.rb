@@ -109,6 +109,13 @@ module Plum
         @state = :initialized if @state == :waiting_for_settings
         process_settings(frame)
       when :window_update
+      when :ping
+        on(:ping)
+        opaque_data = frame.payload
+        send Frame.new(type: :ping,
+                       stream_id: 0,
+                       flags: [:ack],
+                       payload: opaque_data)
       else
         # TODO
       end

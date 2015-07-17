@@ -20,7 +20,7 @@ end
 
 ctx = OpenSSL::SSL::SSLContext.new
 ctx.alpn_select_cb = -> protocols {
-  raise "Client does not support HTTP/2." unless protocols.include?("h2")
+  raise "Client does not support HTTP/2: #{protocols}" unless protocols.include?("h2")
   "h2"
 }
 ctx.cert = OpenSSL::X509::Certificate.new File.read(".crt.local")
