@@ -89,7 +89,7 @@ module Plum
           if stream
             stream.on_frame(frame)
           else
-            new_client_stream(frame)
+            new_stream(frame)
           end
           @last_stream_id = frame.stream_id
         end
@@ -120,13 +120,13 @@ module Plum
       send(settings_ack)
     end
     
-    def new_client_stream(frame)
+    def new_stream(frame)
       if (frame.stream_id % 2 == 0) ||
           (@streams.size > 0 && @streams.keys.last >= frame.stream_id)
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
-      unless [:headers, :push_stream].include?(frame.type)
+      unless frame.type == :headers
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
@@ -135,6 +135,11 @@ module Plum
       @streams[frame.stream_id] = stream
       callback(:stream, stream)
       stream.on_frame(frame)
+    end
+
+    def promise_stream
+      next_id = ((@stream.keys.last / 2).to_i + 1) * 2
+      Stream.new(self, next_id)
     end
   end
 end

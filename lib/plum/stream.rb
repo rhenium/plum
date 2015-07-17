@@ -25,7 +25,7 @@ module Plum
         process_window_update(frame)
       when :continuation
         process_continuation(frame)
-      when :settings
+      when :settings, :push_promise
         raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       end
 
@@ -43,6 +43,40 @@ module Plum
 
     def send(frame)
       @connection.send(frame)
+    end
+
+    def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
+      if body
+        send_headers(headers, end_stream: false)
+        send_data(body, end_stream: end_stream)
+      else
+        send_headers(headers, end_stream: end_stream)
+      end
+    end
+
+    def promise(headers) # TODO: fragment
+      stream = @connection.promise_stream
+      payload = [(0 << 31 | stream.id)].unpack("N")
+      payload << @connection.hpack_encoder.encode(headers)
+
+      send Frame.new(type: :push_promise,
+                     flags: [:end_headers],
+                     stream_id: id,
+                     payload: payload)
+      stream
+    end
+
+    def close
+      @state = :closed
+    end
+
+    def on(name, &blk)
+      @callbacks[name] << blk
+    end
+
+    private
+    def callback(name, *args)
+      @callbacks[name].each {|cb| cb.call(*args) }
     end
 
     def send_headers(headers, end_stream:)
@@ -93,29 +127,6 @@ module Plum
                      payload: data)
     end
 
-    def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
-      if body
-        send_headers(headers, end_stream: false)
-        send_data(body, end_stream: end_stream)
-      else
-        send_headers(headers, end_stream: end_stream)
-      end
-    end
-
-    def close
-      @state = :closed
-    end
-
-    def on(name, &blk)
-      @callbacks[name] << blk
-    end
-
-    private
-    def callback(name, *args)
-      @callbacks[name].each {|cb| cb.call(*args) }
-    end
-
-    private
     def process_data(frame)
       if @state != :open && @state != :half_closed_local
         raise Plum::StreamError.new(:stream_closed)
