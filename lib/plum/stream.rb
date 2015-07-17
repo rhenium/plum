@@ -2,10 +2,10 @@ module Plum
   class Stream
     attr_reader :id, :state, :priority
 
-    def initialize(con, id)
+    def initialize(con, id, state: :idle)
       @connection = con
       @id = id
-      @state = :idle
+      @state = state
       @continuation = false
       @header_fragment = nil
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
@@ -58,7 +58,7 @@ module Plum
 
     def promise(headers) # TODO: fragment
       stream = @connection.promise_stream
-      payload = [(0 << 31 | stream.id)].unpack("N")
+      payload = [(0 << 31 | stream.id)].pack("N")
       payload << @connection.hpack_encoder.encode(headers)
 
       send Frame.new(type: :push_promise,

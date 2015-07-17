@@ -93,13 +93,29 @@ loop do
           "content-length": body.size
         }, body)
       when ["GET", "/abc.html"]
-        body = "ABC! <a href=/>Back to top page</a>"
+        body = "ABC! <a href=/>Back to top page</a><br><img src=/image.nyan>"
+        i_stream = stream.promise({
+          ":authority": "localhost:40443",
+          ":method": "GET",
+          ":scheme": "https",
+          ":path": "/image.nyan"
+        })
         stream.respond({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.size
         }, body)
+        image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA" <<
+                 "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU" <<
+                 "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ" <<
+                 "ZtJp0zAAAAAASUVORK5CYII=").unpack("m")[0]
+        i_stream.respond({
+          ":status": "200",
+          "server": "plum",
+          "content-type": "image/png",
+          "content-length": image.size
+        }, image)
       when ["POST", "/post.page"]
         body = "Posted value is: #{CGI.unescape(data).gsub("<", "&lt;").gsub(">", "&gt;")}<br> <a href=/>Back to top page</a>"
         stream.respond({

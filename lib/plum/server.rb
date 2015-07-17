@@ -58,6 +58,13 @@ module Plum
       @callbacks[name] << blk
     end
 
+    def promise_stream
+      next_id = ((@streams.keys.last / 2).to_i + 1) * 2
+      stream = Stream.new(self, next_id, state: :reserved)
+      @streams[next_id] = stream
+      stream
+    end
+
     private
     def callback(name, *args)
       @callbacks[name].each {|cb| cb.call(*args) }
@@ -135,11 +142,6 @@ module Plum
       @streams[frame.stream_id] = stream
       callback(:stream, stream)
       stream.on_frame(frame)
-    end
-
-    def promise_stream
-      next_id = ((@stream.keys.last / 2).to_i + 1) * 2
-      Stream.new(self, next_id)
     end
   end
 end
