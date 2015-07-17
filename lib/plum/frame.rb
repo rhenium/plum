@@ -97,7 +97,7 @@ module Plum
       bytes << [flags_value].pack("C")
       bytes << [stream_id & ~(1 << 31)].pack("N") # first bit is reserved (MUST be 0)
       bytes << payload
-      bytes
+      bytes.b
     end
 
     def inspect

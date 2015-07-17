@@ -34,6 +34,7 @@ module Plum
     def start
       send_settings(@local_settings)
 
+      raise Plum::ConnectionError.new(:protocol_error)
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
@@ -44,6 +45,8 @@ module Plum
                         stream_id: 0,
                         payload: data)
       send(error)
+      # TODO: server MAY wait streams
+      @socket.close
     end
 
     def send_settings(**kwargs)
