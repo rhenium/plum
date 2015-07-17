@@ -16,8 +16,9 @@ module Plum
     http_1_1_required:   0x0d,
   }
 
-  class HPACKError < StandardError; end
-  class HTTPError < StandardError
+  class Error < StandardError; end
+  class HPACKError < Error; end
+  class HTTPError < Error
     def initialize(type, message = nil)
       @http_error_type = type
       super(message)

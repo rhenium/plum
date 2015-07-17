@@ -25,11 +25,13 @@ module Plum
         process_window_update(frame)
       when :continuation
         process_continuation(frame)
-      when :settings, :push_promise
+      when :ping, :goaway, :settings, :push_promise
         raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
+      else
+        raise Plum::Error.new("unknown frame type: #{frame.inspect}")
       end
 
-      if frame.flags.include?(:end_stream)
+      if frame.flags.include?(:end_stream) # :data, :headers
         callback(:complete)
         @state = :half_closed
       end
