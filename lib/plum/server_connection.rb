@@ -1,5 +1,5 @@
 module Plum
-  class Server
+  class ServerConnection
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
     DEFAULT_SETTINGS = {
@@ -10,7 +10,7 @@ module Plum
       max_frame_size:         16384,    # octets; <= 2 ** 24 - 1
       max_header_list_size:   (1 << 32) - 1 # Fixnum
     }
-    
+
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
 
@@ -34,7 +34,6 @@ module Plum
     def start
       send_settings(@local_settings)
 
-      raise Plum::ConnectionError.new(:protocol_error)
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
@@ -136,7 +135,7 @@ module Plum
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)
     end
-    
+
     def new_stream(frame)
       if (frame.stream_id % 2 == 0) ||
           (@streams.size > 0 && @streams.keys.last >= frame.stream_id)
