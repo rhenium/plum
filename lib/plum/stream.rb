@@ -21,8 +21,6 @@ module Plum
         process_priority(frame)
       when :rst_stream
         process_rst_stream(frame)
-      when :push_promise
-        process_push_promise(frame)
       when :window_update
         process_window_update(frame)
       when :continuation
@@ -97,8 +95,22 @@ module Plum
       if frame.flags.include?(:end_headers)
         callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
       else
-        @header_fragment = payload
-        @continuation = true
+        @continuation = payload
+      end
+    end
+
+    def process_continuation(frame)
+      unless @continuation
+        raise Plum::ConnectionError.new(:protocol_error)
+      end
+
+      @continuation << frame.payload
+      if frame.flags.include?(:end_headers)
+        headers = @connection.hpack_decoder.decode(@continuation)
+        @continuation = nil
+        callback(:headers, headers)
+      else
+        # continue
       end
     end
 
@@ -126,14 +138,6 @@ module Plum
       end
     end
 
-    def process_push_promise(frame)
-      payload = extract_padded(frame)
-      rpsid = payload.slice!(0, 4).unpack("N")[0]
-      r = rpsid >> 31
-      psid = rpsid & ~(1 << 31)
-      # TODO
-    end
-
     def process_window_update(frame)
       if frame.size != 4
         raise Plum::ConnectionError.new(:frame_size_error)
@@ -143,26 +147,6 @@ module Plum
         raise Plum::StreamError.new(:protocol_error)
       end
       # TODO
-    end
-
-    def process_continuation(frame)
-      # TODO
-      unless @continuation
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
-      @header_fragment << frame.payload
-      if frame.flags.include?(:end_headers)
-        if @continuation == :push_promise
-          @connection.push_promise
-        else # @continuation == :headers
-          headers = @connection.hpack_decoder.decode(@header_fragment)
-        end
-        @header_fragment = nil
-        @continuation = nil
-      else
-        # continue
-      end
     end
 
     def extract_padded(frame)
