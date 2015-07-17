@@ -86,40 +86,36 @@ loop do
         <input type=submit>
         </form>
         EOF
-        stream.send_headers({
+        stream.respond({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.size
-        })
-        stream.send_body(body, [:end_stream])
+        }, body)
       when ["GET", "/abc.html"]
         body = "ABC! <a href=/>Back to top page</a>"
-        stream.send_headers({
+        stream.respond({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.size
-        })
-        stream.send_body(body, [:end_stream])
+        }, body)
       when ["POST", "/post.page"]
         body = "Posted value is: #{CGI.unescape(data).gsub("<", "&lt;").gsub(">", "&gt;")}<br> <a href=/>Back to top page</a>"
-        stream.send_headers({
+        stream.respond({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.size
-        })
-        stream.send_body(body, [:end_stream])
+        }, body)
       else
         body = "Page not found! <a href=/>Back to top page</a>"
-        stream.send_headers({
+        stream.respond({
           ":status": "404",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.size
-        })
-        stream.send_body(body, [:end_stream])
+        }, body)
       end
     end
   end

@@ -45,19 +45,61 @@ module Plum
       @connection.send(frame)
     end
 
-    def send_headers(headers, flags = [])
+    def send_headers(headers, end_stream:)
+      max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
-      send Frame.new(type: :headers,
-                     flags: [:end_headers] + flags,
-                     stream_id: id,
-                     payload: encoded)
+      flags = []
+      frags << :end_stream if end_stream
+
+      first_fragment = encoded.slice!(0, max)
+      if encoded.bytesize == 0
+        send Frame.new(type: :headers,
+                       flags: [:end_headers] + flags,
+                       stream_id: id,
+                       payload: first_fragment)
+      else
+        send Frame.new(type: :headers,
+                       flags: flags,
+                       stream_id: id,
+                       payload: first_fragment)
+        while flagment = encoded.slice!(0, max)
+          send Frame.new(type: :continuation,
+                         stream_id: id,
+                         payload: fragment)
+        end
+        send Frame.new(type: :continuation,
+                       flags: [:end_headers],
+                       stream_id: id,
+                       payload: fragment)
+      end
     end
 
-    def send_body(body, flags = [])
+    def send_data(data, end_stream: ture)
+      max = @connection.remote_settings[:max_frame_size]
+      data = data.dup
+      flags = []
+      flags << :end_stream if end_stream
+
+      while data.bytesize > max
+        fragment = data.slice!(0, max)
+        send Frame.new(type: :data,
+                       stream_id: id,
+                       payload: fragment)
+      end
+
       send Frame.new(type: :data,
                      flags: flags,
                      stream_id: id,
-                     payload: body)
+                     payload: data)
+    end
+
+    def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
+      if body
+        send_headers(headers, end_stream: false)
+        send_data(body, end_stream: end_stream)
+      else
+        send_headers(headers, end_stream: end_stream)
+      end
     end
 
     def close
