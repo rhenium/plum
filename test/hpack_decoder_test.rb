@@ -49,7 +49,7 @@ class HPACKDecoderTest < Minitest::Test
   # C.2.4
   def test_hpack_decode_index
     encoded = "\x82".b
-    result = new_decoder.new(nil).decode(encoded)
+    result = new_decoder.decode(encoded)
     assert_equal([[":method", "GET"]], result)
   end
 
@@ -177,7 +177,7 @@ class HPACKDecoderTest < Minitest::Test
       ["location", "https://www.example.com"]
     ]
     assert_equal(expected, result)
-    refute_includes(decoder.context.dynamic_table, [":status", "302"]) # evicted
+    refute_includes(decoder.dynamic_table, [":status", "302"]) # evicted
 
     decoder # for C.5.3
   end
@@ -226,7 +226,7 @@ class HPACKDecoderTest < Minitest::Test
       ["location", "https://www.example.com"]
     ]
     assert_equal(expected, result)
-    refute_includes(decoder.context.dynamic_table, [":status", "302"]) # evicted
+    refute_includes(decoder.dynamic_table, [":status", "302"]) # evicted
 
     decoder # for C.6.3
   end
