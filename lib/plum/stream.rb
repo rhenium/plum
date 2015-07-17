@@ -58,8 +58,9 @@ module Plum
 
     def promise(headers) # TODO: fragment
       stream = @connection.promise_stream
-      payload = [(0 << 31 | stream.id)].pack("N")
-      payload << @connection.hpack_encoder.encode(headers)
+      payload = BinaryString.new
+      payload.push_uint32((0 << 31 | stream.id))
+      payload.push(@connection.hpack_encoder.encode(headers))
 
       send Frame.new(type: :push_promise,
                      flags: [:end_headers],
@@ -87,7 +88,7 @@ module Plum
       flags = []
       frags << :end_stream if end_stream
 
-      first_fragment = encoded.slice!(0, max)
+      first_fragment = encoded.shift(max)
       if encoded.bytesize == 0
         send Frame.new(type: :headers,
                        flags: [:end_headers] + flags,
@@ -117,7 +118,7 @@ module Plum
       flags << :end_stream if end_stream
 
       while data.bytesize > max
-        fragment = data.slice!(0, max)
+        fragment = data.shift(max)
         send Frame.new(type: :data,
                        stream_id: id,
                        payload: fragment)
@@ -144,7 +145,7 @@ module Plum
 
       payload = extract_padded(frame)
       if frame.flags.include?(:priority)
-        process_priority_payload(payload.slice!(0, 5))
+        process_priority_payload(payload.shift(5))
       end
 
       if frame.flags.include?(:end_headers)
@@ -177,10 +178,10 @@ module Plum
     end
 
     def process_priority_payload(payload)
-      esd = payload.slice(0, 4).unpack("N")[0]
+      esd = payload.uint32
       e = esd >> 31
       dependency_id = e & ~(1 << 31)
-      weight = payload.slice(4, 1).unpack("C")[0]
+      weight = payload.uint8(4)
     end
 
     def process_rst_stream(frame)
@@ -197,7 +198,7 @@ module Plum
       if frame.size != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       end
-      inc = frame.payload.unpack("N")[0]
+      inc = frame.payload.uint32
       if inc == 0
         raise Plum::StreamError.new(:protocol_error)
       end
@@ -206,13 +207,13 @@ module Plum
 
     def extract_padded(frame)
       if frame.flags.include?(:padded)
-        padding_length = frame.payload[0, 1].unpack("C")[0]
+        padding_length = frame.payload.uint8(0)
         if padding_length > frame.length
           raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
         end
         frame.payload[1, frame.length - padding_length - 1]
       else
-        frame.payload
+        frame.payload.dup
       end
     end
   end

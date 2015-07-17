@@ -21,7 +21,7 @@ module Plum
       # | Value String (Length octets)  |
       # +-------------------------------+
       def encode(headers)
-        out = "".b
+        out = BinaryString.new
         headers.each do |name, value|
           name = name.to_s; value = value.to_s
           out << "\x00"
@@ -30,26 +30,25 @@ module Plum
           out << encode_integer(value.bytesize, 7)
           out << value
         end
-
         out
       end
 
       private
       def encode_integer(value, prefix_length)
         mask = (1 << prefix_length) - 1
+        out = BinaryString.new
 
         if value < mask
-          [value].pack("C").b
+          out.push_uint8(value)
         else
           bytes = [mask]
           value -= mask
+          out.push_uint8(mask)
           while value >= mask
-            bytes << (value % 0b10000000) + 0b10000000
+            out.push_uint8((value % 0b10000000) + 0b10000000)
             value >>= 7
           end
-          bytes << value
- 
-          bytes.pack("C*").b
+          out.push_uint8(value)
         end
       end
     end

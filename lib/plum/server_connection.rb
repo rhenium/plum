@@ -17,7 +17,7 @@ module Plum
     def initialize(socket, local_settings = {})
       @socket = socket
       @local_settings = DEFAULT_SETTINGS.merge(local_settings)
-      @buffer = ""
+      @buffer = BinaryString.new
       @streams = {}
       @state = :waiting_for_connetion_preface
       @last_stream_id = 0
@@ -37,9 +37,10 @@ module Plum
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
-      data = [@last_stream_id & ~(1 << 31)].pack("N")
-      data << [e.http2_error_code].pack("N")
-      data << ""
+      data = BinaryString.new
+      data.push_uint32(@last_stream_id & ~(1 << 31))
+      data.push_uint32(e.http2_error_code)
+      data.push("")
       error = Frame.new(type: :goaway,
                         stream_id: 0,
                         payload: data)
@@ -49,7 +50,11 @@ module Plum
     end
 
     def send_settings(**kwargs)
-      payload = kwargs.map {|key, value| [Frame::SETTINGS_TYPE[key], value].pack("nN") }.join
+      payload = kwargs.map {|key, value|
+        item = BinaryString.new
+        item.push_uint16(Frame::SETTINGS_TYPE[key])
+        item.push_uint32(value)
+      }.join
       frame = Frame.new(type: :settings,
                         stream_id: 0x00,
                         payload: payload)
@@ -73,10 +78,10 @@ module Plum
     end
 
     def process(new_data)
-      @buffer << new_data.b
+      @buffer << new_data
       if @state == :waiting_for_connetion_preface
         return if @buffer.size < 24
-        if @buffer.slice!(0, 24) != CLIENT_CONNECTION_PREFACE
+        if @buffer.shift(24) != CLIENT_CONNECTION_PREFACE
           raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
         else
           @state = :waiting_for_settings
@@ -126,7 +131,8 @@ module Plum
     def process_settings(frame)
       payload = frame.payload.dup
       received = (frame.length / (2 + 4)).times.map {
-        id, val = payload.slice!(0, 6).unpack("nN")
+        id = payload.uint16!
+        val = payload.uint32!
         [Frame::SETTINGS_TYPE.key(id), val]
       }
       @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)

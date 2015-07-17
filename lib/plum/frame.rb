@@ -75,49 +75,50 @@ module Plum
     attr_reader :payload
 
     def initialize(length: nil, type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
-      @payload = payload.to_s
-      @length = length || @payload.bytesize
+      @payload = BinaryString.new(payload || "").freeze
+      @length = length || @payload.size
       @type_value = type_value || FRAME_TYPES[type] or raise ArgumentError.new("type_value or type is necessary")
       @flags_value = flags_value || (flags && flags.map {|flag| FRAME_FLAGS[type][flag] }.inject(:|)) || 0
       @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
     end
 
     def type
-      FRAME_TYPES.key(type_value)
+      @_type ||= FRAME_TYPES.key(type_value)
     end
 
     def flags
-      FRAME_FLAGS[type].select {|name, value| value & flags_value > 0 }.map {|name, value| name }
+      @_flags ||= FRAME_FLAGS[type].select {|name, value| value & flags_value > 0 }.map {|name, value| name }.freeze
     end
 
     def assemble
-      bytes = ""
-      bytes << [length].pack("N")[1, 3] # last 3*8 bits
-      bytes << [type_value].pack("C")
-      bytes << [flags_value].pack("C")
-      bytes << [stream_id & ~(1 << 31)].pack("N") # first bit is reserved (MUST be 0)
-      bytes << payload
-      bytes.b
+      bytes = BinaryString.new
+      bytes.push_uint24(length)
+      bytes.push_uint8(type_value)
+      bytes.push_uint8(flags_value)
+      bytes.push_uint32(stream_id & ~(1 << 31)) # first bit is reserved (MUST be 0)
+      bytes.push(payload)
+      bytes
     end
 
     def inspect
-      "#<Plum::Frame:0x#{__id__.to_s(16)} length=#{length.inspect}, type=#{type.inspect}, flags=#{flags.inspect}, stream_id=0x#{stream_id.to_s(16)}, payload=#{payload.inspect}>"
+      "#<Plum::Frame:0x%04x} length=%d, type=%p, flags=%p, stream_id=0x%04x, payload=%p>" % [__id__, length, type, flags, stream_id, payload]
     end
 
     def self.parse!(buffer)
       return nil if buffer.size < 9 # header: 9 bytes
-      bhead = buffer[0, 9]
-      length = ("\x00" + bhead[0, 3]).unpack("N")[0]
+      length = buffer.uint24
       return nil if buffer.size < 9 + length
 
-      payload = buffer.slice!(0...(9 + length))[9, length]
-      type = bhead[3, 1].unpack("C")[0]
-      flags = bhead[4, 1].unpack("C")[0]
-      r_sid = bhead[5, 4].unpack("N")[0]
+      bhead = buffer.shift(9)
+      payload = buffer.shift(length)
+
+      type_value = bhead.uint8(3)
+      flags_value = bhead.uint8(4)
+      r_sid = bhead.uint32(5)
       r = r_sid >> 31
       stream_id = r_sid & ~(1 << 31)
 
-      self.new(length: length, type_value: type, flags_value: flags, stream_id: stream_id, payload: payload)
+      self.new(length: length, type_value: type_value, flags_value: flags_value, stream_id: stream_id, payload: payload)
     end
   end
 end

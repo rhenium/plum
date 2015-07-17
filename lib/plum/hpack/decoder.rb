@@ -19,12 +19,12 @@ module Plum
       private
       def read_integer!(str, prefix_length)
         mask = (1 << prefix_length) - 1
-        i = str.slice!(0, 1).ord & mask
+        i = str.uint8! & mask
 
         if i == mask
           m = 0
           begin
-            next_value = str.slice!(0, 1).ord
+            next_value = str.uint8!
             i += (next_value & ~(0b10000000)) << m
             m += 7
           end until next_value & 0b10000000 == 0
@@ -34,13 +34,13 @@ module Plum
       end
 
       def read_string!(str, length, huffman)
-        bin = str.slice!(0, length)
+        bin = str.shift(length)
         bin = Huffman.decode(bin) if huffman
         bin
       end
 
       def parse!(str)
-        first_byte = str[0].ord
+        first_byte = str.uint8
         if first_byte & 0b10000000 == 0b10000000
           # indexed
           # +---+---+---+---+---+---+---+---+
@@ -74,14 +74,14 @@ module Plum
           # +-------------------------------+
           index = read_integer!(str, 6)
           if index == 0
-            hname = (str[0].ord >> 7) == 1
+            hname = (str.uint8 >> 7) == 1
             lname = read_integer!(str, 7)
             name = read_string!(str, lname, hname)
           else
             name, = fetch(index)
           end
 
-          hval = (str[0].ord >> 7) == 1
+          hval = (str.uint8 >> 7) == 1
           lval = read_integer!(str, 7)
           val = read_string!(str, lval, hval)
           store(name, val)
@@ -110,14 +110,14 @@ module Plum
           # +-------------------------------+
           index = read_integer!(str, 4)
           if index == 0
-            hname = (str[0].ord >> 7) == 1
+            hname = (str.uint8 >> 7) == 1
             lname = read_integer!(str, 7)
             name = read_string!(str, lname, hname)
           else
             name, = fetch(index)
           end
 
-          hval = (str[0].ord >> 7) == 1
+          hval = (str.uint8 >> 7) == 1
           lval = read_integer!(str, 7)
           val = read_string!(str, lval, hval)
 

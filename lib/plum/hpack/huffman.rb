@@ -10,7 +10,7 @@ module Plum
           out << HUFFMAN_TABLE[b]
         end
         out << "1" * (8 - (out.size % 8))
-        [out].pack("B*").b
+        BinaryString.new([out].pack("B*"))
       end
 
       # TODO: performance
@@ -30,7 +30,7 @@ module Plum
         elsif buf != "1" * buf.size
           raise HPACKError.new("huffman: unknown suffix: #{buf}")
         else
-          outl.pack("C*").b
+          BinaryString.new(outl.pack("C*"))
         end
       end
     end
