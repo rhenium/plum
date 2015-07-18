@@ -17,13 +17,13 @@ module Plum
     def initialize(socket, local_settings = {})
       @socket = socket
       @local_settings = DEFAULT_SETTINGS.merge(local_settings)
+      @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = BinaryString.new
       @streams = {}
       @state = :waiting_for_connetion_preface
       @last_stream_id = 0
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
-      @callbacks = Hash.new {|hash, key| hash[key] = [] }
     end
 
     def send(frame)
@@ -32,7 +32,7 @@ module Plum
     end
 
     def start
-      send_settings(@local_settings)
+      update_settings(@local_settings)
 
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
@@ -40,7 +40,7 @@ module Plum
       data = BinaryString.new
       data.push_uint32(@last_stream_id & ~(1 << 31))
       data.push_uint32(e.http2_error_code)
-      data.push("")
+      data.push("") # debug message
       error = Frame.new(type: :goaway,
                         stream_id: 0,
                         payload: data)
@@ -49,14 +49,13 @@ module Plum
       @socket.close
     end
 
-    def send_settings(**kwargs)
-      payload = kwargs.map {|key, value|
-        item = BinaryString.new
-        item.push_uint16(Frame::SETTINGS_TYPE[key])
-        item.push_uint32(value)
-      }.join
+    def update_settings(**kwargs)
+      payload = kwargs.inject(BinaryString.new) {|payload, key, value|
+        payload.push_uint16(Frame::SETTINGS_TYPE[key])
+        payload.push_uint32(value)
+      }
       frame = Frame.new(type: :settings,
-                        stream_id: 0x00,
+                        stream_id: 0,
                         payload: payload)
       send(frame)
     end
@@ -83,10 +82,8 @@ module Plum
         return if @buffer.size < 24
         if @buffer.shift(24) != CLIENT_CONNECTION_PREFACE
           raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
-        else
-          @state = :waiting_for_settings
-          # continue
         end
+        @state = :waiting_for_settings
       end
 
       while frame = Frame.parse!(@buffer)
@@ -105,7 +102,7 @@ module Plum
           else
             new_stream(frame)
           end
-          @last_stream_id = frame.stream_id
+          @last_stream_id = [frame.stream_id, @last_stream_id].max
         end
       end
     end
@@ -113,6 +110,7 @@ module Plum
     def process_control_frame(frame)
       case frame.type
       when :settings
+        on(:settings)
         @state = :initialized if @state == :waiting_for_settings
         process_settings(frame)
       when :window_update
