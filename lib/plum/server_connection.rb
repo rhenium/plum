@@ -50,7 +50,7 @@ module Plum
     end
 
     def update_settings(**kwargs)
-      payload = kwargs.inject(BinaryString.new) {|payload, key, value|
+      payload = kwargs.inject(BinaryString.new) {|payload, (key, value)|
         payload.push_uint16(Frame::SETTINGS_TYPE[key])
         payload.push_uint32(value)
       }
@@ -111,7 +111,7 @@ module Plum
       case frame.type
       when :settings
         process_settings(frame)
-        on(:settings, @remote_settings)
+        callback(:settings, @remote_settings)
         @state = :initialized if @state == :waiting_for_settings
       when :window_update
       when :ping
