@@ -33,7 +33,7 @@ module Plum
 
       if frame.flags.include?(:end_stream) # :data, :headers
         callback(:complete)
-        @state = :half_closed
+        @state = :half_closed_remote
       end
     rescue Plum::StreamError => e
       callback(:stream_error, e)
@@ -44,6 +44,31 @@ module Plum
     end
 
     def send(frame)
+      case @state
+      when :idle
+        # BUG?
+        unless [:headers, :priority].include?(frame.type)
+          raise Error.new("can't send frames other than HEADERS or PRIORITY on an idle stream")
+        end
+      when :reserved_local
+        unless [:headers, :rst_stream].include?(frame.type)
+          raise Error.new("can't send frames other than HEADERS or RST_STREAM on a reserved (local) stream")
+        end
+      when :reserved_remote
+        unless [:priority, :window_update, :rst_stream].include?(frame.type)
+          raise Error.new("can't send frames other than PRIORITY, WINDOW_UPDATE or RST_STREAM on a reserved (remote) stream")
+        end
+      when :half_closed_local
+        unless [:window_update, :priority, :rst_stream].include?(frame.type)
+          raise Error.new("can't send frames other than WINDOW_UPDATE, PRIORITY and RST_STREAM on a half-closed (local) stream")
+        end
+      when :closed
+        unless [:priority].include?(frame.type)
+          raise Error.new("can't send frames other than PRIORITY on a closed stream")
+        end
+      when :half_closed_remote, :open
+        # open!
+      end
       @connection.send(frame)
     end
 
@@ -54,6 +79,7 @@ module Plum
       else
         send_headers(headers, end_stream: end_stream)
       end
+      @state = :half_closed_local if end_stream
     end
 
     def promise(headers) # TODO: fragment
