@@ -32,8 +32,6 @@ module Plum
     end
 
     def start
-      update_settings(@local_settings)
-
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
@@ -80,7 +78,9 @@ module Plum
       @buffer << new_data
       if @state == :waiting_for_connetion_preface
         return if @buffer.size < 24
-        if @buffer.shift(24) != CLIENT_CONNECTION_PREFACE
+        if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
+          update_settings(@local_settings)
+        else
           raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
         end
         @state = :waiting_for_settings
