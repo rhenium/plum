@@ -109,6 +109,7 @@ loop do
   end if DEBUG
 
   plum.on(:stream) do |stream|
+    log(id, stream.id, "stream open")
     stream.on(:stream_error) do |exception|
       puts exception
       puts exception.backtrace

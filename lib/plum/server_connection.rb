@@ -110,6 +110,7 @@ module Plum
     def process_control_frame(frame)
       case frame.type
       when :settings
+        return if frame.flags.include?(:ack)
         process_settings(frame)
         callback(:settings, @remote_settings)
         @state = :initialized if @state == :waiting_for_settings
@@ -125,7 +126,7 @@ module Plum
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
       else
-        raie Error.new("unknown frame type: #{frame.inspect}")
+        raise Error.new("unknown frame type: #{frame.inspect}")
       end
     end
 
