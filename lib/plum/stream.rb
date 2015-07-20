@@ -139,21 +139,27 @@ module Plum
 
     def send_data(data, end_stream: ture)
       max = @connection.remote_settings[:max_frame_size]
-      data = data.dup
-      flags = []
-      flags << :end_stream if end_stream
-
-      while data.bytesize > max
-        fragment = data.shift(max)
-        send Frame.new(type: :data,
-                       stream_id: id,
-                       payload: fragment)
+      if data.is_a?(IO)
+        while !data.eof? && fragment = data.readpartial(max)
+          flags = (data.eof? && [:end_stream])
+          send Frame.new(type: :data,
+                         stream_id: id,
+                         flags: flags,
+                         payload: fragment)
+        end
+      else
+        data = data.to_s
+        pos = 0
+        while pos <= data.bytesize # data may be empty string
+          p fragment = data.byteslice(pos, max)
+          pos += max
+          flags = (pos > data.bytesize) && [:end_stream]
+          send Frame.new(type: :data,
+                         stream_id: id,
+                         flags: flags,
+                         payload: fragment)
+        end
       end
-
-      send Frame.new(type: :data,
-                     flags: flags,
-                     stream_id: id,
-                     payload: data)
     end
 
     def process_data(frame)

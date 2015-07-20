@@ -44,9 +44,9 @@ def content_type(filename)
   ct || "texp/plain"
 end
 
-def assets(file, body)
+def assets(file)
   if /\.html$/ =~ File.basename(file)
-    doc = Oga.parse_html(body)
+    doc = Oga.parse_html(File.read(file))
     assets = []
     doc.xpath("img").each {|img| assets << img.get("src") }
     doc.xpath("//html/head/link[@rel='stylesheet']").each {|css| assets << css.get("href") }
@@ -137,8 +137,9 @@ loop do
         file = File.expand_path(DOCUMENT_ROOT + headers[":path"])
         file << "/index.html" if Dir.exist?(file)
         if file.start_with?(DOCUMENT_ROOT) && File.exist?(file)
-          body = File.read(file)
-          i_sts = assets(file, body).map {|asset|
+          io = File.open(file)
+          size = File.stat(file).size
+          i_sts = assets(file).map {|asset|
             i_st = stream.promise({
               ":authority": headers[":authority"],
               ":method": "GET",
@@ -151,16 +152,17 @@ loop do
             ":status": "200",
             "server": "plum/#{Plum::VERSION}",
             "content-type": content_type(file),
-            "content-length": body.bytesize
-          }, body)
+            "content-length": size
+          }, io)
           i_sts.each do |i_st, asset|
-            adata = File.read(asset)
+            aio = File.open(asset)
+            asize = File.stat(asset).size
             i_st.respond({
               ":status": "200",
               "server": "plum/#{Plum::VERSION}",
               "content-type": content_type(asset),
-              "content-length": adata.bytesize
-            }, adata)
+              "content-length": asize
+            }, aio)
           end
         else
           body = headers.map {|name, value| "#{name}: #{value}" }.join("\n") + "\n" + data
