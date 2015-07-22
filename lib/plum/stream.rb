@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   class Stream
     attr_reader :id, :state, :priority
@@ -84,7 +86,7 @@ module Plum
 
     def promise(headers) # TODO: fragment
       stream = @connection.promise_stream
-      payload = BinaryString.new
+      payload = "".force_encoding(Encoding::BINARY)
       payload.push_uint32((0 << 31 | stream.id))
       payload.push(@connection.hpack_encoder.encode(headers))
 

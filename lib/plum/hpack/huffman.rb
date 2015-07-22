@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   module HPACK
     module Huffman
@@ -10,7 +12,7 @@ module Plum
           out << HUFFMAN_TABLE[b]
         end
         out << "1" * (8 - (out.size % 8))
-        BinaryString.new([out].pack("B*"))
+        [out].pack("B*")
       end
 
       # TODO: performance
@@ -18,7 +20,7 @@ module Plum
         bits = encoded.unpack("B*")[0]
         buf = ""
         outl = []
-        while (n = bits.slice!(0, 1)).size > 0
+        while (n = bits.shift(1)).size > 0
           if c = HUFFMAN_DECODE_TABLE[buf << n]
             buf = ""
             outl << c
@@ -30,7 +32,7 @@ module Plum
         elsif buf != "1" * buf.size
           raise HPACKError.new("huffman: unknown suffix: #{buf}")
         else
-          BinaryString.new(outl.pack("C*"))
+          outl.pack("C*")
         end
       end
     end

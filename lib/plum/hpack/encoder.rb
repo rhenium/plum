@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   module HPACK
     class Encoder
@@ -21,7 +23,7 @@ module Plum
       # | Value String (Length octets)  |
       # +-------------------------------+
       def encode(headers)
-        out = BinaryString.new
+        out = "".force_encoding(Encoding::BINARY)
         headers.each do |name, value|
           name = name.to_s; value = value.to_s
           out << "\x00"
@@ -36,7 +38,7 @@ module Plum
       private
       def encode_integer(value, prefix_length)
         mask = (1 << prefix_length) - 1
-        out = BinaryString.new
+        out = "".force_encoding(Encoding::BINARY)
 
         if value < mask
           out.push_uint8(value)

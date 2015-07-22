@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   class ServerConnection
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
@@ -18,7 +20,7 @@ module Plum
       @socket = socket
       @local_settings = DEFAULT_SETTINGS.merge(local_settings)
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
-      @buffer = BinaryString.new
+      @buffer = "".force_encoding(Encoding::BINARY)
       @streams = {}
       @state = :waiting_for_connetion_preface
       @last_stream_id = 0
@@ -35,7 +37,7 @@ module Plum
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
-      data = BinaryString.new
+      data = "".force_encoding(Encoding::BINARY)
       data.push_uint32(@last_stream_id & ~(1 << 31))
       data.push_uint32(e.http2_error_code)
       data.push("") # debug message
@@ -48,7 +50,7 @@ module Plum
     end
 
     def update_settings(**kwargs)
-      payload = kwargs.inject(BinaryString.new) {|payload, (key, value)|
+      payload = kwargs.inject("".force_encoding(Encoding::BINARY)) {|payload, (key, value)|
         payload.push_uint16(Frame::SETTINGS_TYPE[key])
         payload.push_uint32(value)
       }
@@ -133,8 +135,9 @@ module Plum
     def process_settings(frame)
       payload = frame.payload.dup
       received = (frame.length / (2 + 4)).times.map {
-        id = payload.uint16!
-        val = payload.uint32!
+        part = payload.shift(6)
+        id = part.uint16
+        val = part.uint32(2)
         [Frame::SETTINGS_TYPE.key(id), val]
       }
       @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)

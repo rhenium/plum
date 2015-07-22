@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   class Frame
     FRAME_TYPES = {
@@ -75,7 +77,7 @@ module Plum
     attr_reader :payload
 
     def initialize(length: nil, type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
-      @payload = BinaryString.new(payload || "").freeze
+      @payload = (payload || "").freeze
       @length = length || @payload.size
       @type_value = type_value || FRAME_TYPES[type] or raise ArgumentError.new("type_value or type is necessary")
       @flags_value = flags_value || (flags && flags.map {|flag| FRAME_FLAGS[type][flag] }.inject(:|)) || 0
@@ -91,7 +93,7 @@ module Plum
     end
 
     def assemble
-      bytes = BinaryString.new
+      bytes = "".force_encoding(Encoding::BINARY)
       bytes.push_uint24(length)
       bytes.push_uint8(type_value)
       bytes.push_uint8(flags_value)
@@ -105,6 +107,8 @@ module Plum
     end
 
     def self.parse!(buffer)
+      buffer.force_encoding(Encoding::BINARY)
+
       return nil if buffer.size < 9 # header: 9 bytes
       length = buffer.uint24
       return nil if buffer.size < 9 + length

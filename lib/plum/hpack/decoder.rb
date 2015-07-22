@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   module HPACK
     class Decoder
@@ -19,12 +21,12 @@ module Plum
       private
       def read_integer!(str, prefix_length)
         mask = (1 << prefix_length) - 1
-        i = str.uint8! & mask
+        i = str.shift(1).uint8 & mask
 
         if i == mask
           m = 0
           begin
-            next_value = str.uint8!
+            next_value = str.shift(1).uint8
             i += (next_value & ~(0b10000000)) << m
             m += 7
           end until next_value & 0b10000000 == 0
