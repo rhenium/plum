@@ -37,9 +37,13 @@ module Plum
       process(@socket.readpartial(1024)) until @socket.eof?
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
+      close(e.http2_error_code)
+    end
+
+    def close(error_code = 0)
       data = "".force_encoding(Encoding::BINARY)
-      data.push_uint32(@last_stream_id & ~(1 << 31))
-      data.push_uint32(e.http2_error_code)
+      data.push_uint32(@last_stream_id.to_i & ~(1 << 31))
+      data.push_uint32(error_code)
       data.push("") # debug message
       error = Frame.new(type: :goaway,
                         stream_id: 0,
@@ -112,18 +116,10 @@ module Plum
     def process_control_frame(frame)
       case frame.type
       when :settings
-        return if frame.flags.include?(:ack)
         process_settings(frame)
-        callback(:settings, @remote_settings)
-        @state = :initialized if @state == :waiting_for_settings
       when :window_update
       when :ping
-        on(:ping)
-        opaque_data = frame.payload
-        send Frame.new(type: :ping,
-                       stream_id: 0,
-                       flags: [:ack],
-                       payload: opaque_data)
+        process_ping(frame)
       when :goaway
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
@@ -133,18 +129,33 @@ module Plum
     end
 
     def process_settings(frame)
+      return if frame.flags.include?(:ack)
+
       payload = frame.payload.dup
-      received = (frame.length / (2 + 4)).times.map {
-        part = payload.shift(6)
-        id = part.uint16
-        val = part.uint32(2)
+      received = (frame.length / (2 + 4)).times.map {|i|
+        id = payload.uint16(6 * i)
+        val = payload.uint32(6 * i + 2)
         [Frame::SETTINGS_TYPE.key(id), val]
       }
       @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
 
+      callback(:remote_settings, @remote_settings)
+      @state = :initialized if @state == :waiting_for_settings
+
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)
+    end
+
+    def process_ping(frame)
+      return if frame.flags.include?(:ack)
+
+      on(:ping)
+      opaque_data = frame.payload
+      send Frame.new(type: :ping,
+                     stream_id: 0,
+                     flags: [:ack],
+                     payload: opaque_data)
     end
 
     def new_stream(frame)

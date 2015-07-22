@@ -103,6 +103,10 @@ loop do
     log(id, frame.stream_id, "send: #{frame.inspect}")
   end if DEBUG
 
+  plum.on(:remote_settings) do |settings|
+    log(id, 0, settings.map {|name, value| "#{name}: #{value}" }) if DEBUG
+  end
+
   plum.on(:connection_error) do |exception|
     puts exception
     puts exception.backtrace
@@ -123,12 +127,12 @@ loop do
     end
 
     stream.on(:headers) do |headers_|
-      log(id, stream.id, headers_.map {|name, value| "#{name}: #{value}" }) if @DEBUG
+      log(id, stream.id, headers_.map {|name, value| "#{name}: #{value}" }) if DEBUG
       headers = headers_
     end
 
     stream.on(:data) do |data_|
-      log(id, stream.id, data_) if @DEBUG
+      log(id, stream.id, data_) if DEBUG
       data << data_
     end
 
