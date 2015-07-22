@@ -18,13 +18,13 @@ module Plum
 
     def initialize(socket, local_settings = {})
       @socket = socket
-      @local_settings = DEFAULT_SETTINGS.merge(local_settings)
+      @local_settings = local_settings
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = "".force_encoding(Encoding::BINARY)
       @streams = {}
       @state = :waiting_for_connetion_preface
       @last_stream_id = 0
-      @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
+      @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size] || DEFAULT_SETTINGS[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
     end
 
@@ -161,10 +161,6 @@ module Plum
     def new_stream(frame)
       if (frame.stream_id % 2 == 0) ||
           (@streams.size > 0 && @streams.keys.last >= frame.stream_id)
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
-      unless frame.type == :headers
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
