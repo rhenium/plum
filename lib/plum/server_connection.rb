@@ -104,7 +104,7 @@ module Plum
         else
           stream = @streams[frame.stream_id]
           if stream
-            stream.on_frame(frame)
+            stream.process_frame(frame)
           else
             new_stream(frame)
           end
@@ -168,7 +168,7 @@ module Plum
       stream = Stream.new(self, frame.stream_id)
       @streams[frame.stream_id] = stream
       callback(:stream, stream)
-      stream.on_frame(frame)
+      stream.process_frame(frame)
     end
   end
 end

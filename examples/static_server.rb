@@ -34,7 +34,7 @@ loop do
     id = sock.io.fileno
     puts "#{id}: accept!"
   rescue => e
-    puts e
+    STDERR.puts e
     next
   end
 

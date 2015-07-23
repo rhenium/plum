@@ -8,12 +8,12 @@ module Plum
       @connection = con
       @id = id
       @state = state
-      @continuation = false
-      @header_fragment = nil
+      @substate = nil
+      @continuation = nil
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
     end
 
-    def on_frame(frame)
+    def process_frame(frame)
       case frame.type
       when :data
         process_data(frame)
@@ -39,38 +39,19 @@ module Plum
       end
     rescue Plum::StreamError => e
       callback(:stream_error, e)
+      close(e.http2_error_code)
+    end
+
+    def close(error_code = 0)
+      @state = :closed
+      data = "".force_encoding(Encoding::BINARY)
+      data.push_uint32(error_code)
       send Frame.new(type: :rst_stream,
                      stream_id: id,
-                     payload: [e.http2_error_code].pack("N"))
-      close
+                     payload: data)
     end
 
     def send(frame)
-      case @state
-      when :idle
-        # BUG?
-        unless [:headers, :priority].include?(frame.type)
-          raise Error.new("can't send frames other than HEADERS or PRIORITY on an idle stream")
-        end
-      when :reserved_local
-        unless [:headers, :rst_stream].include?(frame.type)
-          raise Error.new("can't send frames other than HEADERS or RST_STREAM on a reserved (local) stream")
-        end
-      when :reserved_remote
-        unless [:priority, :window_update, :rst_stream].include?(frame.type)
-          raise Error.new("can't send frames other than PRIORITY, WINDOW_UPDATE or RST_STREAM on a reserved (remote) stream")
-        end
-      when :half_closed_local
-        unless [:window_update, :priority, :rst_stream].include?(frame.type)
-          raise Error.new("can't send frames other than WINDOW_UPDATE, PRIORITY and RST_STREAM on a half-closed (local) stream")
-        end
-      when :closed
-        unless [:priority].include?(frame.type)
-          raise Error.new("can't send frames other than PRIORITY on a closed stream")
-        end
-      when :half_closed_remote, :open
-        # open!
-      end
       @connection.send(frame)
     end
 
@@ -95,10 +76,6 @@ module Plum
                      stream_id: id,
                      payload: payload)
       stream
-    end
-
-    def close
-      @state = :closed
     end
 
     def on(name, &blk)
@@ -224,7 +201,7 @@ module Plum
       elsif frame.length != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       else
-        close
+        @state = :closed # MUST NOT send RST_STREAM
       end
     end
 
