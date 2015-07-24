@@ -14,6 +14,31 @@ module Plum
     end
 
     def process_frame(frame)
+      case @state
+      when :idle
+        if ![:headers, :priority].include?(frame.type)
+          raise Plum::ConnectionError.new(:protocol_error)
+        end
+      when :reserved_local
+        if ![:rst_stream, :priority, :window_update].include?(frame.type)
+          raise Plum::ConnectionError.new(:protocol_error)
+        end
+      when :reserved_remote
+        # only client
+      when :open
+        # accept all
+      when :half_closed_local
+        # accept all
+      when :half_closed_remote
+        if ![:window_update, :priority, :rst_stream].include?(frame.type)
+          raise Plum::StreamError.new(:stream_closed)
+        end
+      when :closed
+        if ![:priority, :window_update, :rst_stream].include?(frame.type)
+          raise Plum::ConnectionError.new(:stream_closed)
+        end
+      end
+
       case frame.type
       when :data
         process_data(frame)
@@ -29,13 +54,6 @@ module Plum
         process_continuation(frame)
       when :ping, :goaway, :settings, :push_promise
         raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
-      else
-        raise Plum::Error.new("unknown frame type: #{frame.inspect}")
-      end
-
-      if frame.flags.include?(:end_stream) # :data, :headers
-        callback(:complete)
-        @state = :half_closed_remote
       end
     rescue Plum::StreamError => e
       callback(:stream_error, e)
@@ -142,12 +160,13 @@ module Plum
     end
 
     def process_data(frame)
-      if @state != :open && @state != :half_closed_local
-        raise Plum::StreamError.new(:stream_closed)
-      end
-
       body = extract_padded(frame)
       callback(:data, body)
+
+      if frame.flags.include?(:end_stream) # :data, :headers
+        callback(:end_stream)
+        @state = :half_closed_remote
+      end
     end
 
     def process_headers(frame)
@@ -161,6 +180,11 @@ module Plum
 
       if frame.flags.include?(:end_headers)
         callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
+
+        if frame.flags.include?(:end_stream) # :data, :headers
+          callback(:end_stream)
+          @state = :half_closed_remote
+        end
       else
         @continuation = payload
       end
@@ -176,6 +200,11 @@ module Plum
         headers = @connection.hpack_decoder.decode(@continuation)
         @continuation = nil
         callback(:headers, headers)
+
+        if frame.flags.include?(:end_stream) # :data, :headers
+          callback(:end_stream)
+          @state = :half_closed_remote
+        end
       else
         # continue
       end
@@ -196,9 +225,7 @@ module Plum
     end
 
     def process_rst_stream(frame)
-      if @state == :idle
-        raise Plum::ConnectionError.new(:protocol_error)
-      elsif frame.length != 4
+      if frame.length != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       else
         @state = :closed # MUST NOT send RST_STREAM

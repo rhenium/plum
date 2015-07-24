@@ -76,7 +76,7 @@ loop do
       data << data_
     end
 
-    stream.on(:complete) do
+    stream.on(:end_stream) do
       case [headers[":method"], headers[":path"]]
       when ["GET", "/"]
         body = "Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>"
