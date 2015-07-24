@@ -4,8 +4,8 @@ using Plum::BinaryString
 
 class ServerStateTest < Minitest::Test
   def test_server_must_repond_cprotocol_error_on_invalid_magic
-    invalid_magic = "HELLO" * 10
-    start_server do
+    invalid_magic = "HELLO"
+    start_server do |plum|
       start_client do |sock|
         sock.write(invalid_magic)
         frame =  nil

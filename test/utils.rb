@@ -1,4 +1,4 @@
-def start_server(server_handler = nil, &blk)
+def start_server(&blk)
   ctx = OpenSSL::SSL::SSLContext.new
   ctx.alpn_select_cb = -> protocols { "h2" }
   ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../server.crt", __FILE__))
@@ -6,12 +6,13 @@ def start_server(server_handler = nil, &blk)
   tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
   ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
   
+  plum = Plum::ServerConnection.new(nil)
+
   server_thread = Thread.new {
     begin
       timeout(3) {
         sock = ssl_server.accept
-        plum = Plum::ServerConnection.new(sock)
-        server_handler.call(plum) if server_handler
+        plum.instance_eval { @socket = sock }
         plum.start
       }
     rescue TimeoutError
@@ -22,7 +23,7 @@ def start_server(server_handler = nil, &blk)
   }
   client_thread = Thread.new {
     begin
-      timeout(3) { blk.call }
+      timeout(3) { blk.call(plum) }
     rescue TimeoutError
       flunk "client timeout"
     end
