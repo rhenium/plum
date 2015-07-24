@@ -36,7 +36,7 @@ module Plum
     def start
       # server connection preface is SETTINGS
       update_settings(@local_settings)
-      until @socket.eof?
+      while !@socket.closed? && !@socket.eof?
         self << @socket.readpartial(1024)
       end
     end
