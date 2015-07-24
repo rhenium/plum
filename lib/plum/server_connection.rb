@@ -34,7 +34,11 @@ module Plum
     end
 
     def start
-      process(@socket.readpartial(1024)) until @socket.eof?
+      # server connection preface is SETTINGS
+      update_settings(@local_settings)
+      until @socket.eof?
+        self << @socket.readpartial(1024)
+      end
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
       close(e.http2_error_code)
@@ -76,41 +80,43 @@ module Plum
       stream
     end
 
+    def <<(new_data)
+      @buffer << new_data
+      if @state == :waiting_for_connetion_preface
+        return if @buffer.size < 24
+        if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
+        else
+          raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+        end
+        @state = :waiting_for_settings
+      else
+        while frame = Frame.parse!(@buffer)
+          callback(:frame, frame)
+          process_frame(frame)
+        end
+      end
+    end
+
     private
     def callback(name, *args)
       @callbacks[name].each {|cb| cb.call(*args) }
     end
 
-    def process(new_data)
-      @buffer << new_data
-      if @state == :waiting_for_connetion_preface
-        return if @buffer.size < 24
-        if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
-          update_settings(@local_settings)
-        else
-          raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
-        end
-        @state = :waiting_for_settings
+    def process_frame(frame)
+      if @state == :waiting_for_settings && frame.type != :settings
+        raise Plum::ConnectionError.new(:protocol_error)
       end
 
-      while frame = Frame.parse!(@buffer)
-        callback(:frame, frame)
-
-        if @state == :waiting_for_settings && frame.type != :settings
-          raise Plum::ConnectionError.new(:protocol_error)
-        end
-
-        if frame.stream_id == 0
-          process_control_frame(frame)
+      if frame.stream_id == 0
+        process_control_frame(frame)
+      else
+        stream = @streams[frame.stream_id]
+        if stream
+          stream.process_frame(frame)
         else
-          stream = @streams[frame.stream_id]
-          if stream
-            stream.process_frame(frame)
-          else
-            new_stream(frame)
-          end
-          @last_stream_id = [frame.stream_id, @last_stream_id].max
+          new_stream(frame)
         end
+        @last_stream_id = [frame.stream_id, @last_stream_id].max
       end
     end
 
