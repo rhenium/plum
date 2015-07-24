@@ -19,13 +19,14 @@ module Plum
   class Error < StandardError; end
   class HPACKError < Error; end
   class HTTPError < Error
+    attr_reader :http2_error_type
     def initialize(type, message = nil)
-      @http_error_type = type
+      @http2_error_type = type
       super(message)
     end
 
     def http2_error_code
-      ERROR_CODES[@http_error_type]
+      ERROR_CODES[@http2_error_type]
     end
   end
   class ConnectionError < HTTPError; end
