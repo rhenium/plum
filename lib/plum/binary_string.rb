@@ -37,7 +37,11 @@ module Plum
       alias push <<
 
       def shift(count)
-        slice!(0, count)
+        enc = self.encoding
+        force_encoding(Encoding::BINARY)
+        out = slice!(0, count)
+        force_encoding(enc)
+        out
       end
     end
   end

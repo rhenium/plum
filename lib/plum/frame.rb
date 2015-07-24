@@ -78,7 +78,7 @@ module Plum
 
     def initialize(length: nil, type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
       @payload = (payload || "").freeze
-      @length = length || @payload.size
+      @length = length || @payload.bytesize
       @type_value = type_value || FRAME_TYPES[type] or raise ArgumentError.new("type_value or type is necessary")
       @flags_value = flags_value || (flags && flags.map {|flag| FRAME_FLAGS[type][flag] }.inject(:|)) || 0
       @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")

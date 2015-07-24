@@ -142,6 +142,8 @@ loop do
     rescue
       puts $!
       puts $!.backtrace
+    ensure
+      sock.close
     end
   }
 end
