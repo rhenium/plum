@@ -1,0 +1,7 @@
+language: ruby
+install:
+  - rvm install 2.2.2-alpn --patch https://gist.githubusercontent.com/rhenium/b1711edcc903e8887a51/raw/2309e469f5a3ba15917d804ac61b19e62b3d8faf/ruby-openssl-alpn-no-tests-and-docs.patch
+before_script:
+  - rvm use 2.2.2-alpn
+script:
+  - bundle exec rake test

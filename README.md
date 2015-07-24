@@ -1,4 +1,4 @@
-# Plum
+# Plum [![Build Status](https://travis-ci.org/rhenium/plum.png?branch=master)](https://travis-ci.org/rhenium/plum) [![Coverage Status](https://coveralls.io/repos/rhenium/plum/badge.png)](https://coveralls.io/r/rhenium/plum)
 A minimal implementation of HTTP/2 server. (WIP)
 
 ## Requirements
