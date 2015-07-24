@@ -5,8 +5,8 @@ require "socket"
 require "cgi"
 
 begin
-  require "sslkeylog/autotrace" # for debug
-rescue
+  require "sslkeylog/autotrace"
+rescue LoadError
 end
 
 def log(con, stream, s)

@@ -30,5 +30,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "minitest", "~> 5.7.0"
-  spec.add_development_dependency "sslkeylog", "~> 0.2.0"
+  spec.add_development_dependency "coveralls", "~> 0.8.2"
 end

@@ -1,3 +1,6 @@
+require "coveralls"
+Coveralls.wear!
+
 require "plum"
 require "timeout"
 require "minitest"
