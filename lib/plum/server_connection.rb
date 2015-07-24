@@ -39,9 +39,6 @@ module Plum
       until @socket.eof?
         self << @socket.readpartial(1024)
       end
-    rescue Plum::ConnectionError => e
-      callback(:connection_error, e)
-      close(e.http2_error_code)
     end
 
     def close(error_code = 0)
@@ -95,6 +92,9 @@ module Plum
           process_frame(frame)
         end
       end
+    rescue Plum::ConnectionError => e
+      callback(:connection_error, e)
+      close(e.http2_error_code)
     end
 
     private
