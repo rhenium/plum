@@ -125,9 +125,11 @@ module Plum
       when :settings
         process_settings(frame)
       when :window_update
+        process_window_update(frame)
       when :ping
         process_ping(frame)
       when :goaway
+        close
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
       else
@@ -142,8 +144,10 @@ module Plum
       received = (frame.length / (2 + 4)).times.map {|i|
         id = payload.uint16(6 * i)
         val = payload.uint32(6 * i + 2)
-        [Frame::SETTINGS_TYPE.key(id), val]
-      }
+        name = Frame::SETTINGS_TYPE.key(id)
+        next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
+        [name, val]
+      }.compact
       @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
 
@@ -152,6 +156,16 @@ module Plum
 
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)
+    end
+
+    def process_window_update(frame)
+      @streams.values.each do |s|
+        begin
+          s.__send__(:process_window_update, frame)
+        rescue Plum::StreamError => e
+          raise Plum::ConnectionError.new(e.http2_error_type)
+        end
+      end
     end
 
     def process_ping(frame)

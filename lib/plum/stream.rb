@@ -209,11 +209,14 @@ module Plum
       if frame.size != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       end
-      inc = frame.payload.uint32
-      if inc == 0
+      r_wsi = frame.payload.uint32
+      r = r_wsi >> 31
+      wsi = r_wsi & ~(1 << 31)
+      if wsi == 0
         raise Plum::StreamError.new(:protocol_error)
+      else
+        # TODO
       end
-      # TODO
     end
 
     def extract_padded(frame)
