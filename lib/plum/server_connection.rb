@@ -77,6 +77,13 @@ module Plum
       stream
     end
 
+    def ping(data = "plum\x00\x00\x00\x00")
+      raise ArgumentError.new("data must be 8 octets") unless data.bytesize == 8
+      send Frame.new(type: :ping,
+                     stream_id: 0,
+                     payload: data)
+    end
+
     def <<(new_data)
       @buffer << new_data
       if @state == :waiting_for_connetion_preface
@@ -169,14 +176,16 @@ module Plum
     end
 
     def process_ping(frame)
-      return if frame.flags.include?(:ack)
-
-      on(:ping)
-      opaque_data = frame.payload
-      send Frame.new(type: :ping,
-                     stream_id: 0,
-                     flags: [:ack],
-                     payload: opaque_data)
+      if frame.flags.include?(:ack)
+        on(:ping_ack)
+      else
+        on(:ping)
+        opaque_data = frame.payload
+        send Frame.new(type: :ping,
+                       stream_id: 0,
+                       flags: [:ack],
+                       payload: opaque_data)
+      end
     end
 
     def new_stream(frame)
