@@ -55,7 +55,8 @@ module Plum
 
     def update_settings(**kwargs)
       payload = kwargs.inject("".force_encoding(Encoding::BINARY)) {|payload, (key, value)|
-        payload.push_uint16(Frame::SETTINGS_TYPE[key])
+        id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
+        payload.push_uint16(id)
         payload.push_uint32(value)
       }
       frame = Frame.new(type: :settings,
