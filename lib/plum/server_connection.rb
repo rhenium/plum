@@ -43,7 +43,7 @@ module Plum
 
     def close(error_code = 0)
       data = "".force_encoding(Encoding::BINARY)
-      data.push_uint32(@last_stream_id.to_i & ~(1 << 31))
+      data.push_uint32(@last_stream_id & ~(1 << 31))
       data.push_uint32(error_code)
       data.push("") # debug message
       error = Frame.new(type: :goaway,
@@ -86,18 +86,27 @@ module Plum
 
     def <<(new_data)
       @buffer << new_data
+      return if @buffer.bytesize == 0
+
       if @state == :waiting_for_connetion_preface
-        return if @buffer.size < 24
-        if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
+        if @buffer.bytesize >= 24
+          if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
+            @state = :waiting_for_settings
+          else
+            raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+          end
         else
-          raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+          if CLIENT_CONNECTION_PREFACE.start_with?(@buffer)
+            return # not complete
+          else
+            raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+          end
         end
-        @state = :waiting_for_settings
-      else
-        while frame = Frame.parse!(@buffer)
-          callback(:frame, frame)
-          process_frame(frame)
-        end
+      end
+
+      while frame = Frame.parse!(@buffer)
+        callback(:frame, frame)
+        process_frame(frame)
       end
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
