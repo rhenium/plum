@@ -15,6 +15,7 @@ module Plum
 
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
+    attr_reader :state, :socket
 
     def initialize(socket, local_settings = {})
       @socket = socket
@@ -41,6 +42,9 @@ module Plum
       while !@socket.closed? && !@socket.eof?
         self << @socket.readpartial(1024)
       end
+    rescue Plum::ConnectionError => e
+      callback(:connection_error, e)
+      close(e.http2_error_code)
     end
 
     def close(error_code = 0)
@@ -107,9 +111,6 @@ module Plum
         callback(:frame, frame)
         process_frame(frame)
       end
-    rescue Plum::ConnectionError => e
-      callback(:connection_error, e)
-      close(e.http2_error_code)
     end
 
     private
@@ -205,6 +206,10 @@ module Plum
     end
 
     def process_ping(frame)
+      if frame.length != 8
+        raise Plum::ConnectionError.new(:frame_size_error)
+      end
+
       if frame.flags.include?(:ack)
         on(:ping_ack)
       else
