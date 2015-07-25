@@ -18,6 +18,17 @@ module Minitest::Assertions
       flunk "Plum::StreamError type: #{type} expected but nothing was raised."
     end
   end
+
+  def refute_raises(&blk)
+    begin
+      blk.call
+    rescue
+      a = $!
+    else
+      a = nil
+    end
+    assert(!a, "No exceptions expected but raised: #{a}:\n#{a && a.backtrace.join("\n")}")
+  end
 end
 
 def start_server(&blk)
