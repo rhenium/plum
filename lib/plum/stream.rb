@@ -89,7 +89,6 @@ module Plum
       else
         send_headers(headers, end_stream: end_stream)
       end
-      @state = :half_closed_local if end_stream
     end
 
     def promise(headers) # TODO: fragment
@@ -127,27 +126,28 @@ module Plum
       original_frame.split(max).each do |frame|
         send frame
       end
+      @state = :half_closed_local if end_stream
     end
 
     def send_data(data, end_stream: true)
       max = @connection.remote_settings[:max_frame_size]
       if data.is_a?(IO)
         while !data.eof? && fragment = data.readpartial(max)
-          flags = (data.eof? ? [:end_stream] : nil)
           send Frame.new(type: :data,
                          stream_id: id,
-                         flags: flags,
+                         flags: (end_stream && data.eof? && [:end_stream]),
                          payload: fragment)
         end
       else
         original = Frame.new(type: :data,
                              stream_id: id,
-                             flags: [end_stream ? :end_stream : nil].compact,
+                             flags: (end_stream && [:end_stream]),
                              payload: data.to_s)
         original.split(max).each do |frame|
           send frame
         end
       end
+      @state = :half_closed_local if end_stream
     end
 
     def process_data(frame)
