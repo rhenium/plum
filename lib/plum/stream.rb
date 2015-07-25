@@ -151,7 +151,19 @@ module Plum
     end
 
     def process_data(frame)
-      body = extract_padded(frame)
+      if @state != :open && @state != :half_closed_local
+        raise StreamError.new(:stream_closed)
+      end
+
+      if frame.flags.include?(:padded)
+        padding_length = frame.payload.uint8(0)
+        if padding_length >= frame.length
+          raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
+        end
+        body = frame.payload.byteslice(1, frame.length - padding_length - 1)
+      else
+        body = frame.payload
+      end
       callback(:data, body)
 
       if frame.flags.include?(:end_stream) # :data, :headers
@@ -163,9 +175,26 @@ module Plum
     def process_complete_headers(frames)
       frames = frames.dup
       first = frames.shift
-      payload = extract_padded(first)
+
+      payload = first.payload
+      first_length = first.length
+      padding_length = 0
+
+      if first.flags.include?(:padded)
+        padding_length = payload.uint8
+        first_length -= 1 + padding_length
+        payload = payload.byteslice(1, first_length)
+      else
+        payload = payload.dup
+      end
+
       if first.flags.include?(:priority)
         process_priority_payload(payload.shift(5))
+        first_length -= 5
+      end
+
+      if padding_length > first_length
+        raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
       end
 
       frames.each do |frame|
@@ -181,8 +210,16 @@ module Plum
     end
 
     def process_headers(frame)
-      callback(:open)
+      if @state == :reserved_local
+        raise ConnectionError.new(:protocol_error)
+      elsif @state == :half_closed_remote
+        raise StreamError.new(:stream_closed)
+      elsif @state == :closed
+        raise ConnectionError.new(:stream_closed)
+      end
+
       @state = :open
+      callback(:open)
 
       if frame.flags.include?(:end_headers)
         process_complete_headers([frame])
@@ -192,6 +229,7 @@ module Plum
     end
 
     def process_continuation(frame)
+      # state error mustn't happen: server_connection validates
       @continuation << frame
 
       if frame.flags.include?(:end_headers)
@@ -233,18 +271,6 @@ module Plum
         raise Plum::StreamError.new(:protocol_error)
       else
         # TODO
-      end
-    end
-
-    def extract_padded(frame)
-      if frame.flags.include?(:padded)
-        padding_length = frame.payload.uint8(0)
-        if padding_length >= frame.length
-          raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
-        end
-        frame.payload.byteslice(1, frame.length - padding_length - 1)
-      else
-        frame.payload.dup
       end
     end
   end
