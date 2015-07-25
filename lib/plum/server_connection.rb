@@ -177,7 +177,16 @@ module Plum
     end
 
     def process_settings(frame)
-      return if frame.flags.include?(:ack)
+      if frame.flags.include?(:ack)
+        if frame.length != 0
+          raise ConnectionError.new(:frame_size_error)
+        end
+        return
+      else
+        if frame.length % 6 != 0
+          raise ConnectionError.new(:frame_size_error)
+        end
+      end
 
       received = (frame.length / (2 + 4)).times.map {|i|
         id = frame.payload.uint16(6 * i)
