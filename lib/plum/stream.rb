@@ -179,9 +179,6 @@ module Plum
     end
 
     def process_complete_headers(frames)
-      callback(:open)
-      @state = :open
-
       frames = frames.dup
       first = frames.shift
       payload = extract_padded(first)
@@ -202,6 +199,9 @@ module Plum
     end
 
     def process_headers(frame)
+      callback(:open)
+      @state = :open
+
       if frame.flags.include?(:end_headers)
         process_complete_headers([frame])
       else
