@@ -19,7 +19,8 @@ module Plum
 
     def initialize(socket, local_settings = {})
       @socket = socket
-      @local_settings = local_settings
+      @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
+      @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = "".force_encoding(Encoding::BINARY)
       @streams = {}
@@ -178,15 +179,14 @@ module Plum
     def process_settings(frame)
       return if frame.flags.include?(:ack)
 
-      payload = frame.payload.dup
       received = (frame.length / (2 + 4)).times.map {|i|
-        id = payload.uint16(6 * i)
-        val = payload.uint32(6 * i + 2)
+        id = frame.payload.uint16(6 * i)
+        val = frame.payload.uint32(6 * i + 2)
         name = Frame::SETTINGS_TYPE.key(id)
         next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
         [name, val]
       }.compact
-      @remote_settings = DEFAULT_SETTINGS.merge(received.to_h)
+      @remote_settings.merge!(received.to_h)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
 
       callback(:remote_settings, @remote_settings)

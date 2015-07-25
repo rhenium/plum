@@ -98,10 +98,13 @@ module Plum
       payload.push_uint32((0 << 31 | stream.id))
       payload.push(@connection.hpack_encoder.encode(headers))
 
-      send Frame.new(type: :push_promise,
-                     flags: [:end_headers],
-                     stream_id: id,
-                     payload: payload)
+      original = Frame.new(type: :push_promise,
+                           flags: [:end_headers],
+                           stream_id: id,
+                           payload: payload)
+      original.split(@connection.remote_settings[:max_frame_size]).each do |frame|
+        send frame
+      end
       stream
     end
 
@@ -117,53 +120,32 @@ module Plum
     def send_headers(headers, end_stream:)
       max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
-      flags = []
-      frags << :end_stream if end_stream
-
-      first_fragment = encoded.shift(max)
-      if encoded.bytesize == 0
-        send Frame.new(type: :headers,
-                       flags: [:end_headers] + flags,
-                       stream_id: id,
-                       payload: first_fragment)
-      else
-        send Frame.new(type: :headers,
-                       flags: flags,
-                       stream_id: id,
-                       payload: first_fragment)
-        while flagment = encoded.slice!(0, max)
-          send Frame.new(type: :continuation,
-                         stream_id: id,
-                         payload: fragment)
-        end
-        send Frame.new(type: :continuation,
-                       flags: [:end_headers],
-                       stream_id: id,
-                       payload: fragment)
+      original_frame = Frame.new(type: :headers,
+                                 flags: [:end_headers, end_stream ? :end_stream : nil].compact,
+                                 stream_id: id,
+                                 payload: encoded)
+      original_frame.split(max).each do |frame|
+        send frame
       end
     end
 
-    def send_data(data, end_stream: ture)
+    def send_data(data, end_stream: true)
       max = @connection.remote_settings[:max_frame_size]
       if data.is_a?(IO)
         while !data.eof? && fragment = data.readpartial(max)
-          flags = (data.eof? && [:end_stream])
+          flags = (data.eof? ? [:end_stream] : nil)
           send Frame.new(type: :data,
                          stream_id: id,
                          flags: flags,
                          payload: fragment)
         end
       else
-        data = data.to_s
-        pos = 0
-        while pos <= data.bytesize # data may be empty string
-          fragment = data.byteslice(pos, max)
-          pos += max
-          flags = (pos > data.bytesize) && [:end_stream]
-          send Frame.new(type: :data,
-                         stream_id: id,
-                         flags: flags,
-                         payload: fragment)
+        original = Frame.new(type: :data,
+                             stream_id: id,
+                             flags: [end_stream ? :end_stream : nil].compact,
+                             payload: data.to_s)
+        original.split(max).each do |frame|
+          send frame
         end
       end
     end
