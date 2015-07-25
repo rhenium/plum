@@ -21,11 +21,19 @@ module Plum
       @local_settings = local_settings
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = "".force_encoding(Encoding::BINARY)
-      @streams = {}
-      @state = :waiting_for_connetion_preface
+      @streams = Hash.new {|hash, key|
+        stream = Stream.new(self, key)
+        callback(:stream, stream)
+        hash[key] = stream
+      }
+      @state = :waiting_connetion_preface
       @last_stream_id = 0
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size] || DEFAULT_SETTINGS[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
+    end
+
+    def on(name, &blk)
+      @callbacks[name] << blk
     end
 
     def send(frame)
@@ -34,15 +42,14 @@ module Plum
     end
 
     def start
-      # server connection preface is SETTINGS
-      update_settings(@local_settings)
+      settings(@local_settings)
       while !@socket.closed? && !@socket.eof?
         self << @socket.readpartial(1024)
       end
     end
 
     def close(error_code = 0)
-      data = "".force_encoding(Encoding::BINARY)
+      data = ""
       data.push_uint32(@last_stream_id & ~(1 << 31))
       data.push_uint32(error_code)
       data.push("") # debug message
@@ -54,8 +61,8 @@ module Plum
       @socket.close
     end
 
-    def update_settings(**kwargs)
-      payload = kwargs.inject("".force_encoding(Encoding::BINARY)) {|payload, (key, value)|
+    def settings(**kwargs)
+      payload = kwargs.inject("") {|payload, (key, value)|
         id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
         payload.push_uint16(id)
         payload.push_uint32(value)
@@ -66,14 +73,10 @@ module Plum
       send(frame)
     end
 
-    def on(name, &blk)
-      @callbacks[name] << blk
-    end
-
-    def promise_stream
+    def reserve_stream
       next_id = ((@streams.keys.last / 2).to_i + 1) * 2
-      stream = Stream.new(self, next_id, state: :reserved)
-      @streams[next_id] = stream
+      stream = @streams[next_id]
+      stream.reserve
       stream
     end
 
@@ -85,13 +88,13 @@ module Plum
     end
 
     def <<(new_data)
+      return if new_data.empty?
       @buffer << new_data
-      return if @buffer.bytesize == 0
 
-      if @state == :waiting_for_connetion_preface
+      if @state == :waiting_connetion_preface
         if @buffer.bytesize >= 24
           if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
-            @state = :waiting_for_settings
+            @state = :waiting_settings
           else
             raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
           end
@@ -119,20 +122,36 @@ module Plum
     end
 
     def process_frame(frame)
-      if @state == :waiting_for_settings && frame.type != :settings
+      if @state == :waiting_settings
+        if frame.type == :settings
+          @state = :open
+        else
+          raise Plum::ConnectionError.new(:protocol_error)
+        end
+      end
+
+      if @state == :waiting_continuation && (frame.type != :continuation || frame.stream_id != @continuation_id)
         raise Plum::ConnectionError.new(:protocol_error)
+      end
+
+      case frame.type
+      when :headers
+        if !frame.flags.include?(:end_headers)
+          @state = :waiting_continuation
+          @continuation_id = frame.stream_id
+        end
+      when :continuation
+        if frame.flags.include?(:end_headers)
+          @state = :open
+          @continuation_id = nil
+        end
       end
 
       if frame.stream_id == 0
         process_control_frame(frame)
       else
         stream = @streams[frame.stream_id]
-        if stream
-          stream.process_frame(frame)
-        else
-          new_stream(frame)
-        end
-        @last_stream_id = [frame.stream_id, @last_stream_id].max
+        stream.process_frame(frame)
       end
     end
 
@@ -146,10 +165,8 @@ module Plum
         process_ping(frame)
       when :goaway
         close
-      when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
+      else # :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
-      else
-        raise Error.new("unknown frame type: #{frame.inspect}")
       end
     end
 
@@ -168,7 +185,6 @@ module Plum
       @hpack_encoder.limit = @remote_settings[:header_table_size]
 
       callback(:remote_settings, @remote_settings)
-      @state = :initialized if @state == :waiting_for_settings
 
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)

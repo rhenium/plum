@@ -9,8 +9,17 @@ module Plum
       @id = id
       @state = state
       @substate = nil
-      @continuation = nil
+      @continuation = []
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
+    end
+
+    def reserve
+      if @state != :idle
+        # reusing stream
+        raise Plum::ConnectionError.new(:protocol_error)
+      else
+        @state = :reserved_local
+      end
     end
 
     def process_frame(frame)
@@ -84,7 +93,7 @@ module Plum
     end
 
     def promise(headers) # TODO: fragment
-      stream = @connection.promise_stream
+      stream = @connection.reserve_stream
       payload = "".force_encoding(Encoding::BINARY)
       payload.push_uint32((0 << 31 | stream.id))
       payload.push(@connection.hpack_encoder.encode(headers))
@@ -148,7 +157,7 @@ module Plum
         data = data.to_s
         pos = 0
         while pos <= data.bytesize # data may be empty string
-          p fragment = data.byteslice(pos, max)
+          fragment = data.byteslice(pos, max)
           pos += max
           flags = (pos > data.bytesize) && [:end_stream]
           send Frame.new(type: :data,
@@ -169,44 +178,43 @@ module Plum
       end
     end
 
-    def process_headers(frame)
+    def process_complete_headers(frames)
       callback(:open)
       @state = :open
 
-      payload = extract_padded(frame)
-      if frame.flags.include?(:priority)
+      frames = frames.dup
+      first = frames.shift
+      payload = extract_padded(first)
+      if first.flags.include?(:priority)
         process_priority_payload(payload.shift(5))
       end
 
-      if frame.flags.include?(:end_headers)
-        callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
+      frames.each do |frame|
+        payload << frame.payload
+      end
 
-        if frame.flags.include?(:end_stream) # :data, :headers
-          callback(:end_stream)
-          @state = :half_closed_remote
-        end
+      callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
+
+      if first.flags.include?(:end_stream)
+        callback(:end_stream)
+        @state = :half_closed_remote
+      end
+    end
+
+    def process_headers(frame)
+      if frame.flags.include?(:end_headers)
+        process_complete_headers([frame])
       else
-        @continuation = payload
+        @continuation << frame
       end
     end
 
     def process_continuation(frame)
-      unless @continuation
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
+      @continuation << frame
 
-      @continuation << frame.payload
       if frame.flags.include?(:end_headers)
-        headers = @connection.hpack_decoder.decode(@continuation)
-        @continuation = nil
-        callback(:headers, headers)
-
-        if frame.flags.include?(:end_stream) # :data, :headers
-          callback(:end_stream)
-          @state = :half_closed_remote
-        end
-      else
-        # continue
+        process_complete_headers(@continuation)
+        @continuation.clear
       end
     end
 
