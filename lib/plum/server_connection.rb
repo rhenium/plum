@@ -21,13 +21,8 @@ module Plum
       @local_settings = local_settings
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = "".force_encoding(Encoding::BINARY)
-      @streams = Hash.new {|hash, key|
-        stream = Stream.new(self, key)
-        callback(:stream, stream)
-        hash[key] = stream
-      }
+      @streams = {}
       @state = :waiting_connetion_preface
-      @last_stream_id = 0
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size] || DEFAULT_SETTINGS[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
     end
@@ -49,8 +44,9 @@ module Plum
     end
 
     def close(error_code = 0)
+      last_id = @streams.keys.reverse_each.find {|id| id.odd? }
       data = ""
-      data.push_uint32(@last_stream_id & ~(1 << 31))
+      data.push_uint32((last_id || 0) & ~(1 << 31))
       data.push_uint32(error_code)
       data.push("") # debug message
       error = Frame.new(type: :goaway,
@@ -75,7 +71,7 @@ module Plum
 
     def reserve_stream
       next_id = ((@streams.keys.last / 2).to_i + 1) * 2
-      stream = @streams[next_id]
+      stream = new_stream(next_id)
       stream.reserve
       stream
     end
@@ -150,7 +146,15 @@ module Plum
       if frame.stream_id == 0
         process_control_frame(frame)
       else
-        stream = @streams[frame.stream_id]
+        if @streams.key?(frame.stream_id)
+          stream = @streams[frame.stream_id]
+        else
+          if frame.stream_id.odd? # stream started by client must have odd ID
+            stream = new_stream(frame.stream_id)
+          else
+            raise Plum::ConnectionError.new(:protocol_error)
+          end
+        end
         stream.process_frame(frame)
       end
     end
@@ -213,17 +217,15 @@ module Plum
       end
     end
 
-    def new_stream(frame)
-      if (frame.stream_id % 2 == 0) ||
-          (@streams.size > 0 && @streams.keys.last >= frame.stream_id)
+    def new_stream(stream_id)
+      if @streams.size > 0 && @streams.keys.last >= stream_id
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
-      @streams.select {|id, s| s.state == :idle }.each {|id, s| s.close }
-      stream = Stream.new(self, frame.stream_id)
-      @streams[frame.stream_id] = stream
+      stream = Stream.new(self, stream_id)
       callback(:stream, stream)
-      stream.process_frame(frame)
+      @streams[stream_id] = stream
+      stream
     end
   end
 end
