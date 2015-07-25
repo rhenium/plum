@@ -239,7 +239,7 @@ module Plum
     def extract_padded(frame)
       if frame.flags.include?(:padded)
         padding_length = frame.payload.uint8(0)
-        if padding_length > frame.length
+        if padding_length >= frame.length
           raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
         end
         frame.payload[1, frame.length - padding_length - 1]
