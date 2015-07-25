@@ -23,31 +23,6 @@ module Plum
     end
 
     def process_frame(frame)
-      case @state
-      when :idle
-        if ![:headers, :priority].include?(frame.type)
-          raise Plum::ConnectionError.new(:protocol_error)
-        end
-      when :reserved_local
-        if ![:rst_stream, :priority, :window_update].include?(frame.type)
-          raise Plum::ConnectionError.new(:protocol_error)
-        end
-      when :reserved_remote
-        # only client
-      when :open
-        # accept all
-      when :half_closed_local
-        # accept all
-      when :half_closed_remote
-        if ![:window_update, :priority, :rst_stream].include?(frame.type)
-          raise Plum::StreamError.new(:stream_closed)
-        end
-      when :closed
-        if ![:priority, :window_update, :rst_stream].include?(frame.type)
-          raise Plum::ConnectionError.new(:stream_closed)
-        end
-      end
-
       case frame.type
       when :data
         process_data(frame)
@@ -61,7 +36,7 @@ module Plum
         process_window_update(frame)
       when :continuation
         process_continuation(frame)
-      when :ping, :goaway, :settings, :push_promise
+      else # :ping, :goaway, :settings, :push_promise
         raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       end
     rescue Plum::StreamError => e
@@ -255,9 +230,11 @@ module Plum
     def process_rst_stream(frame)
       if frame.length != 4
         raise Plum::ConnectionError.new(:frame_size_error)
-      else
-        @state = :closed # MUST NOT send RST_STREAM
+      elsif @state == :idle
+        raise ConnectionError.new(:protocol_error)
       end
+
+      @state = :closed # MUST NOT send RST_STREAM
     end
 
     def process_window_update(frame)
