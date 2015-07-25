@@ -242,7 +242,7 @@ module Plum
         if padding_length >= frame.length
           raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
         end
-        frame.payload[1, frame.length - padding_length - 1]
+        frame.payload.byteslice(1, frame.length - padding_length - 1)
       else
         frame.payload.dup
       end
