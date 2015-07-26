@@ -21,3 +21,5 @@ require "minitest/pride"
 require "utils"
 
 LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
+
+include Plum
