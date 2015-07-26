@@ -35,14 +35,11 @@ module Plum
         end
 
         frames = []
-        frames << Frame.new(type: :data, flags: self.flags.reject {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragments.shift)
-        if fragments.size > 0
-          last = Frame.new(type: :data, flags: self.flags.select {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragments.pop)
-          fragments.each do |fragment|
-            frames << Frame.new(type: :data, flags: self.flags.reject {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragment)
-          end
-          frames << last
+        last = Frame.new(type: :data, flags: self.flags.select {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragments.pop)
+        fragments.each do |fragment|
+          frames << Frame.new(type: :data, flags: self.flags.reject {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragment)
         end
+        frames << last
         frames
       else
         raise "Frame#split is not defined for #{type}"
