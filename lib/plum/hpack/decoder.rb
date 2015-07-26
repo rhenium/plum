@@ -127,9 +127,7 @@ module Plum
         elsif first_byte & 0b11100000 == 0b00100000
           self.limit = read_integer!(str, 5)
           nil
-        else
-          raise HPACKError.new("invalid header firld representation")
-        end
+        end # all match
       end
     end
   end
