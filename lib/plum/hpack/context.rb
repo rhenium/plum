@@ -1,7 +1,7 @@
 module Plum
   module HPACK
     module Context
-      attr_reader :dynamic_table
+      attr_reader :dynamic_table, :limit, :size
 
       def limit=(value)
         @limit = value
