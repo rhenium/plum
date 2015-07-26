@@ -47,4 +47,14 @@ class FrameTest < Minitest::Test
     assert_equal(frame.flags_value, 0x09) # 0x01 | 0x08
     assert_equal(frame.stream_id, 12345)
   end
+
+  def test_inspect
+    frame = Plum::Frame.new(type: :data,
+                            stream_id: 12345,
+                            flags: [:end_stream, :padded],
+                            payload: "ぺいろーど")
+    refute_raises {
+      frame.inspect
+    }
+  end
 end
