@@ -15,7 +15,7 @@ module Plum
 
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
-    attr_reader :state, :socket
+    attr_reader :state, :socket, :streams
 
     def initialize(socket, local_settings = {})
       @socket = socket
@@ -74,9 +74,9 @@ module Plum
       send(frame)
     end
 
-    def reserve_stream
+    def reserve_stream(**args)
       next_id = ((@streams.keys.last / 2).to_i + 1) * 2
-      stream = new_stream(next_id)
+      stream = new_stream(next_id, **args)
       stream.reserve
       stream
     end
@@ -231,12 +231,12 @@ module Plum
       end
     end
 
-    def new_stream(stream_id)
+    def new_stream(stream_id, **args)
       if @streams.size > 0 && @streams.keys.last >= stream_id
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
-      stream = Stream.new(self, stream_id)
+      stream = Stream.new(self, stream_id, **args)
       callback(:stream, stream)
       @streams[stream_id] = stream
       stream

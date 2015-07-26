@@ -2,15 +2,21 @@ using Plum::BinaryString
 
 module Plum
   class Stream
-    attr_reader :id, :state, :priority
+    attr_reader :id, :state
+    attr_reader :weight, :parent, :exclusive
 
-    def initialize(con, id, state: :idle)
+    def initialize(con, id, state: :idle, weight: 16, parent: nil, exclusive: false)
       @connection = con
       @id = id
       @state = state
-      @substate = nil
       @continuation = []
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
+
+      update_dependency(weight: weight, parent: parent, exclusive: exclusive)
+    end
+
+    def children
+      @connection.streams.select {|c| c.parent == self }
     end
 
     def reserve
@@ -67,7 +73,7 @@ module Plum
     end
 
     def promise(headers) # TODO: fragment
-      stream = @connection.reserve_stream
+      stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
       payload = "".force_encoding(Encoding::BINARY)
       payload.push_uint32((0 << 31 | stream.id))
       payload.push(@connection.hpack_encoder.encode(headers))
@@ -89,6 +95,19 @@ module Plum
     private
     def callback(name, *args)
       @callbacks[name].each {|cb| cb.call(*args) }
+    end
+
+    def update_dependency(weight: nil, parent: nil, exclusive: nil)
+      @weight = weight unless weight.nil?
+      @parent = parent unless parent.nil?
+      @exclusive = exclusive unless exclusive.nil?
+
+      if exclusive == true
+        @connection.streams[parent].children.each do |child|
+          next if child == self
+          child.parent = self
+        end
+      end
     end
 
     def send_headers(headers, end_stream:)
@@ -225,6 +244,8 @@ module Plum
       e = esd >> 31
       dependency_id = e & ~(1 << 31)
       weight = payload.uint8(4)
+
+      update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e)
     end
 
     def process_rst_stream(frame)
