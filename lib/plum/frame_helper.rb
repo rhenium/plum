@@ -2,6 +2,10 @@ using Plum::BinaryString
 
 module Plum
   module FrameHelper
+    # Splits the frame into multiple frames if the payload size exceeds max size.
+    #
+    # @param max [Integer] The maximum size of a frame payload.
+    # @return [Array<Frame>] The splitted frames.
     def split(max)
       if self.length <= max
         return [self]

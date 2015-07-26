@@ -19,10 +19,16 @@ module Plum
       update_dependency(weight: weight, parent: parent, exclusive: exclusive)
     end
 
+    # Returns the child (depending on this stream) streams.
+    #
+    # @return [Array<Stream>] The child streams.
     def children
       @connection.streams.select {|c| c.parent == self }
     end
 
+    # Reserves this stream for server push. Changes the stream state to 'reserved (local)'.
+    #
+    # @raise [ConnectionError] If the state of this stream is not 'idle'.
     def reserve
       if @state != :idle
         # reusing stream
@@ -32,12 +38,17 @@ module Plum
       end
     end
 
+    # Increases receiving window size. Sends WINDOW_UPDATE frame to the peer.
+    #
+    # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi
       payload = "".push_uint32(wsi & ~(1 << 31))
-      send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
+      send Frame.new(type: :window_update, stream_id: id, payload: payload)
     end
 
+    # Processes received frames for this stream. Internal use.
+    # @private
     def process_frame(frame)
       case frame.type
       when :data
@@ -60,6 +71,9 @@ module Plum
       close(e.http2_error_code)
     end
 
+    # Closes this stream. Sends RST_STREAM frame to the peer.
+    #
+    # @param error_code [Integer] The error code to be contained in the RST_STREAM frame.
     def close(error_code = 0)
       @state = :closed
       data = "".force_encoding(Encoding::BINARY)
@@ -69,6 +83,9 @@ module Plum
                      payload: data)
     end
 
+    # Sends DATA frames remaining unsended due to the flow control. Internal.
+    #
+    # @private
     def consume_send_buffer
       while frame = @send_buffer.first
         break if frame.length > @send_remaining_window
@@ -78,6 +95,9 @@ module Plum
       end
     end
 
+    # Sends frame respecting inner-stream flow control.
+    #
+    # @param frame [Frame] The frame to be sent.
     def send(frame)
       case frame.type
       when :data
@@ -89,11 +109,18 @@ module Plum
       end
     end
 
+    # Sends the frame immediately ignoring inner-stream flow control.
+    #
+    # @param frame [Frame] The frame to be sent.
     def send_immediately(frame)
       callback(:send_frame, frame)
       @connection.send(frame)
     end
 
+    # Responds to HTTP request.
+    #
+    # @param headers [Hash<String, String>] The response headers.
+    # @param body [String, IO] The response body.
     def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
       if body
         send_headers(headers, end_stream: false)
@@ -103,6 +130,10 @@ module Plum
       end
     end
 
+    # Reserves a stream to server push. Sends PUSH_STREAM and create new stream.
+    #
+    # @param headers [Hash<String, String>] The *request* headers. It must contain all of them: ':authority', ':method', ':scheme' and ':path'.
+    # @return [Stream] The stream to send push response.
     def promise(headers) # TODO: fragment
       stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
       payload = "".force_encoding(Encoding::BINARY)
@@ -119,6 +150,9 @@ module Plum
       stream
     end
 
+    # Registers an event handler to specified event. An event can have multiple handlers.
+    # @param name [String] The name of event.
+    # @yield Gives event-specific parameters.
     def on(name, &blk)
       @callbacks[name] << blk
     end

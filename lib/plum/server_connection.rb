@@ -32,19 +32,16 @@ module Plum
       @send_buffer = []
     end
 
+    # Registers an event handler to specified event. An event can have multiple handlers.
+    # @param name [String] The name of event.
+    # @yield Gives event-specific parameters.
     def on(name, &blk)
       @callbacks[name] << blk
     end
 
-    def consume_send_buffer
-      while frame = @send_buffer.first
-        break if frame.length > @send_remaining_window
-        @send_buffer.shift
-        @send_remaining_window -= frame.length
-        send_immediately frame
-      end
-    end
-
+    # Sends frame respecting inner-stream flow control.
+    #
+    # @param frame [Frame] The frame to be sent.
     def send(frame)
       case frame.type
       when :data
@@ -56,21 +53,20 @@ module Plum
       end
     end
 
-    def send_immediately(frame)
-      callback(:send_frame, frame)
-      @socket.write(frame.assemble)
-    end
-
+    # Starts communication with the peer. It blocks until the socket is closed, or reaches EOF.
     def start
       settings(@local_settings)
       while !@socket.closed? && !@socket.eof?
-        self << @socket.readpartial(1024)
+        self << @socket.readpartial(@local_settings[:max_frame_size])
       end
     rescue Plum::ConnectionError => e
       callback(:connection_error, e)
       close(e.http2_error_code)
     end
 
+    # Closes the connection and closes the socket. Sends GOAWAY frame to the peer.
+    #
+    # @param error_code [Integer] The error code to be contained in the GOAWAY frame.
     def close(error_code = 0)
       last_id = @streams.keys.reverse_each.find {|id| id.odd? }
       data = ""
@@ -85,12 +81,18 @@ module Plum
       @socket.close
     end
 
+    # Increases receiving window size. Sends WINDOW_UPDATE frame to the peer.
+    #
+    # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi
       payload = "".push_uint32(wsi & ~(1 << 31))
       send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
     end
 
+    # Sends local settings to the peer.
+    #
+    # @param kwargs [Hash<Symbol, Integer>]
     def settings(**kwargs)
       payload = kwargs.inject("") {|payload, (key, value)|
         id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
@@ -103,6 +105,9 @@ module Plum
       send(frame)
     end
 
+    # Reserves a new stream to server push.
+    #
+    # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
       next_id = ((@streams.keys.last / 2).to_i + 1) * 2
       stream = new_stream(next_id, **args)
@@ -110,6 +115,10 @@ module Plum
       stream
     end
 
+    # Sends a PING frame to the peer.
+    #
+    # @param data [String] Must be 8 octets.
+    # @raise [ArgumentError] If the data is not 8 octets.
     def ping(data = "plum\x00\x00\x00\x00")
       raise ArgumentError.new("data must be 8 octets") unless data.bytesize == 8
       send Frame.new(type: :ping,
@@ -117,6 +126,9 @@ module Plum
                      payload: data)
     end
 
+    # Receives the specified data and process.
+    #
+    # @param new_data [String] The data received from the peer.
     def <<(new_data)
       return if new_data.empty?
       @buffer << new_data
@@ -284,6 +296,20 @@ module Plum
       callback(:stream, stream)
       @streams[stream_id] = stream
       stream
+    end
+
+    def consume_send_buffer
+      while frame = @send_buffer.first
+        break if frame.length > @send_remaining_window
+        @send_buffer.shift
+        @send_remaining_window -= frame.length
+        send_immediately frame
+      end
+    end
+
+    def send_immediately(frame)
+      callback(:send_frame, frame)
+      @socket.write(frame.assemble)
     end
   end
 end

@@ -5,7 +5,7 @@ module Plum
     module Huffman
       extend self
 
-      # TODO: performance
+      # Static-Huffman-encodes the specified String.
       def encode(bytestr)
         out = ""
         bytestr.bytes.each do |b|
@@ -15,7 +15,7 @@ module Plum
         [out].pack("B*")
       end
 
-      # TODO: performance
+      # Static-Huffman-decodes the specified String.
       def decode(encoded)
         bits = encoded.unpack("B*")[0]
         buf = ""

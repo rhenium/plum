@@ -86,14 +86,20 @@ module Plum
       @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
     end
 
+    # Returns the type of the frame in Symbol.
+    # @return [Symbol] The type.
     def type
       @_type ||= FRAME_TYPES.key(type_value)
     end
 
+    # Returns the set flags on the frame.
+    # @return [Array<Symbol>] The flags.
     def flags
       @_flags ||= FRAME_FLAGS[type].select {|name, value| value & flags_value > 0 }.map {|name, value| name }.freeze
     end
 
+    # Assembles the frame into binary representation.
+    # @return [String] Binary representation of this frame.
     def assemble
       bytes = "".force_encoding(Encoding::BINARY)
       bytes.push_uint24(length)
@@ -104,10 +110,15 @@ module Plum
       bytes
     end
 
+    # @private
     def inspect
       "#<Plum::Frame:0x%04x} length=%d, type=%p, flags=%p, stream_id=0x%04x, payload=%p>" % [__id__, length, type, flags, stream_id, payload]
     end
 
+    # Parses a frame from given buffer. It changes given buffer.
+    #
+    # @param buffer [String] The buffer stored the data received from peer.
+    # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
     def self.parse!(buffer)
       buffer.force_encoding(Encoding::BINARY)
 
