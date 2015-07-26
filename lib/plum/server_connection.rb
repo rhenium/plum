@@ -25,15 +25,38 @@ module Plum
       @buffer = "".force_encoding(Encoding::BINARY)
       @streams = {}
       @state = :waiting_connetion_preface
-      @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size] || DEFAULT_SETTINGS[:header_table_size])
-      @hpack_encoder = HPACK::Encoder.new(DEFAULT_SETTINGS[:header_table_size])
+      @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
+      @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
+      @recv_remaining_window = @local_settings[:initial_window_size]
+      @send_remaining_window = @remote_settings[:initial_window_size]
+      @send_buffer = []
     end
 
     def on(name, &blk)
       @callbacks[name] << blk
     end
 
+    def consume_send_buffer
+      while frame = @send_buffer.first
+        break if frame.length > @send_remaining_window
+        @send_buffer.shift
+        @send_remaining_window -= frame.length
+        send_immediately frame
+      end
+    end
+
     def send(frame)
+      case frame.type
+      when :data
+        @send_buffer << frame
+        callback(:send_deferred, frame) if @send_remaining_window < frame.length
+        consume_send_buffer
+      else
+        send_immediately frame
+      end
+    end
+
+    def send_immediately(frame)
       callback(:send_frame, frame)
       @socket.write(frame.assemble)
     end
@@ -60,6 +83,12 @@ module Plum
       send(error)
       # TODO: server MAY wait streams
       @socket.close
+    end
+
+    def window_update(wsi)
+      @recv_remaining_window += wsi
+      payload = "".push_uint32(wsi & ~(1 << 31))
+      send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
     end
 
     def settings(**kwargs)
@@ -195,23 +224,38 @@ module Plum
         next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
         [name, val]
       }.compact
+
+      old_remote_settings = @remote_settings.dup
       @remote_settings.merge!(received.to_h)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
 
-      callback(:remote_settings, @remote_settings)
+      initial_window_diff = (@remote_settings[:initial_window_size] - old_remote_settings[:initial_window_size])
+      @streams.values.each do |stream|
+        stream.recv_remaining_window += initial_window_diff
+        stream.consume_send_buffer
+      end
+      @recv_remaining_window += initial_window_diff
+      consume_send_buffer
+
+      callback(:remote_settings, @remote_settings, old_remote_settings)
 
       settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
       send(settings_ack)
     end
 
     def process_window_update(frame)
-      @streams.values.each do |s|
-        begin
-          s.__send__(:process_window_update, frame)
-        rescue Plum::StreamError => e
-          raise Plum::ConnectionError.new(e.http2_error_type)
-        end
+      if frame.length != 4
+        raise Plum::ConnectionError.new(:frame_size_error)
       end
+      r_wsi = frame.payload.uint32
+      r = r_wsi >> 31
+      wsi = r_wsi & ~(1 << 31)
+      if wsi == 0
+        raise Plum::ConnectionError.new(:protocol_error)
+      end
+
+      @send_remaining_window += wsi
+      consume_send_buffer
     end
 
     def process_ping(frame)

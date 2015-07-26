@@ -59,6 +59,10 @@ loop do
       puts exception.backtrace
     end
 
+    stream.on(:send_deferred) do |frame|
+      log(id, frame.stream_id, "send (deferred): #{frame.inspect}")
+    end
+
     headers = data = nil
 
     stream.on(:open) do

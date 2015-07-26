@@ -4,6 +4,7 @@ module Plum
   class Stream
     attr_reader :id, :state
     attr_reader :weight, :parent, :exclusive
+    attr_accessor :recv_remaining_window, :send_remaining_window
 
     def initialize(con, id, state: :idle, weight: 16, parent: nil, exclusive: false)
       @connection = con
@@ -11,6 +12,9 @@ module Plum
       @state = state
       @continuation = []
       @callbacks = Hash.new {|hash, key| hash[key] = [] }
+      @recv_remaining_window = @connection.local_settings[:initial_window_size]
+      @send_remaining_window = @connection.remote_settings[:initial_window_size]
+      @send_buffer = []
 
       update_dependency(weight: weight, parent: parent, exclusive: exclusive)
     end
@@ -26,6 +30,12 @@ module Plum
       else
         @state = :reserved_local
       end
+    end
+
+    def window_update(wsi)
+      @recv_remaining_window += wsi
+      payload = "".push_uint32(wsi & ~(1 << 31))
+      send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
     end
 
     def process_frame(frame)
@@ -59,7 +69,28 @@ module Plum
                      payload: data)
     end
 
+    def consume_send_buffer
+      while frame = @send_buffer.first
+        break if frame.length > @send_remaining_window
+        @send_buffer.shift
+        @send_remaining_window -= frame.length
+        send_immediately frame
+      end
+    end
+
     def send(frame)
+      case frame.type
+      when :data
+        @send_buffer << frame
+        callback(:send_deferred, frame) if @send_remaining_window < frame.length
+        consume_send_buffer
+      else
+        send_immediately frame
+      end
+    end
+
+    def send_immediately(frame)
+      callback(:send_frame, frame)
       @connection.send(frame)
     end
 
@@ -147,6 +178,11 @@ module Plum
     def process_data(frame)
       if @state != :open && @state != :half_closed_local
         raise StreamError.new(:stream_closed)
+      end
+
+      @recv_remaining_window -= frame.length
+      if @recv_remaining_window < 0
+        raise StreamError.new(:flow_control_error) # MAY
       end
 
       if frame.flags.include?(:padded)
@@ -259,7 +295,7 @@ module Plum
     end
 
     def process_window_update(frame)
-      if frame.size != 4
+      if frame.length != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       end
       r_wsi = frame.payload.uint32
@@ -267,9 +303,10 @@ module Plum
       wsi = r_wsi & ~(1 << 31)
       if wsi == 0
         raise Plum::StreamError.new(:protocol_error)
-      else
-        # TODO
       end
+
+      @send_remaining_window += wsi
+      consume_send_buffer
     end
   end
 end
