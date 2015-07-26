@@ -3,6 +3,8 @@ require "test_helper"
 using Plum::BinaryString
 
 class ServerStateTest < Minitest::Test
+  include ServerTestUtils
+
   def test_server_must_repond_cprotocol_error_on_invalid_magic
     invalid_magic = "HELLO"
     start_server do |plum|

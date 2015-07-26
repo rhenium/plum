@@ -4,6 +4,8 @@ include Plum
 using Plum::BinaryString
 
 class ServerConnectionTest < Minitest::Test
+  include ServerTestUtils
+
   def test_server_must_raise_cprotocol_error_invalid_magic_short
     con = ServerConnection.new(nil)
     assert_connection_error(:protocol_error) {
@@ -133,27 +135,5 @@ class ServerConnectionTest < Minitest::Test
       last = sent_frames(con).last
       refute_equal(:ping, last.type) if last
     }
-  end
-
-  private
-  def open_server_connection
-    io = StringIO.new
-    con = ServerConnection.new(io)
-    con << ServerConnection::CLIENT_CONNECTION_PREFACE
-    con << Frame.new(type: :settings, stream_id: 0).assemble
-    if block_given?
-      yield con
-    else
-      con
-    end
-  end
-
-  def sent_frames(con)
-    resp = con.socket.string.dup
-    frames = []
-    while f = Frame.parse!(resp)
-      frames << f
-    end
-    frames
   end
 end
