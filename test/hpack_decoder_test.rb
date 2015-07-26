@@ -247,6 +247,22 @@ class HPACKDecoderTest < Minitest::Test
     assert_equal(expected, result)
   end
 
+  def test_hpack_decode_index_zero
+    decoder = new_decoder(256)
+    encoded = "\x80"
+    assert_raises(HPACKError) {
+      new_decoder.decode(encoded)
+    }
+  end
+
+  def test_hpack_decode_changing_limit
+    decoder = new_decoder(256)
+    encoded = "\x34"
+    assert_equal(256, decoder.limit)
+    decoder.decode(encoded)
+    assert_equal(0b00010100, decoder.limit)
+  end
+
   private
   def new_decoder(settings_header_table_size = 1 << 31)
     Plum::HPACK::Decoder.new(settings_header_table_size)
