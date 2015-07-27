@@ -35,7 +35,9 @@ module Plum
         i
       end
 
-      def read_string!(str, length, huffman)
+      def read_string!(str)
+        huffman = (str.uint8 >> 7) == 1
+        length = read_integer!(str, 7)
         bin = str.shift(length)
         bin = Huffman.decode(bin) if huffman
         bin
@@ -76,16 +78,12 @@ module Plum
           # +-------------------------------+
           index = read_integer!(str, 6)
           if index == 0
-            hname = (str.uint8 >> 7) == 1
-            lname = read_integer!(str, 7)
-            name = read_string!(str, lname, hname)
+            name = read_string!(str)
           else
             name, = fetch(index)
           end
 
-          hval = (str.uint8 >> 7) == 1
-          lval = read_integer!(str, 7)
-          val = read_string!(str, lval, hval)
+          val = read_string!(str)
           store(name, val)
 
           [name, val]
@@ -112,16 +110,12 @@ module Plum
           # +-------------------------------+
           index = read_integer!(str, 4)
           if index == 0
-            hname = (str.uint8 >> 7) == 1
-            lname = read_integer!(str, 7)
-            name = read_string!(str, lname, hname)
+            name = read_string!(str)
           else
             name, = fetch(index)
           end
 
-          hval = (str.uint8 >> 7) == 1
-          lval = read_integer!(str, 7)
-          val = read_string!(str, lval, hval)
+          val = read_string!(str)
 
           [name, val]
         elsif first_byte & 0b11100000 == 0b00100000

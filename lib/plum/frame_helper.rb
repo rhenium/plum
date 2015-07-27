@@ -49,5 +49,18 @@ module Plum
         raise "Frame#split is not defined for #{type}"
       end
     end
+
+    # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540).
+    #
+    # @return [Hash<Symbol, Integer>] The parsed strings.
+    def parse_settings
+      (self.length / (2 + 4)).times.map {|i|
+        id = self.payload.uint16(6 * i)
+        val = self.payload.uint32(6 * i + 2)
+        name = Frame::SETTINGS_TYPE.key(id)
+        next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
+        [name, val]
+      }.compact.to_h
+    end
   end
 end

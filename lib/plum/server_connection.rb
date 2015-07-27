@@ -229,30 +229,25 @@ module Plum
         end
       end
 
-      received = (frame.length / (2 + 4)).times.map {|i|
-        id = frame.payload.uint16(6 * i)
-        val = frame.payload.uint32(6 * i + 2)
-        name = Frame::SETTINGS_TYPE.key(id)
-        next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
-        [name, val]
-      }.compact
-
       old_remote_settings = @remote_settings.dup
-      @remote_settings.merge!(received.to_h)
+      @remote_settings.merge!(frame.parse_settings)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
+      update_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
 
-      initial_window_diff = (@remote_settings[:initial_window_size] - old_remote_settings[:initial_window_size])
+      callback(:remote_settings, @remote_settings, old_remote_settings)
+
+      settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
+      send(settings_ack)
+    end
+
+    def update_window_size(new_val, old_val)
+      initial_window_diff = new_val - old_val
       @streams.values.each do |stream|
         stream.recv_remaining_window += initial_window_diff
         stream.consume_send_buffer
       end
       @recv_remaining_window += initial_window_diff
       consume_send_buffer
-
-      callback(:remote_settings, @remote_settings, old_remote_settings)
-
-      settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
-      send(settings_ack)
     end
 
     def process_window_update(frame)
