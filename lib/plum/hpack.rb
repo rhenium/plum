@@ -324,9 +324,9 @@ module Plum
       [0x7fffff0,  27],
       [0x3ffffee,  26],
       [0x3fffffff, 30] # EOS
-    ].map {|val, len|
-      [val].pack("N").unpack("B*")[0][-len..-1]
-    }
-    HUFFMAN_DECODE_TABLE = HUFFMAN_TABLE.each_with_index.to_h
+    ]
+    
+    HUFFMAN_ENCODE_TABLE = HUFFMAN_TABLE.map {|val, len| "%0#{len}b" % val }
+    HUFFMAN_DECODE_TABLE = HUFFMAN_ENCODE_TABLE.each_with_index.to_h
   end
 end

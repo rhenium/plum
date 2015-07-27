@@ -120,7 +120,7 @@ module Plum
     # @param data [String] Must be 8 octets.
     # @raise [ArgumentError] If the data is not 8 octets.
     def ping(data = "plum\x00\x00\x00\x00")
-      raise ArgumentError.new("data must be 8 octets") unless data.bytesize == 8
+      raise ArgumentError.new("data must be 8 octets") if data.bytesize != 8
       send Frame.new(type: :ping,
                      stream_id: 0,
                      payload: data)
@@ -160,7 +160,7 @@ module Plum
       @callbacks[name].each {|cb| cb.call(*args) }
     end
 
-    def process_frame(frame)
+    def validate_state_frame(frame)
       if @state == :waiting_settings
         if frame.type == :settings
           @state = :open
@@ -175,7 +175,7 @@ module Plum
 
       case frame.type
       when :headers
-        if !frame.flags.include?(:end_headers)
+        unless frame.flags.include?(:end_headers)
           @state = :waiting_continuation
           @continuation_id = frame.stream_id
         end
@@ -185,6 +185,10 @@ module Plum
           @continuation_id = nil
         end
       end
+    end
+
+    def process_frame(frame)
+      validate_state_frame(frame)
 
       if frame.stream_id == 0
         process_control_frame(frame)
@@ -192,11 +196,10 @@ module Plum
         if @streams.key?(frame.stream_id)
           stream = @streams[frame.stream_id]
         else
-          if frame.stream_id.odd? # stream started by client must have odd ID
-            stream = new_stream(frame.stream_id)
-          else
+          if frame.stream_id.even? # stream started by client must have odd ID
             raise Plum::ConnectionError.new(:protocol_error)
           end
+          stream = new_stream(frame.stream_id)
         end
         stream.process_frame(frame)
       end
@@ -219,18 +222,15 @@ module Plum
 
     def process_settings(frame)
       if frame.flags.include?(:ack)
-        if frame.length != 0
-          raise ConnectionError.new(:frame_size_error)
-        end
+        raise ConnectionError.new(:frame_size_error) if frame.length != 0
         return
       else
-        if frame.length % 6 != 0
-          raise ConnectionError.new(:frame_size_error)
-        end
+        raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
       end
 
       old_remote_settings = @remote_settings.dup
       @remote_settings.merge!(frame.parse_settings)
+
       @hpack_encoder.limit = @remote_settings[:header_table_size]
       update_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
 
@@ -251,9 +251,8 @@ module Plum
     end
 
     def process_window_update(frame)
-      if frame.length != 4
-        raise Plum::ConnectionError.new(:frame_size_error)
-      end
+      raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 4
+
       r_wsi = frame.payload.uint32
       r = r_wsi >> 31
       wsi = r_wsi & ~(1 << 31)
@@ -266,9 +265,7 @@ module Plum
     end
 
     def process_ping(frame)
-      if frame.length != 8
-        raise Plum::ConnectionError.new(:frame_size_error)
-      end
+      raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 8
 
       if frame.flags.include?(:ack)
         on(:ping_ack)

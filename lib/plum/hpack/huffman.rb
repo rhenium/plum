@@ -9,7 +9,7 @@ module Plum
       def encode(bytestr)
         out = ""
         bytestr.bytes.each do |b|
-          out << HUFFMAN_TABLE[b]
+          out << HUFFMAN_ENCODE_TABLE[b]
         end
         out << "1" * (8 - (out.bytesize % 8))
         [out].pack("B*")

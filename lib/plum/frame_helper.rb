@@ -21,11 +21,11 @@ module Plum
         end
 
         frames = []
-        frames << Frame.new(type_value: self.type_value, flags: self.flags.reject {|f| f == :end_headers }, stream_id: self.stream_id, payload: fragments.shift)
+        frames << Frame.new(type_value: self.type_value, flags: self.flags - [:end_headers], stream_id: self.stream_id, payload: fragments.shift)
         if fragments.size > 0
-          last = Frame.new(type: :continuation, flags: self.flags.select {|f| f == :end_headers }, stream_id: self.stream_id, payload: fragments.pop)
+          last = Frame.new(type: :continuation, flags: self.flags & [:end_headers], stream_id: self.stream_id, payload: fragments.pop)
           fragments.each do |fragment|
-            frames << Frame.new(type: :continuation, flags: self.flags.reject {|f| f == :end_headers }, stream_id: self.stream_id, payload: fragment)
+            frames << Frame.new(type: :continuation, stream_id: self.stream_id, payload: fragment)
           end
           frames << last
         end
@@ -39,9 +39,9 @@ module Plum
         end
 
         frames = []
-        last = Frame.new(type: :data, flags: self.flags.select {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragments.pop)
+        last = Frame.new(type: :data, flags: self.flags & [:end_stream], stream_id: self.stream_id, payload: fragments.pop)
         fragments.each do |fragment|
-          frames << Frame.new(type: :data, flags: self.flags.reject {|f| f == :end_stream }, stream_id: self.stream_id, payload: fragment)
+          frames << Frame.new(type: :data, flags: self.flags - [:end_stream], stream_id: self.stream_id, payload: fragment)
         end
         frames << last
         frames
@@ -50,17 +50,16 @@ module Plum
       end
     end
 
-    # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540).
+    # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540 6.5.2).
     #
     # @return [Hash<Symbol, Integer>] The parsed strings.
     def parse_settings
-      (self.length / (2 + 4)).times.map {|i|
+      (self.length / 6).times.map {|i|
         id = self.payload.uint16(6 * i)
         val = self.payload.uint32(6 * i + 2)
         name = Frame::SETTINGS_TYPE.key(id)
-        next unless name # 6.5.2 unknown or unsupported identifier MUST be ignored
         [name, val]
-      }.compact.to_h
+      }.select {|k, v| k }.to_h
     end
   end
 end
