@@ -31,5 +31,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "minitest", "~> 5.7.0"
   spec.add_development_dependency "simplecov", "~> 0.10.0"
-  spec.add_development_dependency "coveralls", "~> 0.8.2"
+  spec.add_development_dependency "codeclimate-test-reporter"
 end

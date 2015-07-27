@@ -1,4 +1,7 @@
 language: ruby
+addons:
+  code_climate:
+    repo_token: f5092ab344fac7f2de9d7332e00597642a4d24e3d560f7d7f329172a2e5a2def
 install:
   - echo openssl_version=1.0.2d >> $rvm_path/user/db
   - rvm pkg install openssl
