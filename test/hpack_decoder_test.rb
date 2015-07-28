@@ -251,7 +251,7 @@ class HPACKDecoderTest < Minitest::Test
     decoder = new_decoder(256)
     encoded = "\x80"
     assert_raises(HPACKError) {
-      new_decoder.decode(encoded)
+      decoder.decode(encoded)
     }
   end
 

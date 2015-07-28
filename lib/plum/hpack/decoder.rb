@@ -12,27 +12,39 @@ module Plum
       def decode(str)
         str = str.dup
         headers = []
-        while str.size > 0
-          headers << parse!(str)
-        end
+        headers << parse!(str) while str.size > 0
         headers.compact
       end
 
       private
+      def parse!(str)
+        first_byte = str.uint8
+        if first_byte & 0b10000000 == 0b10000000
+          parse_indexed!(str)
+        elsif first_byte & 0b11000000 == 0b01000000
+          parse_indexing!(str)
+        elsif first_byte & 0b11110000 == 0b00000000 || # without indexing
+              first_byte & 0b11110000 == 0b00010000    # never indexing
+          parse_no_indexing!(str)
+        elsif first_byte & 0b11100000 == 0b00100000
+          self.limit = read_integer!(str, 5)
+          nil
+        end # all match
+      end
+
       def read_integer!(str, prefix_length)
         mask = (1 << prefix_length) - 1
-        i = str.shift(1).uint8 & mask
+        ret = str.shift(1).uint8 & mask
 
-        if i == mask
-          m = 0
-          begin
+        if ret == mask
+          loop.with_index do |_, i|
             next_value = str.shift(1).uint8
-            i += (next_value & ~(0b10000000)) << m
-            m += 7
-          end until next_value & 0b10000000 == 0
+            ret += (next_value & ~(0b10000000)) << (7 * i)
+            break if next_value & 0b10000000 == 0
+          end
         end
 
-        i
+        ret
       end
 
       def read_string!(str)
@@ -43,85 +55,82 @@ module Plum
         bin
       end
 
-      def parse!(str)
-        first_byte = str.uint8
-        if first_byte & 0b10000000 == 0b10000000
-          # indexed
-          # +---+---+---+---+---+---+---+---+
-          # | 1 |        Index (7+)         |
-          # +---+---------------------------+
-          index = read_integer!(str, 7)
-          if index == 0
-            raise HPACKError.new("index can't be 0 in indexed heaeder field representation")
-          else
-            fetch(index)
-          end
-        elsif first_byte & 0b11000000 == 0b01000000
-          # +---+---+---+---+---+---+---+---+
-          # | 0 | 1 |      Index (6+)       |
-          # +---+---+-----------------------+
-          # | H |     Value Length (7+)     |
-          # +---+---------------------------+
-          # | Value String (Length octets)  |
-          # +-------------------------------+
-          # or
-          # +---+---+---+---+---+---+---+---+
-          # | 0 | 1 |           0           |
-          # +---+---+-----------------------+
-          # | H |     Name Length (7+)      |
-          # +---+---------------------------+
-          # |  Name String (Length octets)  |
-          # +---+---------------------------+
-          # | H |     Value Length (7+)     |
-          # +---+---------------------------+
-          # | Value String (Length octets)  |
-          # +-------------------------------+
-          index = read_integer!(str, 6)
-          if index == 0
-            name = read_string!(str)
-          else
-            name, = fetch(index)
-          end
+      def parse_indexed!(str)
+        # indexed
+        # +---+---+---+---+---+---+---+---+
+        # | 1 |        Index (7+)         |
+        # +---+---------------------------+
+        index = read_integer!(str, 7)
+        if index == 0
+          raise HPACKError.new("index can't be 0 in indexed heaeder field representation")
+        else
+          fetch(index)
+        end
+      end
 
-          val = read_string!(str)
-          store(name, val)
+      def parse_indexing!(str)
+        # +---+---+---+---+---+---+---+---+
+        # | 0 | 1 |      Index (6+)       |
+        # +---+---+-----------------------+
+        # | H |     Value Length (7+)     |
+        # +---+---------------------------+
+        # | Value String (Length octets)  |
+        # +-------------------------------+
+        # or
+        # +---+---+---+---+---+---+---+---+
+        # | 0 | 1 |           0           |
+        # +---+---+-----------------------+
+        # | H |     Name Length (7+)      |
+        # +---+---------------------------+
+        # |  Name String (Length octets)  |
+        # +---+---------------------------+
+        # | H |     Value Length (7+)     |
+        # +---+---------------------------+
+        # | Value String (Length octets)  |
+        # +-------------------------------+
+        index = read_integer!(str, 6)
+        if index == 0
+          name = read_string!(str)
+        else
+          name, = fetch(index)
+        end
 
-          [name, val]
-        elsif first_byte & 0b11110000 == 0b00000000 || # without indexing
-              first_byte & 0b11110000 == 0b00010000    # never indexing
-          # +---+---+---+---+---+---+---+---+
-          # | 0 | 0 | 0 |0,1|  Index (4+)   |
-          # +---+---+-----------------------+
-          # | H |     Value Length (7+)     |
-          # +---+---------------------------+
-          # | Value String (Length octets)  |
-          # +-------------------------------+
-          # or
-          # +---+---+---+---+---+---+---+---+
-          # | 0 | 0 | 0 |0,1|       0       |
-          # +---+---+-----------------------+
-          # | H |     Name Length (7+)      |
-          # +---+---------------------------+
-          # |  Name String (Length octets)  |
-          # +---+---------------------------+
-          # | H |     Value Length (7+)     |
-          # +---+---------------------------+
-          # | Value String (Length octets)  |
-          # +-------------------------------+
-          index = read_integer!(str, 4)
-          if index == 0
-            name = read_string!(str)
-          else
-            name, = fetch(index)
-          end
+        val = read_string!(str)
+        store(name, val)
 
-          val = read_string!(str)
+        [name, val]
+      end
 
-          [name, val]
-        elsif first_byte & 0b11100000 == 0b00100000
-          self.limit = read_integer!(str, 5)
-          nil
-        end # all match
+      def parse_no_indexing!(str)
+        # +---+---+---+---+---+---+---+---+
+        # | 0 | 0 | 0 |0,1|  Index (4+)   |
+        # +---+---+-----------------------+
+        # | H |     Value Length (7+)     |
+        # +---+---------------------------+
+        # | Value String (Length octets)  |
+        # +-------------------------------+
+        # or
+        # +---+---+---+---+---+---+---+---+
+        # | 0 | 0 | 0 |0,1|       0       |
+        # +---+---+-----------------------+
+        # | H |     Name Length (7+)      |
+        # +---+---------------------------+
+        # |  Name String (Length octets)  |
+        # +---+---------------------------+
+        # | H |     Value Length (7+)     |
+        # +---+---------------------------+
+        # | Value String (Length octets)  |
+        # +-------------------------------+
+        index = read_integer!(str, 4)
+        if index == 0
+          name = read_string!(str)
+        else
+          name, = fetch(index)
+        end
+
+        val = read_string!(str)
+
+        [name, val]
       end
     end
   end

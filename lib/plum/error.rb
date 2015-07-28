@@ -13,7 +13,7 @@ module Plum
     connect_error:       0x0a,
     enhance_your_calm:   0x0b,
     inadequate_security: 0x0c,
-    http_1_1_required:   0x0d,
+    http_1_1_required:   0x0d
   }
 
   class Error < StandardError; end

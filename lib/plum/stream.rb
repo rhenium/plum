@@ -144,7 +144,7 @@ module Plum
                            flags: [:end_headers],
                            stream_id: id,
                            payload: payload)
-      original.split(@connection.remote_settings[:max_frame_size]).each do |frame|
+      original.split_headers(@connection.remote_settings[:max_frame_size]).each do |frame|
         send frame
       end
       stream
@@ -182,7 +182,7 @@ module Plum
                                  flags: [:end_headers, end_stream ? :end_stream : nil].compact,
                                  stream_id: id,
                                  payload: encoded)
-      original_frame.split(max).each do |frame|
+      original_frame.split_headers(max).each do |frame|
         send frame
       end
       @state = :half_closed_local if end_stream
@@ -202,7 +202,7 @@ module Plum
                              stream_id: id,
                              flags: (end_stream && [:end_stream]),
                              payload: data.to_s)
-        original.split(max).each do |frame|
+        original.split_data(max).each do |frame|
           send frame
         end
       end
