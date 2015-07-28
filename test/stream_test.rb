@@ -18,6 +18,7 @@ class StreamTest < Minitest::Test
       refute_raises {
         stream.reserve
       }
+      assert_equal(:reserved_local, stream.state)
     }
     prepare.call {|stream|
       stream.instance_eval { @state = :open }
@@ -43,5 +44,39 @@ class StreamTest < Minitest::Test
         stream.process_frame(Frame.new(type: :headers, stream_id: stream.id))
       }
     }
+  end
+
+  def test_stream_promise
+    con = open_server_connection
+    stream = con.__send__(:new_stream, 3)
+    push_stream = stream.promise([])
+    assert(push_stream.id % 2 == 0)
+    assert(push_stream.id > stream.id)
+    assert_equal(stream, push_stream.parent)
+    assert_includes(stream.children, push_stream)
+  end
+
+  def test_stream_window_update
+    con = open_server_connection
+    stream = Stream.new(con, 1)
+    before_ws = stream.recv_remaining_window
+    stream.window_update(500)
+
+    last = sent_frames(con).last
+    assert_equal(:window_update, last.type)
+    assert_equal(500, last.payload.uint32)
+    assert_equal(before_ws + 500, stream.recv_remaining_window)
+  end
+
+  def test_stream_close
+    con = open_server_connection
+    stream = Stream.new(con, 1)
+    stream.instance_eval { @state = :half_closed_local }
+    stream.close(StreamError.new(:frame_size_error).http2_error_code)
+
+    last = sent_frames(con).last
+    assert_equal(:rst_stream, last.type)
+    assert_equal(StreamError.new(:frame_size_error).http2_error_code, last.payload.uint32)
+    assert_equal(:closed, stream.state)
   end
 end
