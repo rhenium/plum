@@ -23,7 +23,7 @@ module Plum
     #
     # @return [Array<Stream>] The child streams.
     def children
-      @connection.streams.select {|c| c.parent == self }
+      @connection.streams.values.select {|c| c.parent == self }
     end
 
     # Reserves this stream for server push. Changes the stream state to 'reserved (local)'.
