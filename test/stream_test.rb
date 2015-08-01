@@ -46,6 +46,140 @@ class StreamTest < Minitest::Test
     }
   end
 
+  def test_stream_handle_data
+    test = -> (state = :open, &blk) {
+      con = open_server_connection
+      stream = Stream.new(con, 2)
+      stream.instance_eval { @state = state }
+      blk.call(stream)
+    }
+
+    payload = "ABC" * 5
+
+    test.call {|stream|
+      data = nil
+      stream.on(:data) {|_data| data = _data }
+      stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
+                                     flags: [], payload: payload))
+      assert_equal(payload, data)
+    }
+
+    test.call {|stream|
+      data = nil
+      stream.on(:data) {|_data| data = _data }
+      stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
+                                     flags: [:padded], payload: "".push_uint8(6).push(payload).push("\x00"*6)))
+      assert_equal(payload, data)
+    }
+
+    test.call {|stream|
+      assert_connection_error(:protocol_error) {
+        stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
+                                       flags: [:padded], payload: "".push_uint8(100).push(payload).push("\x00"*6)))
+      }
+    }
+
+    test.call {|stream|
+      stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
+                                     flags: [:end_stream], payload: payload))
+      assert_equal(:half_closed_remote, stream.state)
+    }
+
+    test.call(:half_closed_remote) {|stream|
+      stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
+                                     flags: [:end_stream], payload: payload))
+      last = sent_frames(stream.connection).last
+      assert_equal(:rst_stream, last.type)
+      assert_equal(StreamError.new(:stream_closed).http2_error_code, last.payload.uint32)
+    }
+  end
+
+  def test_stream_handle_headers
+    test = -> (state = :idle, &blk) {
+      con = open_server_connection
+      stream = Stream.new(con, 2)
+      stream.instance_eval { @state = state }
+      blk.call(stream)
+    }
+
+    test.call {|stream|
+      headers = nil
+      stream.on(:headers) {|_headers|
+        headers = _headers
+      }
+      stream.process_frame(Frame.new(type: :headers,
+                                     stream_id: stream.id,
+                                     flags: [:end_headers],
+                                     payload: HPACK::Encoder.new(0).encode([[":path", "/"]])))
+      assert_equal(:open, stream.state)
+      assert_equal({ ":path" => "/" }, headers)
+    }
+
+    test.call {|stream|
+      payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
+      headers = nil
+      stream.on(:headers) {|_headers|
+        headers = _headers
+      }
+      stream.process_frame(Frame.new(type: :headers,
+                                     stream_id: stream.id,
+                                     flags: [:end_stream],
+                                     payload: payload[0..4]))
+      assert_equal(nil, headers) # wait CONTINUATION
+      stream.process_frame(Frame.new(type: :continuation,
+                                     stream_id: stream.id,
+                                     flags: [:end_headers],
+                                     payload: payload[5..-1]))
+      assert_equal(:half_closed_remote, stream.state)
+      assert_equal({ ":path" => "/" }, headers)
+    }
+
+    test.call {|stream|
+      payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
+      headers = nil
+      stream.on(:headers) {|_headers|
+        headers = _headers
+      }
+      stream.process_frame(Frame.new(type: :headers,
+                                     stream_id: stream.id,
+                                     flags: [:end_headers, :padded],
+                                     payload: "".push_uint8(payload.bytesize).push(payload).push("\x00"*payload.bytesize)))
+      assert_equal({ ":path" => "/" }, headers)
+    }
+
+    test.call {|stream|
+      payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
+      assert_connection_error(:protocol_error) {
+        stream.process_frame(Frame.new(type: :headers,
+                                       stream_id: stream.id,
+                                       flags: [:end_headers, :padded],
+                                       payload: "".push_uint8(payload.bytesize+1).push(payload).push("\x00"*(payload.bytesize+1))))
+      }
+    }
+
+    _payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
+    test.call(:reserved_local) {|stream|
+      assert_connection_error(:protocol_error) {
+        stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
+      }
+    }
+    test.call(:closed) {|stream|
+      assert_connection_error(:stream_closed) {
+        stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
+      }
+    }
+    test.call(:half_closed_remote) {|stream|
+      stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
+      last = sent_frames(stream.connection).last
+      assert_equal(:rst_stream, last.type)
+      assert_equal(StreamError.new(:stream_closed).http2_error_code, last.payload.uint32)
+    }
+
+    test.call {|stream|
+      skip "HEADERS with priority" # TODO
+    }
+  end
+
   def test_stream_promise
     con = open_server_connection
     stream = con.__send__(:new_stream, 3)
