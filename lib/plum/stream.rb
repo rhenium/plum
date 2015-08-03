@@ -2,7 +2,7 @@ using Plum::BinaryString
 
 module Plum
   class Stream
-    attr_reader :id, :state
+    attr_reader :id, :state, :connection
     attr_reader :weight, :parent, :exclusive
     attr_accessor :recv_remaining_window, :send_remaining_window
 
@@ -134,7 +134,7 @@ module Plum
     #
     # @param headers [Hash<String, String>] The *request* headers. It must contain all of them: ':authority', ':method', ':scheme' and ':path'.
     # @return [Stream] The stream to send push response.
-    def promise(headers) # TODO: fragment
+    def promise(headers)
       stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
       payload = "".force_encoding(Encoding::BINARY)
       payload.push_uint32((0 << 31 | stream.id))
