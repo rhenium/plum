@@ -161,28 +161,29 @@ module Plum
     end
 
     def validate_state_frame(frame)
-      if @state == :waiting_settings
+      case @state
+      when :waiting_settings
         if frame.type == :settings
           @state = :open
         else
           raise Plum::ConnectionError.new(:protocol_error)
         end
-      end
-
-      if @state == :waiting_continuation && (frame.type != :continuation || frame.stream_id != @continuation_id)
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
-      case frame.type
-      when :headers
-        unless frame.flags.include?(:end_headers)
-          @state = :waiting_continuation
-          @continuation_id = frame.stream_id
+      when :waiting_continuation
+        if frame.type != :continuation || frame.stream_id != @continuation_id
+          raise Plum::ConnectionError.new(:protocol_error)
         end
-      when :continuation
+
         if frame.flags.include?(:end_headers)
           @state = :open
           @continuation_id = nil
+        end
+      else
+        case frame.type
+        when :headers
+          unless frame.flags.include?(:end_headers)
+            @state = :waiting_continuation
+            @continuation_id = frame.stream_id
+          end
         end
       end
     end
@@ -224,20 +225,22 @@ module Plum
       if frame.flags.include?(:ack)
         raise ConnectionError.new(:frame_size_error) if frame.length != 0
         return
-      else
-        raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
       end
+
+      raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
 
       old_remote_settings = @remote_settings.dup
       @remote_settings.merge!(frame.parse_settings)
-
-      @hpack_encoder.limit = @remote_settings[:header_table_size]
-      update_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
+      apply_remote_settings(old_remote_settings)
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      settings_ack = Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
-      send(settings_ack)
+      send Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
+    end
+
+    def apply_remote_settings(old_remote_settings)
+      @hpack_encoder.limit = @remote_settings[:header_table_size]
+      update_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
     end
 
     def update_window_size(new_val, old_val)
