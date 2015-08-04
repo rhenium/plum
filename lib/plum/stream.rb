@@ -265,7 +265,7 @@ module Plum
         payload << frame.payload
       end
 
-      callback(:headers, @connection.hpack_decoder.decode(payload).to_h)
+      callback(:headers, @connection.hpack_decoder.decode(payload))
 
       if first.flags.include?(:end_stream)
         callback(:end_stream)

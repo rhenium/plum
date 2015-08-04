@@ -112,7 +112,7 @@ class StreamTest < Minitest::Test
                                      flags: [:end_headers],
                                      payload: HPACK::Encoder.new(0).encode([[":path", "/"]])))
       assert_equal(:open, stream.state)
-      assert_equal({ ":path" => "/" }, headers)
+      assert_equal([[":path", "/"]], headers)
     }
 
     test.call {|stream|
@@ -131,7 +131,7 @@ class StreamTest < Minitest::Test
                                      flags: [:end_headers],
                                      payload: payload[5..-1]))
       assert_equal(:half_closed_remote, stream.state)
-      assert_equal({ ":path" => "/" }, headers)
+      assert_equal([[":path", "/"]], headers)
     }
 
     test.call {|stream|
@@ -144,7 +144,7 @@ class StreamTest < Minitest::Test
                                      stream_id: stream.id,
                                      flags: [:end_headers, :padded],
                                      payload: "".push_uint8(payload.bytesize).push(payload).push("\x00"*payload.bytesize)))
-      assert_equal({ ":path" => "/" }, headers)
+      assert_equal([[":path", "/"]], headers)
     }
 
     test.call {|stream|
