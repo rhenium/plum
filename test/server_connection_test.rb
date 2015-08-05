@@ -1,6 +1,5 @@
 require "test_helper"
 
-include Plum
 using Plum::BinaryString
 
 class ServerConnectionTest < Minitest::Test
@@ -25,6 +24,18 @@ class ServerConnectionTest < Minitest::Test
     con << ServerConnection::CLIENT_CONNECTION_PREFACE
     assert_connection_error(:protocol_error) {
       con << Frame.new(type: :window_update, stream_id: 0, payload: "".push_uint32(1)).assemble
+    }
+  end
+
+  def test_server_must_raise_cframe_size_error_when_exeeeded_max_size
+    _settings = "".push_uint16(Frame::SETTINGS_TYPE[:max_frame_size]).push_uint32(2**14)
+    con = open_server_connection
+    con.settings(max_frame_size: 2**14)
+    refute_raises {
+      con << Frame.new(type: :settings, stream_id: 0, payload: _settings*(2**14/6)).assemble
+    }
+    assert_connection_error(:frame_size_error) {
+      con << Frame.new(type: :settings, stream_id: 0, payload: _settings*((2**14)/6+1)).assemble
     }
   end
 

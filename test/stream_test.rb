@@ -1,6 +1,5 @@
 require "test_helper"
 
-include Plum
 using Plum::BinaryString
 
 class StreamTest < Minitest::Test

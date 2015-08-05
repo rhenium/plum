@@ -99,10 +99,12 @@ module Plum
         payload.push_uint16(id)
         payload.push_uint32(value)
       }
-      frame = Frame.new(type: :settings,
-                        stream_id: 0,
-                        payload: payload)
-      send(frame)
+      send Frame.new(type: :settings,
+                     stream_id: 0,
+                     payload: payload)
+      old_settings = @local_settings.dup
+      @local_settings.merge!(kwargs)
+      apply_local_settings(old_settings)
     end
 
     # Reserves a new stream to server push.
@@ -160,7 +162,7 @@ module Plum
       @callbacks[name].each {|cb| cb.call(*args) }
     end
 
-    def validate_state_frame(frame)
+    def validate_received_frame(frame)
       case @state
       when :waiting_settings
         if frame.type == :settings
@@ -189,7 +191,7 @@ module Plum
     end
 
     def process_frame(frame)
-      validate_state_frame(frame)
+      validate_received_frame(frame)
 
       if frame.stream_id == 0
         process_control_frame(frame)
@@ -207,6 +209,10 @@ module Plum
     end
 
     def process_control_frame(frame)
+      if frame.length > @local_settings[:max_frame_size]
+        raise ConnectionError.new(:frame_size_error)
+      end
+
       case frame.type
       when :settings
         process_settings(frame)
@@ -238,18 +244,31 @@ module Plum
       send Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
     end
 
-    def apply_remote_settings(old_remote_settings)
-      @hpack_encoder.limit = @remote_settings[:header_table_size]
-      update_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
+    def apply_local_settings(old_settings)
+      @hpack_decoder.limit = @local_settings[:header_table_size]
+      update_recv_window_size(@local_settings[:initial_window_size], old_settings[:initial_window_size])
     end
 
-    def update_window_size(new_val, old_val)
+    def update_recv_window_size(new_val, old_val)
       initial_window_diff = new_val - old_val
       @streams.values.each do |stream|
         stream.recv_remaining_window += initial_window_diff
-        stream.consume_send_buffer
       end
       @recv_remaining_window += initial_window_diff
+    end
+
+    def apply_remote_settings(old_remote_settings)
+      @hpack_encoder.limit = @remote_settings[:header_table_size]
+      update_send_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
+    end
+
+    def update_send_window_size(new_val, old_val)
+      initial_window_diff = new_val - old_val
+      @streams.values.each do |stream|
+        stream.send_remaining_window += initial_window_diff
+        stream.consume_send_buffer
+      end
+      @send_remaining_window += initial_window_diff
       consume_send_buffer
     end
 

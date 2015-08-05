@@ -50,6 +50,8 @@ module Plum
     # Processes received frames for this stream. Internal use.
     # @private
     def process_frame(frame)
+      validate_received_frame(frame)
+
       case frame.type
       when :data
         process_data(frame)
@@ -207,6 +209,16 @@ module Plum
         end
       end
       @state = :half_closed_local if end_stream
+    end
+
+    def validate_received_frame(frame)
+      if frame.length > @connection.local_settings[:max_frame_size]
+        if [:headers, :push_promise, :continuation].include?(frame.type)
+          raise ConnectionError.new(:frame_size_error)
+        else
+          raise StreamError.new(:frame_size_error)
+        end
+      end
     end
 
     def process_data(frame)
