@@ -173,4 +173,21 @@ class StreamHandleFrameTest < Minitest::Test
       assert_equal([[":path", "/"]], headers)
     }
   end
+
+  ## PRIORITY
+  def test_stream_handle_priority
+    open_server_connection {|con|
+      parent = open_new_stream(con)
+      stream = open_new_stream(con)
+
+      payload = "".push_uint32((1 << 31) | parent.id)
+                  .push_uint8(50)
+      stream.process_frame(Frame.new(type: :priority,
+                                     stream_id: stream.id,
+                                     payload: payload))
+      assert_equal(true, stream.exclusive)
+      assert_equal(parent, stream.parent)
+      assert_equal(50, stream.weight)
+    }
+  end
 end
