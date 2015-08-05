@@ -1,8 +1,10 @@
-guard :minitest do
+guard :minitest, env: { "SKIP_COVERAGE" => true } do
   # with Minitest::Unit
-  watch(%r{^test/(.*)\/?test_(.*)\.rb$})
-  watch(%r{^lib/(.*/)?([^/]+)\.rb$})     { |m| "test/#{m[1]}test_#{m[2]}.rb" }
-  watch(%r{^test/test_helper\.rb$})      { 'test' }
+  watch(%r{^test/(.*)_test\.rb$})
+  watch(%r{^test/test_helper\.rb$}) { "test" }
+  watch(%r{^test/utils\.rb$}) { "test" }
+  watch(%r{^lib/plum.rb$}) { "test" }
+  watch(%r{^lib/plum/(.+)\.rb$}) {|m| "test/" + m[1].gsub("/", "_") + "_test.rb" }
 
   # with Minitest::Spec
   # watch(%r{^spec/(.*)_spec\.rb$})
