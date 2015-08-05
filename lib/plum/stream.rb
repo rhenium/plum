@@ -191,7 +191,7 @@ module Plum
       end
 
       if first.flags.include?(:priority)
-        process_priority_payload(payload.shift(5))
+        process_priority_payload(payload.byteshift(5))
         first_length -= 5
       end
 
@@ -259,7 +259,7 @@ module Plum
       dependency_id = e & ~(1 << 31)
       weight = payload.uint8(4)
 
-      update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e)
+      update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e == 1)
     end
 
     def process_rst_stream(frame)
