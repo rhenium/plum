@@ -25,19 +25,7 @@ module Plum
     #
     # @return [Array<Stream>] The child streams.
     def children
-      @connection.streams.values.select {|c| c.parent == self }
-    end
-
-    # Reserves this stream for server push. Changes the stream state to 'reserved (local)'.
-    #
-    # @raise [ConnectionError] If the state of this stream is not 'idle'.
-    def reserve
-      if @state != :idle
-        # reusing stream
-        raise Plum::ConnectionError.new(:protocol_error)
-      else
-        @state = :reserved_local
-      end
+      @connection.streams.values.select {|c| c.parent == self }.freeze
     end
 
     # Processes received frames for this stream. Internal use.

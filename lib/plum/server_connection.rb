@@ -88,8 +88,7 @@ module Plum
     # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
       next_id = ((@streams.keys.last / 2).to_i + 1) * 2
-      stream = new_stream(next_id, **args)
-      stream.reserve
+      stream = new_stream(next_id, state: :reserved_local, **args)
       stream
     end
 

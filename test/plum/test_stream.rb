@@ -3,18 +3,6 @@ require "test_helper"
 using Plum::BinaryString
 
 class StreamTest < Minitest::Test
-  def test_stream_reserve
-    open_new_stream {|stream|
-      stream.reserve
-      assert_equal(:reserved_local, stream.state)
-    }
-    open_new_stream(:open) {|stream|
-      assert_connection_error(:protocol_error) {
-        stream.reserve
-      }
-    }
-  end
-
   def test_stream_state_illegal_frame_type
     open_new_stream {|stream|
       assert_connection_error(:protocol_error) {
