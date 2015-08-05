@@ -13,14 +13,20 @@ module ServerUtils
     end
   end
 
-  def open_new_stream(state = :idle)
-    open_server_connection do |con|
-      @_stream = con.instance_eval { new_stream(3, state: state) }
-      if block_given?
-        yield @_stream
-      else
-        @_stream
-      end
+  def open_new_stream(arg1 = nil, arg2 = nil)
+    if arg1.is_a?(ServerConnection)
+      con = arg1
+      state = arg2 || :idle
+    else
+      con = open_server_connection
+      state = arg1 || :idle
+    end
+
+    @_stream = con.instance_eval { new_stream((con.streams.keys.last||0/2)*2+1, state: state) }
+    if block_given?
+      yield @_stream
+    else
+      @_stream
     end
   end
 
