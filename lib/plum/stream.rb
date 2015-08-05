@@ -277,7 +277,13 @@ module Plum
         payload << frame.payload
       end
 
-      callback(:headers, @connection.hpack_decoder.decode(payload))
+      begin
+        decoded_headers = @connection.hpack_decoder.decode(payload)
+      rescue => e
+        raise ConnectionError.new(:compression_error, e)
+      end
+
+      callback(:headers, decoded_headers)
 
       if first.flags.include?(:end_stream)
         callback(:end_stream)

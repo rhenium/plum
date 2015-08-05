@@ -156,6 +156,16 @@ class StreamTest < Minitest::Test
       }
     }
 
+    test.call {|stream|
+      payload = "\x00\x01\x02"
+      assert_connection_error(:compression_error) {
+        stream.process_frame(Frame.new(type: :headers,
+                                       stream_id: stream.id,
+                                       flags: [:end_headers],
+                                       payload: payload))
+      }
+    }
+
     _payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
     test.call(:reserved_local) {|stream|
       assert_connection_error(:protocol_error) {
