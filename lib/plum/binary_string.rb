@@ -50,12 +50,9 @@ module Plum
 
       # Takes from beginning and cut specified *octets* from this String.
       # @param count [Integer] The amount.
-      def shift(count)
-        enc = self.encoding
+      def byteshift(count)
         force_encoding(Encoding::BINARY)
-        out = slice!(0, count)
-        force_encoding(enc)
-        out
+        slice!(0, count)
       end
     end
   end

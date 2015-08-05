@@ -20,7 +20,7 @@ module Plum
         bits = encoded.unpack("B*")[0]
         buf = ""
         outl = []
-        while (n = bits.shift(1)).bytesize > 0
+        while (n = bits.byteshift(1)).bytesize > 0
           if c = HUFFMAN_DECODE_TABLE[buf << n]
             buf = ""
             outl << c

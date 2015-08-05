@@ -34,11 +34,11 @@ module Plum
 
       def read_integer!(str, prefix_length)
         mask = (1 << prefix_length) - 1
-        ret = str.shift(1).uint8 & mask
+        ret = str.byteshift(1).uint8 & mask
 
         if ret == mask
           loop.with_index do |_, i|
-            next_value = str.shift(1).uint8
+            next_value = str.byteshift(1).uint8
             ret += (next_value & ~(0b10000000)) << (7 * i)
             break if next_value & 0b10000000 == 0
           end
@@ -50,7 +50,7 @@ module Plum
       def read_string!(str)
         huffman = (str.uint8 >> 7) == 1
         length = read_integer!(str, 7)
-        bin = str.shift(length)
+        bin = str.byteshift(length)
         bin = Huffman.decode(bin) if huffman
         bin
       end

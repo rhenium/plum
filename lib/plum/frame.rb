@@ -126,8 +126,8 @@ module Plum
       length = buffer.uint24
       return nil if buffer.size < 9 + length
 
-      bhead = buffer.shift(9)
-      payload = buffer.shift(length)
+      bhead = buffer.byteshift(9)
+      payload = buffer.byteshift(length)
 
       type_value = bhead.uint8(3)
       flags_value = bhead.uint8(4)

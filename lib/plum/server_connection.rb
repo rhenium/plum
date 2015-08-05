@@ -137,7 +137,7 @@ module Plum
 
       if @state == :waiting_connetion_preface
         if @buffer.bytesize >= 24
-          if @buffer.shift(24) == CLIENT_CONNECTION_PREFACE
+          if @buffer.byteshift(24) == CLIENT_CONNECTION_PREFACE
             @state = :waiting_settings
           else
             raise Plum::ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
