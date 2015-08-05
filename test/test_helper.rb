@@ -1,3 +1,5 @@
+LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
+
 unless ENV["SKIP_COVERAGE"]
   begin
     require "simplecov"
@@ -13,13 +15,13 @@ unless ENV["SKIP_COVERAGE"]
   end
 end
 
-require "plum"
-require "timeout"
 require "minitest"
 require "minitest/unit"
 require "minitest/autorun"
 require "minitest/pride"
-require "utils"
-
+require "plum"
 include Plum
-LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
+
+Dir.glob(File.expand_path("../utils/*.rb", __FILE__)).each do |file|
+  require file
+end

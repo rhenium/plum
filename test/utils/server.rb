@@ -1,36 +1,6 @@
-module Minitest::Assertions
-  def assert_http_error(klass, type, &blk)
-    begin
-      blk.call
-    rescue klass => e
-      assert_equal(type, e.http2_error_type)
-    else
-      flunk "#{klass.name} type: #{type} expected but nothing was raised."
-    end
-  end
+require "timeout"
 
-  def assert_connection_error(type, &blk)
-    assert_http_error(Plum::ConnectionError, type, &blk)
-  end
-
-  def assert_stream_error(type, &blk)
-    assert_http_error(Plum::StreamError, type, &blk)
-  end
-
-  def refute_raises(&blk)
-    begin
-      blk.call
-    rescue
-      a = $!
-    else
-      a = nil
-    end
-    assert(!a, "No exceptions expected but raised: #{a}:\n#{a && a.backtrace.join("\n")}")
-  end
-end
-
-module ServerTestUtils
-  private
+module ServerUtils
   def open_server_connection
     io = StringIO.new
     @_con = ServerConnection.new(io)
@@ -66,8 +36,8 @@ module ServerTestUtils
   def start_server(&blk)
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../server.crt", __FILE__))
-    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../server.key", __FILE__))
+    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../server.crt", __FILE__))
+    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../server.key", __FILE__))
     tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
@@ -110,4 +80,8 @@ module ServerTestUtils
   ensure
     ssl.close
   end
+end
+
+class Minitest::Test
+  include ServerUtils
 end

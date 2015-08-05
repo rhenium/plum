@@ -3,8 +3,6 @@ require "test_helper"
 using Plum::BinaryString
 
 class StreamTest < Minitest::Test
-  include ServerTestUtils
-
   def test_stream_reserve
     open_new_stream {|stream|
       stream.reserve
