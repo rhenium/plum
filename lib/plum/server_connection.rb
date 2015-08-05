@@ -2,6 +2,8 @@ using Plum::BinaryString
 
 module Plum
   class ServerConnection
+    include ServerConnectionHelper
+
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
     DEFAULT_SETTINGS = {
@@ -81,32 +83,6 @@ module Plum
       @socket.close
     end
 
-    # Increases receiving window size. Sends WINDOW_UPDATE frame to the peer.
-    #
-    # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
-    def window_update(wsi)
-      @recv_remaining_window += wsi
-      payload = "".push_uint32(wsi & ~(1 << 31))
-      send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
-    end
-
-    # Sends local settings to the peer.
-    #
-    # @param kwargs [Hash<Symbol, Integer>]
-    def settings(**kwargs)
-      payload = kwargs.inject("") {|payload, (key, value)|
-        id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
-        payload.push_uint16(id)
-        payload.push_uint32(value)
-      }
-      send Frame.new(type: :settings,
-                     stream_id: 0,
-                     payload: payload)
-      old_settings = @local_settings.dup
-      @local_settings.merge!(kwargs)
-      apply_local_settings(old_settings)
-    end
-
     # Reserves a new stream to server push.
     #
     # @param args [Hash] The argument to pass to Stram.new.
@@ -115,17 +91,6 @@ module Plum
       stream = new_stream(next_id, **args)
       stream.reserve
       stream
-    end
-
-    # Sends a PING frame to the peer.
-    #
-    # @param data [String] Must be 8 octets.
-    # @raise [ArgumentError] If the data is not 8 octets.
-    def ping(data = "plum\x00\x00\x00\x00")
-      raise ArgumentError.new("data must be 8 octets") if data.bytesize != 8
-      send Frame.new(type: :ping,
-                     stream_id: 0,
-                     payload: data)
     end
 
     # Receives the specified data and process.
@@ -244,7 +209,10 @@ module Plum
       send Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
     end
 
-    def apply_local_settings(old_settings)
+    def update_local_settings(new_settings)
+      old_settings = @local_settings.dup
+      @local_settings.merge!(new_settings)
+
       @hpack_decoder.limit = @local_settings[:header_table_size]
       update_recv_window_size(@local_settings[:initial_window_size], old_settings[:initial_window_size])
     end
