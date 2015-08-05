@@ -33,18 +33,29 @@ module ServerTestUtils
   private
   def open_server_connection
     io = StringIO.new
-    con = ServerConnection.new(io)
-    con << ServerConnection::CLIENT_CONNECTION_PREFACE
-    con << Frame.new(type: :settings, stream_id: 0).assemble
+    @_con = ServerConnection.new(io)
+    @_con << ServerConnection::CLIENT_CONNECTION_PREFACE
+    @_con << Frame.new(type: :settings, stream_id: 0).assemble
     if block_given?
-      yield con
+      yield @_con
     else
-      con
+      @_con
     end
   end
 
-  def sent_frames(con)
-    resp = con.socket.string.dup
+  def open_new_stream(state = :idle)
+    open_server_connection do |con|
+      @_stream = con.instance_eval { new_stream(3, state: state) }
+      if block_given?
+        yield @_stream
+      else
+        @_stream
+      end
+    end
+  end
+
+  def sent_frames(con = nil)
+    resp = (con || @_con).socket.string.dup
     frames = []
     while f = Frame.parse!(resp)
       frames << f

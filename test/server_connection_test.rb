@@ -131,7 +131,7 @@ class ServerConnectionTest < Minitest::Test
 
     prepare.call {|con|
       con << Frame.new(type: :ping, flags: [], stream_id: 0, payload: "AAAAAAAA").assemble
-      last = sent_frames(con).last
+      last = sent_frames.last
       assert_equal(:ping, last.type)
       assert_equal([:ack], last.flags)
       assert_equal("AAAAAAAA", last.payload)
@@ -143,7 +143,7 @@ class ServerConnectionTest < Minitest::Test
     }
     prepare.call {|con|
       con << Frame.new(type: :ping, flags: [:ack], stream_id: 0, payload: "A" * 8).assemble
-      last = sent_frames(con).last
+      last = sent_frames.last
       refute_equal(:ping, last.type) if last
     }
   end
