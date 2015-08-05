@@ -2,7 +2,7 @@ require "test_helper"
 
 using Plum::BinaryString
 
-class ServerConnectionHandleTest < Minitest::Test
+class ServerConnectionHandleFrameTest < Minitest::Test
   ## SETTINGS
   def test_server_handle_settings
     open_server_connection {|con|
