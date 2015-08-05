@@ -130,7 +130,7 @@ module Plum
       @exclusive = exclusive unless exclusive.nil?
 
       if exclusive == true
-        @connection.streams[parent].children.each do |child|
+        parent.children.each do |child|
           next if child == self
           child.parent = self
         end
