@@ -6,7 +6,7 @@ class StreamHandleFrameTest < Minitest::Test
   ## DATA
   def test_stream_handle_data
     payload = "ABC" * 5
-    open_new_stream(:open) {|stream|
+    open_new_stream(state: :open) {|stream|
       data = nil
       stream.on(:data) {|_data| data = _data }
       stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
@@ -17,7 +17,7 @@ class StreamHandleFrameTest < Minitest::Test
 
   def test_stream_handle_data_padded
     payload = "ABC" * 5
-    open_new_stream(:open) {|stream|
+    open_new_stream(state: :open) {|stream|
       data = nil
       stream.on(:data) {|_data| data = _data }
       stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
@@ -28,7 +28,7 @@ class StreamHandleFrameTest < Minitest::Test
 
   def test_stream_handle_data_too_long_padding
     payload = "ABC" * 5
-    open_new_stream(:open) {|stream|
+    open_new_stream(state: :open) {|stream|
       assert_connection_error(:protocol_error) {
         stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
                                        flags: [:padded], payload: "".push_uint8(100).push(payload).push("\x00"*6)))
@@ -38,7 +38,7 @@ class StreamHandleFrameTest < Minitest::Test
 
   def test_stream_handle_data_end_stream
     payload = "ABC" * 5
-    open_new_stream(:open) {|stream|
+    open_new_stream(state: :open) {|stream|
       stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
                                      flags: [:end_stream], payload: payload))
       assert_equal(:half_closed_remote, stream.state)
@@ -47,7 +47,7 @@ class StreamHandleFrameTest < Minitest::Test
 
   def test_stream_handle_data_invalid_state
     payload = "ABC" * 5
-    open_new_stream(:half_closed_remote) {|stream|
+    open_new_stream(state: :half_closed_remote) {|stream|
       stream.process_frame(Frame.new(type: :data, stream_id: stream.id,
                                      flags: [:end_stream], payload: payload))
       last = sent_frames.last
@@ -134,17 +134,17 @@ class StreamHandleFrameTest < Minitest::Test
 
   def test_stream_handle_headers_state
     _payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
-    open_new_stream(:reserved_local) {|stream|
+    open_new_stream(state: :reserved_local) {|stream|
       assert_connection_error(:protocol_error) {
         stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
       }
     }
-    open_new_stream(:closed) {|stream|
+    open_new_stream(state: :closed) {|stream|
       assert_connection_error(:stream_closed) {
         stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
       }
     }
-    open_new_stream(:half_closed_remote) {|stream|
+    open_new_stream(state: :half_closed_remote) {|stream|
       stream.process_frame(Frame.new(type: :headers, stream_id: stream.id, flags: [:end_headers, :end_stream], payload: _payload))
       last = sent_frames.last
       assert_equal(:rst_stream, last.type)
@@ -201,6 +201,23 @@ class StreamHandleFrameTest < Minitest::Test
       last = sent_frames.last
       assert_equal(:rst_stream, last.type)
       assert_equal(ERROR_CODES[:protocol_error], last.payload.uint32)
+    }
+  end
+
+  def test_stream_handle_priority_exclusive
+    open_server_connection {|con|
+      parent = open_new_stream(con)
+      stream0 = open_new_stream(con, parent: parent)
+      stream1 = open_new_stream(con, parent: parent)
+      stream2 = open_new_stream(con, parent: parent)
+
+      payload = "".push_uint32((1 << 31) | parent.id).push_uint8(6)
+      stream0.process_frame(Frame.new(type: :priority,
+                                      stream_id: stream0.id,
+                                      payload: payload))
+      assert_equal(parent, stream0.parent)
+      assert_equal(stream0, stream1.parent)
+      assert_equal(stream0, stream2.parent)
     }
   end
 end

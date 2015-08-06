@@ -12,7 +12,7 @@ class StreamTest < Minitest::Test
   end
 
   def test_stream_close
-    open_new_stream(:half_closed_local) {|stream|
+    open_new_stream(state: :half_closed_local) {|stream|
       stream.close(StreamError.new(:frame_size_error).http2_error_code)
 
       last = sent_frames.last
