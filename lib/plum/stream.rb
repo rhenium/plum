@@ -2,6 +2,7 @@ using Plum::BinaryString
 
 module Plum
   class Stream
+    include EventEmitter
     include FlowControl
     include StreamHelper
 
@@ -14,7 +15,6 @@ module Plum
       @id = id
       @state = state
       @continuation = []
-      @callbacks = Hash.new {|hash, key| hash[key] = [] }
 
       initialize_flow_control(send: @connection.remote_settings[:initial_window_size],
                               recv: @connection.local_settings[:initial_window_size])
@@ -69,18 +69,7 @@ module Plum
                                  payload: data)
     end
 
-    # Registers an event handler to specified event. An event can have multiple handlers.
-    # @param name [String] The name of event.
-    # @yield Gives event-specific parameters.
-    def on(name, &blk)
-      @callbacks[name] << blk
-    end
-
     private
-    def callback(name, *args)
-      @callbacks[name].each {|cb| cb.call(*args) }
-    end
-
     def send_immediately(frame)
       callback(:send_frame, frame)
       @connection.send(frame)

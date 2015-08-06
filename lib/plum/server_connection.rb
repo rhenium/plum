@@ -2,6 +2,7 @@ using Plum::BinaryString
 
 module Plum
   class ServerConnection
+    include EventEmitter
     include FlowControl
     include ServerConnectionHelper
 
@@ -24,7 +25,6 @@ module Plum
       @socket = socket
       @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
-      @callbacks = Hash.new {|hash, key| hash[key] = [] }
       @buffer = "".force_encoding(Encoding::BINARY)
       @streams = {}
       @state = :waiting_connetion_preface
@@ -32,13 +32,6 @@ module Plum
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
       initialize_flow_control(send: @remote_settings[:initial_window_size],
                               recv: @local_settings[:initial_window_size])
-    end
-
-    # Registers an event handler to specified event. An event can have multiple handlers.
-    # @param name [String] The name of event.
-    # @yield Gives event-specific parameters.
-    def on(name, &blk)
-      @callbacks[name] << blk
     end
 
     # Starts communication with the peer. It blocks until the socket is closed, or reaches EOF.
@@ -107,10 +100,6 @@ module Plum
     end
 
     private
-    def callback(name, *args)
-      @callbacks[name].each {|cb| cb.call(*args) }
-    end
-
     def send_immediately(frame)
       callback(:send_frame, frame)
       @socket.write(frame.assemble)
