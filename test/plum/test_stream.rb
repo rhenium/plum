@@ -3,10 +3,10 @@ require "test_helper"
 using Plum::BinaryString
 
 class StreamTest < Minitest::Test
-  def test_stream_state_illegal_frame_type
+  def test_stream_illegal_frame_type
     open_new_stream {|stream|
       assert_connection_error(:protocol_error) {
-        stream.process_frame(Frame.new(type: :rst_stream, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+        stream.process_frame(Frame.new(type: :goaway, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
       }
     }
   end
