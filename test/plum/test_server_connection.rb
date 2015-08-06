@@ -24,6 +24,14 @@ class ServerConnectionTest < Minitest::Test
     end
   end
 
+  def test_server_ignore_unknown_frame_type
+    open_server_connection {|con|
+      refute_raises {
+        con << Frame.new(type_value: 0x0f, stream_id: 0).assemble
+      }
+    }
+  end
+
   def test_server_raise_cprotocol_error_client_start_even_stream_id
     con = open_server_connection
     assert_connection_error(:protocol_error) {

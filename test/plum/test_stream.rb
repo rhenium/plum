@@ -11,6 +11,14 @@ class StreamTest < Minitest::Test
     }
   end
 
+  def test_stream_unknown_frame_type
+    open_new_stream {|stream|
+      refute_raises {
+        stream.process_frame(Frame.new(type_value: 0x0f, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+      }
+    }
+  end
+
   def test_stream_close
     open_new_stream(state: :half_closed_local) {|stream|
       stream.close(StreamError.new(:frame_size_error).http2_error_code)

@@ -89,7 +89,7 @@ module Plum
     # Returns the type of the frame in Symbol.
     # @return [Symbol] The type.
     def type
-      @_type ||= FRAME_TYPES.key(type_value)
+      @_type ||= FRAME_TYPES.key(type_value) || ("unknown_%01A" % type_value).to_sym
     end
 
     # Returns the set flags on the frame.

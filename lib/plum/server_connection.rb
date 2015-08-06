@@ -186,8 +186,10 @@ module Plum
         process_ping(frame)
       when :goaway
         close
-      else # :data, :headers, :priority, :rst_stream, :push_promise, :continuation
+      when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
+      else
+        # MUST ignore unknown frame type.
       end
     end
 

@@ -46,8 +46,10 @@ module Plum
         process_window_update(frame)
       when :continuation
         process_continuation(frame)
-      else # :ping, :goaway, :settings, :push_promise
+      when :ping, :goaway, :settings, :push_promise
         raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
+      else
+        # MUST ignore unknown frame
       end
     rescue Plum::StreamError => e
       callback(:stream_error, e)
