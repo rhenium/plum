@@ -5,8 +5,8 @@ module Plum
     include StreamHelper
 
     attr_reader :id, :state, :connection
-    attr_reader :weight, :parent, :exclusive
-    attr_accessor :recv_remaining_window, :send_remaining_window
+    attr_reader :weight, :exclusive
+    attr_accessor :parent, :recv_remaining_window, :send_remaining_window
 
     def initialize(con, id, state: :idle, weight: 16, parent: nil, exclusive: false)
       @connection = con
