@@ -19,9 +19,13 @@ def log(con, stream, s)
 end
 
 ctx = OpenSSL::SSL::SSLContext.new
+ctx.ssl_version = :TLSv1_2
 ctx.alpn_select_cb = -> protocols {
   raise "Client does not support HTTP/2: #{protocols}" unless protocols.include?("h2")
   "h2"
+}
+ctx.tmp_ecdh_callback = -> (sock, ise, keyl) {
+  OpenSSL::PKey::EC.new("prime256v1")
 }
 ctx.cert = OpenSSL::X509::Certificate.new File.read(".crt.local")
 ctx.key = OpenSSL::PKey::RSA.new File.read(".key.local")
@@ -72,7 +76,7 @@ loop do
 
     stream.on(:headers) do |headers_|
       log(id, stream.id, headers_.map {|name, value| "#{name}: #{value}" })
-      headers = headers_
+      headers = headers_.to_h
     end
 
     stream.on(:data) do |data_|
