@@ -113,6 +113,7 @@ module Plum
     end
 
     def update_dependency(weight: nil, parent: nil, exclusive: nil)
+      raise StreamError.new(:protocol_error, "A stream cannot depend on itself.") if parent == self
       @weight = weight unless weight.nil?
       @parent = parent unless parent.nil?
       @exclusive = exclusive unless exclusive.nil?

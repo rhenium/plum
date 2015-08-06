@@ -190,4 +190,17 @@ class StreamHandleFrameTest < Minitest::Test
       assert_equal(50, stream.weight)
     }
   end
+
+  def test_stream_handle_priority_self_depend
+    open_server_connection {|con|
+      stream = open_new_stream(con)
+      payload = "".push_uint32((1 << 31) | stream.id).push_uint8(6)
+      stream.process_frame(Frame.new(type: :priority,
+                                     stream_id: stream.id,
+                                     payload: payload))
+      last = sent_frames.last
+      assert_equal(:rst_stream, last.type)
+      assert_equal(ERROR_CODES[:protocol_error], last.payload.uint32)
+    }
+  end
 end
