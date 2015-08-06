@@ -8,7 +8,7 @@ module Plum
     def window_update(wsi)
       @recv_remaining_window += wsi
       payload = "".push_uint32(wsi & ~(1 << 31))
-      send Frame.new(tyoe: :window_update, stream_id: id, payload: payload)
+      send Frame.new(type: :window_update, stream_id: 0, payload: payload)
     end
 
     # Sends local settings to the peer.

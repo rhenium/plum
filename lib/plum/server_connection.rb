@@ -18,6 +18,7 @@ module Plum
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
     attr_reader :state, :socket, :streams
+    attr_reader :recv_remaining_window, :send_remaining_window
 
     def initialize(socket, local_settings = {})
       @socket = socket
