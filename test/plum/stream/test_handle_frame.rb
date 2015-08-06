@@ -220,4 +220,35 @@ class StreamHandleFrameTest < Minitest::Test
       assert_equal(stream0, stream2.parent)
     }
   end
+
+  ## RST_STREAM
+  def test_stream_handle_rst_stream
+    open_new_stream(state: :reserved_local) {|stream|
+      stream.process_frame(Frame.new(type: :rst_stream,
+                                     stream_id: stream.id,
+                                     payload: "\x00\x00\x00\x00"))
+      assert_equal(:closed, stream.state)
+    }
+  end
+
+  def test_stream_handle_rst_stream_idle
+    open_new_stream(state: :idle) {|stream|
+      assert_connection_error(:protocol_error) {
+        stream.process_frame(Frame.new(type: :rst_stream,
+                                       stream_id: stream.id,
+                                       payload: "\x00\x00\x00\x00"))
+      }
+    }
+  end
+
+  def test_stream_handle_rst_stream_frame_size
+    open_new_stream(state: :reserved_local) {|stream|
+      assert_connection_error(:frame_size_error) {
+        stream.process_frame(Frame.new(type: :rst_stream,
+                                       stream_id: stream.id,
+                                       payload: "\x00\x00\x00"))
+      }
+    }
+  end
+
 end
