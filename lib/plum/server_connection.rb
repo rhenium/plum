@@ -2,6 +2,7 @@ using Plum::BinaryString
 
 module Plum
   class ServerConnection
+    include FlowControl
     include ServerConnectionHelper
 
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
@@ -18,7 +19,6 @@ module Plum
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
     attr_reader :state, :socket, :streams
-    attr_reader :recv_remaining_window, :send_remaining_window
 
     def initialize(socket, local_settings = {})
       @socket = socket
@@ -30,9 +30,8 @@ module Plum
       @state = :waiting_connetion_preface
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
-      @recv_remaining_window = @local_settings[:initial_window_size]
-      @send_remaining_window = @remote_settings[:initial_window_size]
-      @send_buffer = []
+      initialize_flow_control(send: @remote_settings[:initial_window_size],
+                              recv: @local_settings[:initial_window_size])
     end
 
     # Registers an event handler to specified event. An event can have multiple handlers.
@@ -40,20 +39,6 @@ module Plum
     # @yield Gives event-specific parameters.
     def on(name, &blk)
       @callbacks[name] << blk
-    end
-
-    # Sends frame respecting inner-stream flow control.
-    #
-    # @param frame [Frame] The frame to be sent.
-    def send(frame)
-      case frame.type
-      when :data
-        @send_buffer << frame
-        callback(:send_deferred, frame) if @send_remaining_window < frame.length
-        consume_send_buffer
-      else
-        send_immediately frame
-      end
     end
 
     # Starts communication with the peer. It blocks until the socket is closed, or reaches EOF.
@@ -76,10 +61,9 @@ module Plum
       data.push_uint32((last_id || 0) & ~(1 << 31))
       data.push_uint32(error_code)
       data.push("") # debug message
-      error = Frame.new(type: :goaway,
-                        stream_id: 0,
-                        payload: data)
-      send(error)
+      send_immediately Frame.new(type: :goaway,
+                                 stream_id: 0,
+                                 payload: data)
       # TODO: server MAY wait streams
       @socket.close
     end
@@ -125,6 +109,11 @@ module Plum
     private
     def callback(name, *args)
       @callbacks[name].each {|cb| cb.call(*args) }
+    end
+
+    def send_immediately(frame)
+      callback(:send_frame, frame)
+      @socket.write(frame.assemble)
     end
 
     def validate_received_frame(frame)
@@ -208,7 +197,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
+      send_immediately Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
     end
 
     def update_local_settings(new_settings)
@@ -216,44 +205,12 @@ module Plum
       @local_settings.merge!(new_settings)
 
       @hpack_decoder.limit = @local_settings[:header_table_size]
-      update_recv_window_size(@local_settings[:initial_window_size], old_settings[:initial_window_size])
-    end
-
-    def update_recv_window_size(new_val, old_val)
-      initial_window_diff = new_val - old_val
-      @streams.values.each do |stream|
-        stream.recv_remaining_window += initial_window_diff
-      end
-      @recv_remaining_window += initial_window_diff
+      update_recv_initial_window_size(@local_settings[:initial_window_size] - old_settings[:initial_window_size])
     end
 
     def apply_remote_settings(old_remote_settings)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
-      update_send_window_size(@remote_settings[:initial_window_size], old_remote_settings[:initial_window_size])
-    end
-
-    def update_send_window_size(new_val, old_val)
-      initial_window_diff = new_val - old_val
-      @streams.values.each do |stream|
-        stream.send_remaining_window += initial_window_diff
-        stream.consume_send_buffer
-      end
-      @send_remaining_window += initial_window_diff
-      consume_send_buffer
-    end
-
-    def process_window_update(frame)
-      raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 4
-
-      r_wsi = frame.payload.uint32
-      r = r_wsi >> 31
-      wsi = r_wsi & ~(1 << 31)
-      if wsi == 0
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
-      @send_remaining_window += wsi
-      consume_send_buffer
+      update_send_initial_window_size(@remote_settings[:initial_window_size] - old_remote_settings[:initial_window_size])
     end
 
     def process_ping(frame)
@@ -264,10 +221,10 @@ module Plum
       else
         on(:ping)
         opaque_data = frame.payload
-        send Frame.new(type: :ping,
-                       stream_id: 0,
-                       flags: [:ack],
-                       payload: opaque_data)
+        send_immediately Frame.new(type: :ping,
+                                   stream_id: 0,
+                                   flags: [:ack],
+                                   payload: opaque_data)
       end
     end
 
@@ -282,18 +239,8 @@ module Plum
       stream
     end
 
-    def consume_send_buffer
-      while frame = @send_buffer.first
-        break if frame.length > @send_remaining_window
-        @send_buffer.shift
-        @send_remaining_window -= frame.length
-        send_immediately frame
-      end
-    end
-
-    def send_immediately(frame)
-      callback(:send_frame, frame)
-      @socket.write(frame.assemble)
+    def local_error
+      ConnectionError
     end
   end
 end

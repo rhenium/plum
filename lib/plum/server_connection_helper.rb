@@ -2,15 +2,6 @@ using Plum::BinaryString
 
 module Plum
   module ServerConnectionHelper
-    # Increases receiving window size. Sends WINDOW_UPDATE frame to the peer.
-    #
-    # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
-    def window_update(wsi)
-      @recv_remaining_window += wsi
-      payload = "".push_uint32(wsi & ~(1 << 31))
-      send Frame.new(type: :window_update, stream_id: 0, payload: payload)
-    end
-
     # Sends local settings to the peer.
     #
     # @param kwargs [Hash<Symbol, Integer>]
@@ -36,6 +27,5 @@ module Plum
                      stream_id: 0,
                      payload: data)
     end
-
   end
 end
