@@ -95,6 +95,11 @@ module Plum
       end
     end
 
+    def receive_end_stream
+      callback(:end_stream)
+      @state = :half_closed_remote
+    end
+
     def receive_data(frame)
       if @state != :open && @state != :half_closed_local
         raise StreamError.new(:stream_closed)
@@ -111,10 +116,7 @@ module Plum
       end
       callback(:data, body)
 
-      if frame.flags.include?(:end_stream) # :data, :headers
-        callback(:end_stream)
-        @state = :half_closed_remote
-      end
+      receive_end_stream if frame.flags.include?(:end_stream)
     end
 
     def receive_complete_headers(frames)
@@ -154,10 +156,7 @@ module Plum
 
       callback(:headers, decoded_headers)
 
-      if first.flags.include?(:end_stream)
-        callback(:end_stream)
-        @state = :half_closed_remote
-      end
+      receive_end_stream if first.flags.include?(:end_stream)
     end
 
     def receive_headers(frame)

@@ -11,10 +11,8 @@ module Plum
       raise "Frame type must be DATA" unless self.type == :data
 
       fragments = []
-      pos = 0
-      while pos <= self.length # data may be empty
+      while (pos = fragments.size * max) <= self.length # zero
         fragments << self.payload.byteslice(pos, max)
-        pos += max
       end
 
       frames = []
@@ -31,10 +29,8 @@ module Plum
       raise "Frame type must be DATA" unless [:headers, :push_promise].include?(self.type)
 
       fragments = []
-      pos = 0
-      while pos < self.length
+      while (pos = fragments.size * max) < self.length # zero
         fragments << self.payload.byteslice(pos, max)
-        pos += max
       end
 
       frames = []
