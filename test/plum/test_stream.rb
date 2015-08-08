@@ -6,15 +6,15 @@ class StreamTest < Minitest::Test
   def test_stream_illegal_frame_type
     open_new_stream {|stream|
       assert_connection_error(:protocol_error) {
-        stream.process_frame(Frame.new(type: :goaway, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+        stream.receive_frame(Frame.new(type: :goaway, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
       }
     }
   end
 
   def test_stream_unknown_frame_type
     open_new_stream {|stream|
-      refute_raises {
-        stream.process_frame(Frame.new(type_value: 0x0f, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+      assert_no_error {
+        stream.receive_frame(Frame.new(type_value: 0x0f, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
       }
     }
   end

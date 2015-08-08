@@ -33,7 +33,7 @@ module Plum
       @send_remaining_window += diff
       consume_send_buffer
 
-      if ServerConnection === self
+      if Connection === self
         @streams.values.each do |stream|
           stream.update_send_initial_window_size(diff)
         end
@@ -42,7 +42,7 @@ module Plum
 
     def update_recv_initial_window_size(diff)
       @recv_remaining_window += diff
-      if ServerConnection === self
+      if Connection === self
         @streams.values.each do |stream|
           stream.update_recv_initial_window_size(diff)
         end
@@ -75,7 +75,7 @@ module Plum
       end
     end
 
-    def process_window_update(frame)
+    def receive_window_update(frame)
       if frame.length != 4
         raise Plum::ConnectionError.new(:frame_size_error)
       end

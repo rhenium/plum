@@ -30,29 +30,29 @@ module Plum
 
     # Processes received frames for this stream. Internal use.
     # @private
-    def process_frame(frame)
+    def receive_frame(frame)
       validate_received_frame(frame)
       consume_recv_window(frame)
 
       case frame.type
       when :data
-        process_data(frame)
+        receive_data(frame)
       when :headers
-        process_headers(frame)
+        receive_headers(frame)
       when :priority
-        process_priority(frame)
+        receive_priority(frame)
       when :rst_stream
-        process_rst_stream(frame)
+        receive_rst_stream(frame)
       when :window_update
-        process_window_update(frame)
+        receive_window_update(frame)
       when :continuation
-        process_continuation(frame)
+        receive_continuation(frame)
       when :ping, :goaway, :settings, :push_promise
-        raise Plum::ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
+        raise ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       else
         # MUST ignore unknown frame
       end
-    rescue Plum::StreamError => e
+    rescue StreamError => e
       callback(:stream_error, e)
       close(e.http2_error_code)
     end
@@ -99,7 +99,7 @@ module Plum
       end
     end
 
-    def process_data(frame)
+    def receive_data(frame)
       if @state != :open && @state != :half_closed_local
         raise StreamError.new(:stream_closed)
       end
@@ -107,7 +107,7 @@ module Plum
       if frame.flags.include?(:padded)
         padding_length = frame.payload.uint8(0)
         if padding_length >= frame.length
-          raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
+          raise ConnectionError.new(:protocol_error, "padding is too long")
         end
         body = frame.payload.byteslice(1, frame.length - padding_length - 1)
       else
@@ -121,7 +121,7 @@ module Plum
       end
     end
 
-    def process_complete_headers(frames)
+    def receive_complete_headers(frames)
       frames = frames.dup
       first = frames.shift
 
@@ -138,12 +138,12 @@ module Plum
       end
 
       if first.flags.include?(:priority)
-        process_priority_payload(payload.byteshift(5))
+        receive_priority_payload(payload.byteshift(5))
         first_length -= 5
       end
 
       if padding_length > first_length
-        raise Plum::ConnectionError.new(:protocol_error, "padding is too long")
+        raise ConnectionError.new(:protocol_error, "padding is too long")
       end
 
       frames.each do |frame|
@@ -164,7 +164,7 @@ module Plum
       end
     end
 
-    def process_headers(frame)
+    def receive_headers(frame)
       if @state == :reserved_local
         raise ConnectionError.new(:protocol_error)
       elsif @state == :half_closed_remote
@@ -177,30 +177,30 @@ module Plum
       callback(:open)
 
       if frame.flags.include?(:end_headers)
-        process_complete_headers([frame])
+        receive_complete_headers([frame])
       else
         @continuation << frame
       end
     end
 
-    def process_continuation(frame)
+    def receive_continuation(frame)
       # state error mustn't happen: server_connection validates
       @continuation << frame
 
       if frame.flags.include?(:end_headers)
-        process_complete_headers(@continuation)
+        receive_complete_headers(@continuation)
         @continuation.clear
       end
     end
 
-    def process_priority(frame)
+    def receive_priority(frame)
       if frame.length != 5
-        raise Plum::StreamError.new(:frame_size_error)
+        raise StreamError.new(:frame_size_error)
       end
-      process_priority_payload(frame.payload)
+      receive_priority_payload(frame.payload)
     end
 
-    def process_priority_payload(payload)
+    def receive_priority_payload(payload)
       esd = payload.uint32
       e = esd >> 31
       dependency_id = e & ~(1 << 31)
@@ -209,9 +209,9 @@ module Plum
       update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e == 1)
     end
 
-    def process_rst_stream(frame)
+    def receive_rst_stream(frame)
       if frame.length != 4
-        raise Plum::ConnectionError.new(:frame_size_error)
+        raise ConnectionError.new(:frame_size_error)
       elsif @state == :idle
         raise ConnectionError.new(:protocol_error)
       end

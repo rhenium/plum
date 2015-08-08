@@ -14,7 +14,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
 
   def test_server_handle_settings_invalid
     open_server_connection {|con|
-      refute_raises {
+      assert_no_error {
         con << Frame.new(type: :settings, stream_id: 0, payload: "\xff\x01\x00\x00\x10\x10").assemble
       }
     }

@@ -1,7 +1,7 @@
 using Plum::BinaryString
 
 module Plum
-  module ServerConnectionHelper
+  module ConnectionHelper
     # Sends local settings to the peer.
     #
     # @param kwargs [Hash<Symbol, Integer>]

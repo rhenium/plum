@@ -53,8 +53,6 @@ class FrameTest < Minitest::Test
                             stream_id: 12345,
                             flags: [:end_stream, :padded],
                             payload: "ぺいろーど")
-    refute_raises {
-      frame.inspect
-    }
+    frame.inspect
   end
 end
