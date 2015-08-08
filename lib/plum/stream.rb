@@ -54,19 +54,15 @@ module Plum
       end
     rescue StreamError => e
       callback(:stream_error, e)
-      close(e.http2_error_code)
+      close(e.http2_error_type)
     end
 
     # Closes this stream. Sends RST_STREAM frame to the peer.
     #
-    # @param error_code [Integer] The error code to be contained in the RST_STREAM frame.
-    def close(error_code = 0)
+    # @param error_type [Symbol] The error type to be contained in the RST_STREAM frame.
+    def close(error_type = :no_error)
       @state = :closed
-      data = "".force_encoding(Encoding::BINARY)
-      data.push_uint32(error_code)
-      send_immediately Frame.new(type: :rst_stream,
-                                 stream_id: id,
-                                 payload: data)
+      send_immediately Frame.rst_stream(id, error_type)
     end
 
     private

@@ -2,7 +2,8 @@ using Plum::BinaryString
 
 module Plum
   class Frame
-    include FrameHelper
+    extend FrameFactory
+    include FrameUtils
 
     FRAME_TYPES = {
       data:           0x00,

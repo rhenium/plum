@@ -21,14 +21,8 @@ module Plum
     # @return [Stream] The stream to send push response.
     def promise(headers)
       stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
-      payload = "".force_encoding(Encoding::BINARY)
-      payload.push_uint32((0 << 31 | stream.id))
-      payload.push(@connection.hpack_encoder.encode(headers))
-
-      original = Frame.new(type: :push_promise,
-                           flags: [:end_headers],
-                           stream_id: id,
-                           payload: payload)
+      encoded = @connection.hpack_encoder.encode(headers)
+      original = Frame.push_promise(id, stream.id, encoded, :end_headers)
       original.split_headers(@connection.remote_settings[:max_frame_size]).each do |frame|
         send frame
       end
@@ -39,10 +33,7 @@ module Plum
     def send_headers(headers, end_stream:)
       max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
-      original_frame = Frame.new(type: :headers,
-                                 flags: [:end_headers, end_stream ? :end_stream : nil].compact,
-                                 stream_id: id,
-                                 payload: encoded)
+      original_frame = Frame.headers(id, encoded, :end_headers, (end_stream && :end_stream))
       original_frame.split_headers(max).each do |frame|
         send frame
       end
@@ -53,16 +44,10 @@ module Plum
       max = @connection.remote_settings[:max_frame_size]
       if data.is_a?(IO)
         while !data.eof? && fragment = data.readpartial(max)
-          send Frame.new(type: :data,
-                         stream_id: id,
-                         flags: (end_stream && data.eof? && [:end_stream]),
-                         payload: fragment)
+          send Frame.data(id, fragment, (end_stream && data.eof? && :end_stream))
         end
       else
-        original = Frame.new(type: :data,
-                             stream_id: id,
-                             flags: (end_stream && [:end_stream]),
-                             payload: data.to_s)
+        original = Frame.data(id, data, (end_stream && :end_stream))
         original.split_data(max).each do |frame|
           send frame
         end

@@ -21,7 +21,7 @@ class StreamTest < Minitest::Test
 
   def test_stream_close
     open_new_stream(state: :half_closed_local) {|stream|
-      stream.close(StreamError.new(:frame_size_error).http2_error_code)
+      stream.close(:frame_size_error)
 
       last = sent_frames.last
       assert_equal(:rst_stream, last.type)

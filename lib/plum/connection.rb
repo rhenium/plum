@@ -44,16 +44,10 @@ module Plum
 
     # Closes the connection and closes the io. Sends GOAWAY frame to the peer.
     #
-    # @param error_code [Integer] The error code to be contained in the GOAWAY frame.
-    def close(error_code = 0)
+    # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
+    def close(error_type = :no_error)
       last_id = @streams.keys.reverse_each.find {|id| id.odd? }
-      data = ""
-      data.push_uint32((last_id || 0) & ~(1 << 31))
-      data.push_uint32(error_code)
-      data.push("") # debug message
-      send_immediately Frame.new(type: :goaway,
-                                 stream_id: 0,
-                                 payload: data)
+      send_immediately Frame.goaway(last_id, error_type)
       # TODO: server MAY wait streams
       @io.close
     end
@@ -77,7 +71,7 @@ module Plum
       end
     rescue ConnectionError => e
       callback(:connection_error, e)
-      close(e.http2_error_code)
+      close(e.http2_error_type)
     end
     alias << receive
 
@@ -174,7 +168,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send_immediately Frame.new(type: :settings, stream_id: 0x00, flags: [:ack])
+      send_immediately Frame.settings(:ack)
     end
 
     def update_local_settings(new_settings)
@@ -198,10 +192,7 @@ module Plum
       else
         on(:ping)
         opaque_data = frame.payload
-        send_immediately Frame.new(type: :ping,
-                                   stream_id: 0,
-                                   flags: [:ack],
-                                   payload: opaque_data)
+        send_immediately Frame.ping(:ack, opaque_data)
       end
     end
 
