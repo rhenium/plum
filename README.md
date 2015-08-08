@@ -9,7 +9,6 @@ A minimal implementation of HTTP/2 server. (WIP)
 * "http" URIs support (upgrade from HTTP/1.1)
 * Stream Priority (RFC 7540 5.3)
 * Better HPACK encoding (RFC 7541)
-* SNI support
 * Better API
 * Better Code Climate
 * More test code
