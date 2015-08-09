@@ -31,14 +31,21 @@ class FlowControlTest < Minitest::Test
 
   def test_flow_control_window_update_zero
     open_new_stream {|stream|
-      con = stream.connection
-      # stream error
-      con << Frame.new(type: :window_update,
-                       stream_id: stream.id,
-                       payload: "".push_uint32(0)).assemble
-      last = sent_frames.last
-      assert_equal(:rst_stream, last.type)
-      assert_equal(ERROR_CODES[:protocol_error], last.payload.uint32)
+      assert_stream_error(:protocol_error) {
+        stream.receive_frame Frame.new(type: :window_update,
+                                       stream_id: stream.id,
+                                       payload: "".push_uint32(0))
+      }
+    }
+  end
+
+  def test_flow_control_window_update_frame_size
+    open_new_stream {|stream|
+      assert_connection_error(:frame_size_error) {
+        stream.receive_frame Frame.new(type: :window_update,
+                                       stream_id: stream.id,
+                                       payload: "".push_uint16(0))
+      }
     }
   end
 
