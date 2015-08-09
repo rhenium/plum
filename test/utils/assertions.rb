@@ -18,6 +18,12 @@ module CustomAssertions
     assert_nil(Plum::ConnectionError.last, "No connection error expected but raised: #{Plum::ConnectionError.last}")
   end
 
+  def assert_frame(frame, **args)
+    args.each do |name, value|
+      assert_equal(value, frame.__send__(name))
+    end
+  end
+
   private
   def assert_http_error(klass, type, &blk)
     klass.reset

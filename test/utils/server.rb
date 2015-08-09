@@ -38,6 +38,24 @@ module ServerUtils
     end
     frames
   end
+
+  def capture_frames(con = nil, &blk)
+    io = (con || @_con).io
+    pos = io.string.bytesize
+    blk.call
+    resp = io.string.byteslice(pos, io.string.bytesize - pos)
+    frames = []
+    while f = Frame.parse!(resp)
+      frames << f
+    end
+    frames
+  end
+
+  def capture_frame(con = nil, &blk)
+    frames = capture_frames(con, &blk)
+    assert_equal(1, frames.size, "Supplied block sent no frames or more than 1 frame")
+    frames.first
+  end
 end
 
 class Minitest::Test
