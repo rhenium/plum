@@ -4,7 +4,7 @@ module Plum
   class Connection
     include EventEmitter
     include FlowControl
-    include ConnectionHelper
+    include ConnectionUtils
 
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
@@ -42,12 +42,8 @@ module Plum
       end
     end
 
-    # Closes the connection and closes the io. Sends GOAWAY frame to the peer.
-    #
-    # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
-    def close(error_type = :no_error)
-      last_id = @streams.keys.reverse_each.find {|id| id.odd? }
-      send_immediately Frame.goaway(last_id, error_type)
+    # Closes the io.
+    def close
       # TODO: server MAY wait streams
       @io.close
     end
@@ -71,7 +67,8 @@ module Plum
       end
     rescue ConnectionError => e
       callback(:connection_error, e)
-      close(e.http2_error_type)
+      goaway(e.http2_error_type)
+      close
     end
     alias << receive
 
@@ -88,6 +85,17 @@ module Plum
     def send_immediately(frame)
       callback(:send_frame, frame)
       @io.write(frame.assemble)
+    end
+
+    def new_stream(stream_id, **args)
+      if @streams.size > 0 && @streams.keys.last >= stream_id
+        raise Plum::ConnectionError.new(:protocol_error)
+      end
+
+      stream = Stream.new(self, stream_id, **args)
+      callback(:stream, stream)
+      @streams[stream_id] = stream
+      stream
     end
 
     def validate_received_frame(frame)
@@ -171,14 +179,6 @@ module Plum
       send_immediately Frame.settings(:ack)
     end
 
-    def update_local_settings(new_settings)
-      old_settings = @local_settings.dup
-      @local_settings.merge!(new_settings)
-
-      @hpack_decoder.limit = @local_settings[:header_table_size]
-      update_recv_initial_window_size(@local_settings[:initial_window_size] - old_settings[:initial_window_size])
-    end
-
     def apply_remote_settings(old_remote_settings)
       @hpack_encoder.limit = @remote_settings[:header_table_size]
       update_send_initial_window_size(@remote_settings[:initial_window_size] - old_remote_settings[:initial_window_size])
@@ -194,17 +194,6 @@ module Plum
         opaque_data = frame.payload
         send_immediately Frame.ping(:ack, opaque_data)
       end
-    end
-
-    def new_stream(stream_id, **args)
-      if @streams.size > 0 && @streams.keys.last >= stream_id
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
-      stream = Stream.new(self, stream_id, **args)
-      callback(:stream, stream)
-      @streams[stream_id] = stream
-      stream
     end
 
     def local_error

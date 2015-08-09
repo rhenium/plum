@@ -8,7 +8,7 @@ module Plum
     end
 
     def goaway(last_id, error_type, message = "")
-      payload = "".push_uint32((last_id || 0) & ~(1 << 31))
+      payload = "".push_uint32((last_id || 0) | (0 << 31))
                   .push_uint32(ERROR_CODES[error_type])
                   .push(message)
       Frame.new(type: :goaway, stream_id: 0, payload: payload)

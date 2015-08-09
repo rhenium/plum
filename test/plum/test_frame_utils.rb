@@ -1,6 +1,6 @@
 require "test_helper"
 
-class FrameHelperTest < Minitest::Test
+class FrameUtilsTest < Minitest::Test
   def test_frame_enough_short
     frame = Frame.new(type: :data, stream_id: 1, payload: "123")
     ret = frame.split_data(3)
