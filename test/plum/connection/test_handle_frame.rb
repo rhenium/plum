@@ -46,4 +46,14 @@ class ServerConnectionHandleFrameTest < Minitest::Test
       refute_equal(:ping, last.type) if last
     }
   end
+
+  ## GOAWAY
+  def test_server_handle_goaway_reply
+    open_server_connection {|con|
+      assert_no_error {
+        con << Frame.goaway(1234, :stream_closed).assemble
+      }
+      assert_equal(:goaway, sent_frames.last.type)
+    }
+  end
 end

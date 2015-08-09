@@ -154,6 +154,7 @@ module Plum
       when :ping
         receive_ping(frame)
       when :goaway
+        goaway
         close
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
