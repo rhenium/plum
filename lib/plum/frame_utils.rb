@@ -10,10 +10,7 @@ module Plum
       return [self] if self.length <= max
       raise "Frame type must be DATA" unless self.type == :data
 
-      fragments = []
-      while (pos = fragments.size * max) <= self.length # zero
-        fragments << self.payload.byteslice(pos, max)
-      end
+      fragments = self.payload.each_byteslice(max).to_a
 
       frames = []
       last = Frame.data(stream_id, fragments.pop, *(self.flags & [:end_stream]))
@@ -28,10 +25,7 @@ module Plum
       return [self] if self.length <= max
       raise "Frame type must be DATA" unless [:headers, :push_promise].include?(self.type)
 
-      fragments = []
-      while (pos = fragments.size * max) < self.length # zero
-        fragments << self.payload.byteslice(pos, max)
-      end
+      fragments = self.payload.each_byteslice(max).to_a
 
       frames = []
       frames << Frame.new(type_value: self.type_value, flags: self.flags - [:end_headers], stream_id: self.stream_id, payload: fragments.shift)
