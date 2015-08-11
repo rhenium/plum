@@ -29,7 +29,7 @@ class FrameUtilsTest < Minitest::Test
     ret = frame.split_headers(3)
     assert_equal(3, ret.size)
     assert_equal("123", ret[0].payload)
-    assert_equal([:priority, :end_stream].sort, ret[0].flags.sort)
+    assert_equal([:end_stream, :priority], ret[0].flags)
     assert_equal("456", ret[1].payload)
     assert_equal([], ret[1].flags)
     assert_equal("7", ret[2].payload)

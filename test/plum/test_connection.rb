@@ -49,7 +49,7 @@ class ConnectionTest < Minitest::Test
   def test_server_ignore_unknown_frame_type
     open_server_connection {|con|
       assert_no_error {
-        con << Frame.new(type_value: 0x0f, stream_id: 0).assemble
+        con << "\x00\x00\x00\x0f\x00\x00\x00\x00\x00" # type: 0x0f, no flags, no payload, stream 0
       }
     }
   end
