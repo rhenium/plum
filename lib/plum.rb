@@ -1,7 +1,7 @@
 require "openssl"
 require "socket"
 require "plum/version"
-require "plum/error"
+require "plum/errors"
 require "plum/binary_string"
 require "plum/event_emitter"
 require "plum/hpack/constants"
