@@ -213,9 +213,5 @@ module Plum
 
       @state = :closed # MUST NOT send RST_STREAM
     end
-
-    def local_error
-      StreamError
-    end
   end
 end

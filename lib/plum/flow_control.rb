@@ -61,6 +61,7 @@ module Plum
       when :data
         @recv_remaining_window -= frame.length
         if @recv_remaining_window < 0
+          local_error = (Connection === self) ? ConnectionError : StreamError
           raise local_error.new(:flow_control_error)
         end
       end
@@ -85,6 +86,7 @@ module Plum
       wsi = r_wsi & ~(1 << 31)
 
       if wsi == 0
+        local_error = (Connection === self) ? ConnectionError : StreamError
         raise local_error.new(:protocol_error)
       end
 

@@ -196,9 +196,5 @@ module Plum
         send_immediately Frame.ping(:ack, opaque_data)
       end
     end
-
-    def local_error
-      ConnectionError
-    end
   end
 end
