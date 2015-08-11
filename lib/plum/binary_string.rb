@@ -54,6 +54,21 @@ module Plum
         force_encoding(Encoding::BINARY)
         slice!(0, count)
       end
+
+      def each_byteslice(n, &blk)
+        if block_given?
+          pos = 0
+          while pos < self.bytesize
+            yield byteslice(pos, n)
+            pos += n
+          end
+        else
+          Enumerator.new do |y|
+            each_byteslice(n) {|ss| y << ss }
+          end
+          # I want to write `enum_for(__method__, n)`!
+        end
+      end
     end
   end
 end

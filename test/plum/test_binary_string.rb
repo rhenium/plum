@@ -48,4 +48,17 @@ class BinaryStringTest < Minitest::Test
     assert_equal("\xf0".b, sushi.byteshift(1).b)
     assert_equal("\x9f\x8d\xa3".b, sushi.b)
   end
+
+  def test_each_byteslice_block
+    ret = []
+    string = "12345678"
+    string.each_byteslice(3) {|part| ret << part }
+    assert_equal(["123", "456", "78"], ret)
+  end
+
+  def test_each_byteslice_enume
+    string = "12345678"
+    ret = string.each_byteslice(3)
+    assert_equal(["123", "456", "78"], ret.to_a)
+  end
 end
