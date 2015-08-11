@@ -198,7 +198,7 @@ class StreamHandleFrameTest < Minitest::Test
                                      payload: payload))
       last = sent_frames.last
       assert_equal(:rst_stream, last.type)
-      assert_equal(ERROR_CODES[:protocol_error], last.payload.uint32)
+      assert_equal(HTTPError::ERROR_CODES[:protocol_error], last.payload.uint32)
     }
   end
 

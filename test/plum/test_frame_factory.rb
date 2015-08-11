@@ -7,7 +7,7 @@ class FrameFactoryTest < Minitest::Test
     assert_frame(frame,
                  type: :rst_stream,
                  stream_id: 123)
-    assert_equal(ERROR_CODES[:stream_closed], frame.payload.uint32)
+    assert_equal(HTTPError::ERROR_CODES[:stream_closed], frame.payload.uint32)
   end
 
   def test_goaway

@@ -23,7 +23,7 @@ class ServerConnectionUtilsTest < Minitest::Test
       assert_equal(:goaway, last.type)
       assert_equal([], last.flags)
       assert_equal(3, last.payload.uint32)
-      assert_equal(ERROR_CODES[:stream_closed], last.payload.uint32(4))
+      assert_equal(HTTPError::ERROR_CODES[:stream_closed], last.payload.uint32(4))
     }
   end
 end
