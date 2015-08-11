@@ -3,15 +3,37 @@ require "test_helper"
 using Plum::BinaryString
 
 class ConnectionTest < Minitest::Test
-  def test_server_must_raise_cframe_size_error_when_exeeeded_max_size
+  def test_server_must_raise_frame_size_error_when_exeeeded_max_size
     _settings = "".push_uint16(Frame::SETTINGS_TYPE[:max_frame_size]).push_uint32(2**14)
-    con = open_server_connection
-    con.settings(max_frame_size: 2**14)
-    assert_no_error {
-      con << Frame.new(type: :settings, stream_id: 0, payload: _settings*(2**14/6)).assemble
+    limit = 2 ** 14
+
+    new_con = -> (&blk) {
+      c = open_server_connection
+      c.settings(max_frame_size: limit)
+      blk.call c
     }
-    assert_connection_error(:frame_size_error) {
-      con << Frame.new(type: :settings, stream_id: 0, payload: _settings*((2**14)/6+1)).assemble
+
+    new_con.call {|con|
+      assert_no_error {
+        con << Frame.new(type: :settings, stream_id: 0, payload: _settings * (limit / 6)).assemble
+      }
+    }
+    new_con.call {|con|
+      assert_connection_error(:frame_size_error) {
+        con << Frame.new(type: :settings, stream_id: 0, payload: _settings * (limit / 6 + 1)).assemble
+      }
+    }
+
+    new_con.call {|con|
+      assert_connection_error(:frame_size_error) {
+        con << Frame.new(type: :headers, stream_id: 3, payload: "\x00" * (limit + 1)).assemble
+      }
+    }
+    new_con.call {|con|
+      assert_stream_error(:frame_size_error) {
+        con << Frame.new(type: :headers, stream_id: 3, flags: [:end_headers], payload: "").assemble
+        con << Frame.new(type: :data, stream_id: 3, payload: "\x00" * (limit + 1)).assemble
+      }
     }
   end
 
