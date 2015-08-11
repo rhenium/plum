@@ -49,12 +49,14 @@ module Plum
     #
     # @return [Hash<Symbol, Integer>] The parsed strings.
     def parse_settings
-      (self.length / 6).times.map {|i|
-        id = self.payload.uint16(6 * i)
-        val = self.payload.uint32(6 * i + 2)
-        name = Frame::SETTINGS_TYPE.key(id) or next nil
-        [name, val]
-      }.compact.to_h
+      settings = {}
+      payload.each_byteslice(6) do |param|
+        id = param.uint16
+        name = Frame::SETTINGS_TYPE.key(id)
+        # ignore unknown settings type
+        settings[name] = param.uint32(2) if name
+      end
+      settings
     end
   end
 end

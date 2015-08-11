@@ -33,7 +33,7 @@ module Plum
     def send_headers(headers, end_stream:)
       max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
-      original_frame = Frame.headers(id, encoded, :end_headers, (end_stream && :end_stream))
+      original_frame = Frame.headers(id, encoded, :end_headers, (end_stream && :end_stream || nil))
       original_frame.split_headers(max).each do |frame|
         send frame
       end

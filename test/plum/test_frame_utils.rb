@@ -35,4 +35,12 @@ class FrameUtilsTest < Minitest::Test
     assert_equal("7", ret[2].payload)
     assert_equal([:end_headers], ret[2].flags)
   end
+
+  def test_frame_parse_settings
+    # :header_table_size => 0x1010, :enable_push => 0x00, :header_table_size => 0x1011 (overwrite)
+    frame = Frame.new(type: :settings, flags: [], stream_id: 0, payload: "\x00\x01\x00\x00\x10\x10\x00\x02\x00\x00\x00\x00\x00\x01\x00\x00\x10\x11")
+    ret = frame.parse_settings
+    assert_equal(0x1011, ret[:header_table_size])
+    assert_equal(0x0000, ret[:enable_push])
+  end
 end
