@@ -7,12 +7,21 @@ module Plum
 
       # Static-Huffman-encodes the specified String.
       def encode(bytestr)
-        out = ""
-        bytestr.bytes.each do |b|
-          out << HUFFMAN_ENCODE_TABLE[b]
+        ret = []
+        remain = 0
+        bytestr.each_byte do |b|
+          val, len = HUFFMAN_TABLE[b]
+          l = len - remain
+
+          ret[-1] |= val >> l if ret.size > 0
+          while l > 0
+            ret << ((val >> (l - 8)) & 0xff)
+            l -= 8
+          end
+          remain = -l % 8
         end
-        out << "1" * (8 - (out.bytesize % 8))
-        [out].pack("B*")
+        ret[-1] |= (1 << remain) - 1 if remain > 0
+        ret.pack("C*")
       end
 
       # Static-Huffman-decodes the specified String.
