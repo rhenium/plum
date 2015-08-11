@@ -11,13 +11,9 @@ module Plum
       raise "Frame type must be DATA" unless self.type == :data
 
       fragments = self.payload.each_byteslice(max).to_a
-
-      frames = []
-      last = Frame.data(stream_id, fragments.pop, *(self.flags & [:end_stream]))
-      fragments.each do |fragment|
-        frames << Frame.data(stream_id, fragment, *(self.flags - [:end_stream]))
-      end
-      frames << last
+      frames = fragments.map {|fragment| Frame.new(type: :data, flags: [], stream_id: self.stream_id, payload: fragment) }
+      frames.first.flags = self.flags - [:end_stream]
+      frames.last.flags = self.flags & [:end_stream]
       frames
     end
 
@@ -30,16 +26,10 @@ module Plum
       raise "Frame type must be HEADERS or PUSH_PROMISE" unless [:headers, :push_promise].include?(self.type)
 
       fragments = self.payload.each_byteslice(max).to_a
-
-      frames = []
-      frames << Frame.new(type_value: self.type_value, flags: self.flags - [:end_headers], stream_id: self.stream_id, payload: fragments.shift)
-      if fragments.size > 0
-        last = Frame.continuation(stream_id, fragments.pop, *(self.flags & [:end_headers]))
-        fragments.each do |fragment|
-          frames << Frame.continuation(stream_id, fragment)
-        end
-        frames << last
-      end
+      frames = fragments.map {|fragment| Frame.new(type: :continuation, flags: [], stream_id: self.stream_id, payload: fragment) }
+      frames.first.type_value = self.type_value
+      frames.first.flags = self.flags - [:end_headers]
+      frames.last.flags = self.flags & [:end_headers]
       frames
     end
 
