@@ -219,6 +219,16 @@ class StreamHandleFrameTest < Minitest::Test
     }
   end
 
+  def test_stream_handle_frame_size_error
+    open_new_stream {|stream|
+      assert_stream_error(:frame_size_error) {
+        stream.receive_frame(Frame.new(type: :priority,
+                                       stream_id: stream.id,
+                                       payload: "\x00"))
+      }
+    }
+  end
+
   ## RST_STREAM
   def test_stream_handle_rst_stream
     open_new_stream(state: :reserved_local) {|stream|
