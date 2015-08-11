@@ -2,7 +2,7 @@ require "test_helper"
 
 using BinaryString
 
-class StreamHelperTest < Minitest::Test
+class StreamUtilsTest < Minitest::Test
   def test_stream_promise
     open_new_stream {|stream|
       push_stream = stream.promise([])

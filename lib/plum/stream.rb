@@ -4,7 +4,7 @@ module Plum
   class Stream
     include EventEmitter
     include FlowControl
-    include StreamHelper
+    include StreamUtils
 
     attr_reader :id, :state, :connection
     attr_reader :weight, :exclusive

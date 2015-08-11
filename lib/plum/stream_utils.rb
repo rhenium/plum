@@ -1,7 +1,7 @@
 using Plum::BinaryString
 
 module Plum
-  module StreamHelper
+  module StreamUtils
     # Responds to HTTP request.
     #
     # @param headers [Hash<String, String>] The response headers.
