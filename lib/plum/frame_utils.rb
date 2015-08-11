@@ -2,7 +2,7 @@ using Plum::BinaryString
 
 module Plum
   module FrameUtils
-    # Splits the frame into multiple frames if the payload size exceeds max size.
+    # Splits the DATA frame into multiple frames if the payload size exceeds max size.
     #
     # @param max [Integer] The maximum size of a frame payload.
     # @return [Array<Frame>] The splitted frames.
@@ -21,9 +21,13 @@ module Plum
       frames
     end
 
+    # Splits the HEADERS or PUSH_PROMISE frame into multiple frames if the payload size exceeds max size.
+    #
+    # @param max [Integer] The maximum size of a frame payload.
+    # @return [Array<Frame>] The splitted frames.
     def split_headers(max)
       return [self] if self.length <= max
-      raise "Frame type must be DATA" unless [:headers, :push_promise].include?(self.type)
+      raise "Frame type must be HEADERS or PUSH_PROMISE" unless [:headers, :push_promise].include?(self.type)
 
       fragments = self.payload.each_byteslice(max).to_a
 

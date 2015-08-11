@@ -15,7 +15,7 @@ module Plum
       end
     end
 
-    # Reserves a stream to server push. Sends PUSH_STREAM and create new stream.
+    # Reserves a stream to server push. Sends PUSH_PROMISE and create new stream.
     #
     # @param headers [Hash<String, String>] The *request* headers. It must contain all of them: ':authority', ':method', ':scheme' and ':path'.
     # @return [Stream] The stream to send push response.
