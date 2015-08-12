@@ -23,6 +23,7 @@ module Plum
         bits.each_char do |cb|
           buf << cb
           if c = HUFFMAN_TABLE_INVERSED[buf]
+            raise HPACKError.new("huffman: EOS detected") if c == 256
             out << c
             buf = ""
           end

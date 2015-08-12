@@ -26,4 +26,11 @@ class HPACKHuffmanTest < Minitest::Test
       Plum::HPACK::Huffman.decode(encoded)
     }
   end
+
+  def test_eos_in_encoded
+    encoded = "\xff\xff\xff\xff" # \xff\xff\xff\xfc + padding
+    assert_raises(Plum::HPACKError) {
+      Plum::HPACK::Huffman.decode(encoded)
+    }
+  end
 end
