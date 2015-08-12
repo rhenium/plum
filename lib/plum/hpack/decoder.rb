@@ -19,17 +19,16 @@ module Plum
       private
       def parse!(str)
         first_byte = str.uint8
-        if first_byte & 0b10000000 == 0b10000000
+        if first_byte >= 128 # 0b1XXXXXXX
           parse_indexed!(str)
-        elsif first_byte & 0b11000000 == 0b01000000
+        elsif first_byte >= 64 # 0b01XXXXXX
           parse_indexing!(str)
-        elsif first_byte & 0b11110000 == 0b00000000 || # without indexing
-              first_byte & 0b11110000 == 0b00010000    # never indexing
-          parse_no_indexing!(str)
-        elsif first_byte & 0b11100000 == 0b00100000
+        elsif first_byte >= 32 # 0b001XXXXX
           self.limit = read_integer!(str, 5)
           nil
-        end # all match
+        else # 0b0000XXXX (without indexing) or 0b0001XXXX (never indexing)
+          parse_no_indexing!(str)
+        end
       end
 
       def read_integer!(str, prefix_length)
