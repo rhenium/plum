@@ -25,23 +25,44 @@ class HPACKDecoderTest < Minitest::Test
     assert_equal([0b00001111].pack("C*"), buf)
   end
 
+  def test_hpack_read_integer_too_big
+    buf = [0b11011111, 0b10011010, 0b10001010, 0b10001111, 0b11111111, 0b00000011].pack("C*")
+    assert_raises(HPACKError) {
+      new_decoder.__send__(:read_integer!, buf, 5)
+    }
+  end
+
+  def test_hpack_read_integer_incomplete
+    buf = [0b11011111, 0b10011010].pack("C*")
+    assert_raises(HPACKError) {
+      new_decoder.__send__(:read_integer!, buf, 5)
+    }
+  end
+
   # C.2.1
   def test_hpack_decode_indexing
-    encoded = "\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0d\x63\x75\x73\x74\x6f\x6d\x2d\x68\x65\x61\x64\x65\x72"
+    encoded = "\x40\x0acustom-key\x0dcustom-header"
     result = new_decoder.decode(encoded)
     assert_equal([["custom-key", "custom-header"]], result)
   end
 
+  def test_hpack_decode_indexing_imcomplete
+    encoded = "\x40\x0acus"
+    assert_raises(HTTPError) {
+      new_decoder.decode(encoded)
+    }
+  end
+
   # C.2.2
   def test_hpack_decode_without_indexing
-    encoded = "\x04\x0c\x2f\x73\x61\x6d\x70\x6c\x65\x2f\x70\x61\x74\x68"
+    encoded = "\x04\x0c/sample/path"
     result = new_decoder.decode(encoded)
     assert_equal([[":path", "/sample/path"]], result)
   end
 
   # C.2.3
   def test_hpack_decode_without_indexing2
-    encoded = "\x10\x08\x70\x61\x73\x73\x77\x6f\x72\x64\x06\x73\x65\x63\x72\x65\x74"
+    encoded = "\x10\x08password\x06secret"
     result = new_decoder.decode(encoded)
     assert_equal([["password", "secret"]], result)
   end

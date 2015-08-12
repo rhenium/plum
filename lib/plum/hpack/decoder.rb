@@ -32,24 +32,34 @@ module Plum
       end
 
       def read_integer!(str, prefix_length)
-        mask = (1 << prefix_length) - 1
-        ret = str.byteshift(1).uint8 & mask
+        first_byte = str.byteshift(1).uint8
+        raise HPACKError.new("integer: end of buffer") unless first_byte
 
-        if ret == mask
-          loop.with_index do |_, i|
-            next_value = str.byteshift(1).uint8
-            ret += (next_value & ~(0b10000000)) << (7 * i)
-            break if next_value & 0b10000000 == 0
+        mask = (1 << prefix_length) - 1
+        ret = first_byte & mask
+        return ret if ret < mask
+
+        octets = 0
+        while next_value = str.byteshift(1).uint8
+          ret += (next_value & 0b01111111) << (7 * octets)
+          octets += 1
+
+          if next_value < 128
+            return ret
+          elsif octets == 4 # RFC 7541 5.1 tells us that we MUST have limitation. at least > 2 ** 28
+            raise HPACKError.new("integer: too large integer")
           end
         end
 
-        ret
+        raise HPACKError.new("integer: end of buffer")
       end
 
       def read_string!(str)
         huffman = (str.uint8 >> 7) == 1
         length = read_integer!(str, 7)
         bin = str.byteshift(length)
+
+        raise HTTPError.new("string: end of buffer") if bin.bytesize < length
         bin = Huffman.decode(bin) if huffman
         bin
       end
