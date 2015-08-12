@@ -60,11 +60,7 @@ module Plum
         # | 1 |        Index (7+)         |
         # +---+---------------------------+
         index = read_integer!(str, 7)
-        if index == 0
-          raise HPACKError.new("index can't be 0 in indexed heaeder field representation")
-        else
-          fetch(index)
-        end
+        fetch(index)
       end
 
       def parse_indexing!(str)

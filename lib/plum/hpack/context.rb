@@ -22,7 +22,15 @@ module Plum
       end
 
       def fetch(index)
-        STATIC_TABLE[index - 1] || @dynamic_table[index - STATIC_TABLE.size - 1] or raise HPACKError.new("invalid index: #{index}")
+        if index == 0
+          raise HPACKError.new("index can't be 0")
+        elsif index <= STATIC_TABLE.size
+          STATIC_TABLE[index - 1]
+        elsif index <= STATIC_TABLE.size + @dynamic_table.size
+          @dynamic_table[index - STATIC_TABLE.size - 1]
+        else
+          raise HPACKError.new("invalid index: #{index}")
+        end
       end
 
       def evict
