@@ -11,7 +11,7 @@ module Plum
         bytestr.each_byte do |b|
           out << HUFFMAN_TABLE[b]
         end
-        out << "1" * (8 - (out.bytesize % 8))
+        out << "1" * ((8 - out.bytesize) % 8)
         [out].pack("B*")
       end
 
