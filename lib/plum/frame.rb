@@ -2,7 +2,8 @@ using Plum::BinaryString
 
 module Plum
   class Frame
-    include FrameHelper
+    extend FrameFactory
+    include FrameUtils
 
     FRAME_TYPES = {
       data:           0x00,
@@ -67,35 +68,53 @@ module Plum
     # |                   Frame Payload (0...)                      ...
     # +---------------------------------------------------------------+
 
-    # [Integer] The length of payload. unsigned 24-bit integer
-    attr_reader :length
     # [Integer] Frame type. 8-bit
-    attr_reader :type_value
+    attr_accessor :type_value
     # [Integer] Flags. 8-bit
-    attr_reader :flags_value
+    attr_accessor :flags_value
     # [Integer] Stream Identifier. unsigned 31-bit integer
-    attr_reader :stream_id
+    attr_accessor :stream_id
     # [String] The payload.
-    attr_reader :payload
+    attr_accessor :payload
 
-    def initialize(length: nil, type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
-      @payload = (payload || "").freeze
-      @length = length || @payload.bytesize
-      @type_value = type_value || FRAME_TYPES[type] or raise ArgumentError.new("type_value or type is necessary")
-      @flags_value = flags_value || (flags && flags.map {|flag| FRAME_FLAGS[self.type][flag] }.inject(:|)) || 0
-      @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
+    def initialize(type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
+      self.payload = (payload || "")
+      self.type_value = type_value or self.type = type
+      self.flags_value = flags_value or self.flags = flags
+      self.stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
+    end
+
+    # Returns the length of payload.
+    # @return [Integer] The length.
+    def length
+      @payload.bytesize
     end
 
     # Returns the type of the frame in Symbol.
     # @return [Symbol] The type.
     def type
-      @_type ||= FRAME_TYPES.key(type_value) || ("unknown_%01A" % type_value).to_sym
+      FRAME_TYPES.key(type_value) || ("unknown_%02x" % type_value).to_sym
+    end
+
+    # Sets the frame type.
+    # @param value [Symbol] The type.
+    def type=(value)
+      self.type_value = FRAME_TYPES[value] or raise ArgumentError.new("unknown frame type: #{value}")
     end
 
     # Returns the set flags on the frame.
     # @return [Array<Symbol>] The flags.
     def flags
-      @_flags ||= FRAME_FLAGS[type].select {|name, value| value & flags_value > 0 }.map {|name, value| name }.freeze
+      fs = FRAME_FLAGS[type]
+      [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]
+        .select {|v| flags_value & v > 0 }
+        .map {|val| fs && fs.key(val) || ("unknown_%02x" % val).to_sym }
+    end
+
+    # Sets the frame flags.
+    # @param value [Array<Symbol>] The flags.
+    def flags=(value)
+      self.flags_value = (value && value.map {|flag| FRAME_FLAGS[self.type][flag] }.inject(:|) || 0)
     end
 
     # Assembles the frame into binary representation.
@@ -135,7 +154,10 @@ module Plum
       r = r_sid >> 31
       stream_id = r_sid & ~(1 << 31)
 
-      self.new(length: length, type_value: type_value, flags_value: flags_value, stream_id: stream_id, payload: payload)
+      self.new(type_value: type_value,
+               flags_value: flags_value,
+               stream_id: stream_id,
+               payload: payload).freeze
     end
   end
 end

@@ -15,6 +15,7 @@ unless ENV["SKIP_COVERAGE"]
   end
 end
 
+require "timeout"
 require "minitest"
 require "minitest/unit"
 require "minitest/autorun"

@@ -34,6 +34,24 @@ class HPACKContextTest < Minitest::Test
     }
   end
 
+  def test_search_static
+    context = new_context
+    i1 = context.search(":method", "POST")
+    assert_equal(3, i1)
+  end
+
+  def test_search_dynamic
+    context = new_context
+    context.store("あああ", "abc")
+    context.store("あああ", "いい")
+    i1 = context.search("あああ", "abc")
+    assert_equal(63, i1)
+    i2 = context.search("あああ", "AAA")
+    assert_equal(nil, i2)
+    i3 = context.search("あああ", nil)
+    assert_equal(62, i3)
+  end
+
   private
   def new_context(limit = 1 << 31)
     klass = Class.new {

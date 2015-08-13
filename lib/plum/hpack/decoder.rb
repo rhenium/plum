@@ -19,38 +19,50 @@ module Plum
       private
       def parse!(str)
         first_byte = str.uint8
-        if first_byte & 0b10000000 == 0b10000000
+        if first_byte >= 128 # 0b1XXXXXXX
           parse_indexed!(str)
-        elsif first_byte & 0b11000000 == 0b01000000
+        elsif first_byte >= 64 # 0b01XXXXXX
           parse_indexing!(str)
-        elsif first_byte & 0b11110000 == 0b00000000 || # without indexing
-              first_byte & 0b11110000 == 0b00010000    # never indexing
-          parse_no_indexing!(str)
-        elsif first_byte & 0b11100000 == 0b00100000
+        elsif first_byte >= 32 # 0b001XXXXX
           self.limit = read_integer!(str, 5)
           nil
-        end # all match
+        else # 0b0000XXXX (without indexing) or 0b0001XXXX (never indexing)
+          parse_no_indexing!(str)
+        end
       end
 
       def read_integer!(str, prefix_length)
-        mask = (1 << prefix_length) - 1
-        ret = str.byteshift(1).uint8 & mask
+        first_byte = str.byteshift(1).uint8
+        raise HPACKError.new("integer: end of buffer") unless first_byte
 
-        if ret == mask
-          loop.with_index do |_, i|
-            next_value = str.byteshift(1).uint8
-            ret += (next_value & ~(0b10000000)) << (7 * i)
-            break if next_value & 0b10000000 == 0
+        mask = (1 << prefix_length) - 1
+        ret = first_byte & mask
+        return ret if ret < mask
+
+        octets = 0
+        while next_value = str.byteshift(1).uint8
+          ret += (next_value & 0b01111111) << (7 * octets)
+          octets += 1
+
+          if next_value < 128
+            return ret
+          elsif octets == 4 # RFC 7541 5.1 tells us that we MUST have limitation. at least > 2 ** 28
+            raise HPACKError.new("integer: too large integer")
           end
         end
 
-        ret
+        raise HPACKError.new("integer: end of buffer")
       end
 
       def read_string!(str)
-        huffman = (str.uint8 >> 7) == 1
+        first_byte = str.uint8
+        raise HPACKError.new("string: end of buffer") unless first_byte
+
+        huffman = (first_byte >> 7) == 1
         length = read_integer!(str, 7)
         bin = str.byteshift(length)
+
+        raise HTTPError.new("string: end of buffer") if bin.bytesize < length
         bin = Huffman.decode(bin) if huffman
         bin
       end
@@ -61,11 +73,7 @@ module Plum
         # | 1 |        Index (7+)         |
         # +---+---------------------------+
         index = read_integer!(str, 7)
-        if index == 0
-          raise HPACKError.new("index can't be 0 in indexed heaeder field representation")
-        else
-          fetch(index)
-        end
+        fetch(index)
       end
 
       def parse_indexing!(str)

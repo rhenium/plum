@@ -1,10 +1,10 @@
 require "timeout"
 
 module ServerUtils
-  def open_server_connection
+  def open_server_connection(scheme = :https)
     io = StringIO.new
-    @_con = ServerConnection.new(io)
-    @_con << ServerConnection::CLIENT_CONNECTION_PREFACE
+    @_con = (scheme == :https ? HTTPSConnection : HTTPConnection).new(io)
+    @_con << Connection::CLIENT_CONNECTION_PREFACE
     @_con << Frame.new(type: :settings, stream_id: 0).assemble
     if block_given?
       yield @_con
@@ -14,7 +14,7 @@ module ServerUtils
   end
 
   def open_new_stream(arg1 = nil, **kwargs)
-    if arg1.is_a?(ServerConnection)
+    if arg1.is_a?(Connection)
       con = arg1
     else
       con = open_server_connection
@@ -31,7 +31,7 @@ module ServerUtils
   end
 
   def sent_frames(con = nil)
-    resp = (con || @_con).socket.string.dup
+    resp = (con || @_con).io.string.dup
     frames = []
     while f = Frame.parse!(resp)
       frames << f
@@ -39,52 +39,22 @@ module ServerUtils
     frames
   end
 
-  def start_server(&blk)
-    ctx = OpenSSL::SSL::SSLContext.new
-    ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../server.crt", __FILE__))
-    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../server.key", __FILE__))
-    tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
-    ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
-
-    plum = Plum::ServerConnection.new(nil)
-
-    server_thread = Thread.new {
-      begin
-        timeout(3) {
-          sock = ssl_server.accept
-          plum.instance_eval { @socket = sock }
-          plum.start
-        }
-      rescue TimeoutError
-        flunk "server timeout"
-      ensure
-        tcp_server.close
-      end
-    }
-    client_thread = Thread.new {
-      begin
-        timeout(3) { blk.call(plum) }
-      rescue TimeoutError
-        flunk "client timeout"
-      end
-    }
-    client_thread.join
-    server_thread.join
+  def capture_frames(con = nil, &blk)
+    io = (con || @_con).io
+    pos = io.string.bytesize
+    blk.call
+    resp = io.string.byteslice(pos, io.string.bytesize - pos)
+    frames = []
+    while f = Frame.parse!(resp)
+      frames << f
+    end
+    frames
   end
 
-  # Connect to server and returns client socket
-  def start_client(ctx = nil, &blk)
-    ctx ||= OpenSSL::SSL::SSLContext.new.tap {|ctx|
-      ctx.alpn_protocols = ["h2"]
-    }
-
-    sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
-    ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-    ssl.connect
-    blk.call(ssl)
-  ensure
-    ssl.close
+  def capture_frame(con = nil, &blk)
+    frames = capture_frames(con, &blk)
+    assert_equal(1, frames.size, "Supplied block sent no frames or more than 1 frame")
+    frames.first
   end
 end
 

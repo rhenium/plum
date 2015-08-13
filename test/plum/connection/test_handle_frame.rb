@@ -12,9 +12,20 @@ class ServerConnectionHandleFrameTest < Minitest::Test
     }
   end
 
+  def test_server_handle_settings
+    open_server_connection {|con|
+      assert_no_error {
+        con << Frame.new(type: :settings, stream_id: 0, flags: [:ack], payload: "").assemble
+      }
+      assert_connection_error(:frame_size_error) {
+        con << Frame.new(type: :settings, stream_id: 0, flags: [:ack], payload: "\x00").assemble
+      }
+    }
+  end
+
   def test_server_handle_settings_invalid
     open_server_connection {|con|
-      refute_raises {
+      assert_no_error {
         con << Frame.new(type: :settings, stream_id: 0, payload: "\xff\x01\x00\x00\x10\x10").assemble
       }
     }
@@ -44,6 +55,16 @@ class ServerConnectionHandleFrameTest < Minitest::Test
       con << Frame.new(type: :ping, flags: [:ack], stream_id: 0, payload: "A" * 8).assemble
       last = sent_frames.last
       refute_equal(:ping, last.type) if last
+    }
+  end
+
+  ## GOAWAY
+  def test_server_handle_goaway_reply
+    open_server_connection {|con|
+      assert_no_error {
+        con << Frame.goaway(1234, :stream_closed).assemble
+      }
+      assert_equal(:goaway, sent_frames.last.type)
     }
   end
 end

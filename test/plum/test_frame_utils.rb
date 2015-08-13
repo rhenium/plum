@@ -1,6 +1,6 @@
 require "test_helper"
 
-class FrameHelperTest < Minitest::Test
+class FrameUtilsTest < Minitest::Test
   def test_frame_enough_short
     frame = Frame.new(type: :data, stream_id: 1, payload: "123")
     ret = frame.split_data(3)
@@ -29,10 +29,18 @@ class FrameHelperTest < Minitest::Test
     ret = frame.split_headers(3)
     assert_equal(3, ret.size)
     assert_equal("123", ret[0].payload)
-    assert_equal([:priority, :end_stream].sort, ret[0].flags.sort)
+    assert_equal([:end_stream, :priority], ret[0].flags)
     assert_equal("456", ret[1].payload)
     assert_equal([], ret[1].flags)
     assert_equal("7", ret[2].payload)
     assert_equal([:end_headers], ret[2].flags)
+  end
+
+  def test_frame_parse_settings
+    # :header_table_size => 0x1010, :enable_push => 0x00, :header_table_size => 0x1011 (overwrite)
+    frame = Frame.new(type: :settings, flags: [], stream_id: 0, payload: "\x00\x01\x00\x00\x10\x10\x00\x02\x00\x00\x00\x00\x00\x01\x00\x00\x10\x11")
+    ret = frame.parse_settings
+    assert_equal(0x1011, ret[:header_table_size])
+    assert_equal(0x0000, ret[:enable_push])
   end
 end

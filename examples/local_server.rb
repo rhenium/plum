@@ -98,7 +98,7 @@ loop do
     next
   end
 
-  plum = Plum::ServerConnection.new(sock)
+  plum = Plum::HTTPSConnection.new(sock)
 
   plum.on(:frame) do |frame|
     log(id, frame.stream_id, "recv: #{frame.inspect}")
@@ -141,7 +141,7 @@ loop do
       data << data_
     end
 
-    stream.on(:complete) do
+    stream.on(:end_stream) do
       if headers[":method"] == "GET"
         file = File.expand_path(DOCUMENT_ROOT + headers[":path"])
         file << "/index.html" if Dir.exist?(file)
@@ -197,7 +197,7 @@ loop do
 
   Thread.new {
     begin
-      plum.start
+      plum.run
     rescue
       puts $!
       puts $!.backtrace
