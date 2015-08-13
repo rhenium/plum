@@ -55,7 +55,10 @@ module Plum
       end
 
       def read_string!(str)
-        huffman = (str.uint8 >> 7) == 1
+        first_byte = str.uint8
+        raise HPACKError.new("string: end of buffer") unless first_byte
+
+        huffman = (first_byte >> 7) == 1
         length = read_integer!(str, 7)
         bin = str.byteshift(length)
 
