@@ -34,12 +34,14 @@ module Plum
       end
 
       def search(name, value)
-        if value
-          i = STATIC_TABLE.index([name, value]) || @dynamic_table.index([name, value])
-        else
-          i = STATIC_TABLE.index {|n, _| n == name } || @dynamic_table.index {|n, _| n == name }
-        end
-        i && (i + 1) # index is >= 1
+        pr = proc {|n, v|
+          n == name && (!value || v == value)
+        }
+
+        si = STATIC_TABLE.index &pr
+        return si + 1 if si
+        di = @dynamic_table.index &pr
+        return di + STATIC_TABLE.size + 1 if di
       end
 
       def evict
