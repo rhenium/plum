@@ -25,12 +25,9 @@ module Plum
       def encode(headers)
         out = ""
         headers.each do |name, value|
-          name = name.to_s; value = value.to_s
           out << "\x00"
-          out << encode_integer(name.bytesize, 7)
-          out << name
-          out << encode_integer(value.bytesize, 7)
-          out << value
+          out << encode_string(name.to_s)
+          out << encode_string(value.to_s)
         end
         out
       end
@@ -43,7 +40,6 @@ module Plum
         if value < mask
           out.push_uint8(value)
         else
-          bytes = [mask]
           value -= mask
           out.push_uint8(mask)
           while value >= mask
@@ -51,6 +47,17 @@ module Plum
             value >>= 7
           end
           out.push_uint8(value)
+        end
+      end
+
+      def encode_string(str)
+        huffman_str = Huffman.encode(str)
+        if huffman_str.bytesize < str.bytesize
+          lenstr = encode_integer(huffman_str.bytesize, 7).force_encoding(Encoding::BINARY)
+          lenstr.setbyte(0, lenstr.uint8(0) | 0b10000000)
+          lenstr << huffman_str
+        else
+          encode_integer(str.bytesize, 7) << str
         end
       end
     end
