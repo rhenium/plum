@@ -14,6 +14,9 @@ class ServerConnectionHandleFrameTest < Minitest::Test
 
   def test_server_handle_settings
     open_server_connection {|con|
+      assert_no_error {
+        con << Frame.new(type: :settings, stream_id: 0, flags: [:ack], payload: "").assemble
+      }
       assert_connection_error(:frame_size_error) {
         con << Frame.new(type: :settings, stream_id: 0, flags: [:ack], payload: "\x00").assemble
       }

@@ -125,6 +125,7 @@ module Plum
 
     def receive_frame(frame)
       validate_received_frame(frame)
+      consume_recv_window(frame)
 
       if frame.stream_id == 0
         receive_control_frame(frame)
