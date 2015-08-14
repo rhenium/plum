@@ -1,5 +1,6 @@
 require "openssl"
 require "socket"
+require "base64"
 require "plum/version"
 require "plum/errors"
 require "plum/binary_string"

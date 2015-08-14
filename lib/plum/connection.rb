@@ -65,10 +65,6 @@ module Plum
           receive_frame(frame)
         end
       end
-    rescue ConnectionError => e
-      callback(:connection_error, e)
-      goaway(e.http2_error_type)
-      close
     end
     alias << receive
 
@@ -87,8 +83,20 @@ module Plum
       @io.write(frame.assemble)
     end
 
+    def negotiate!
+      if CLIENT_CONNECTION_PREFACE.start_with?(@buffer.byteslice(0, 24))
+        if @buffer.bytesize >= 24
+          @buffer.byteshift(24)
+          @state = :waiting_settings
+          settings(@local_settings)
+        end
+      else
+        raise ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+      end
+    end
+
     def new_stream(stream_id, **args)
-      if @streams.size > 0 && @streams.keys.last >= stream_id
+      if @streams.size > 0 && @streams.keys.max >= stream_id
         raise Plum::ConnectionError.new(:protocol_error)
       end
 
@@ -140,6 +148,10 @@ module Plum
         end
         stream.receive_frame(frame)
       end
+    rescue ConnectionError => e
+      callback(:connection_error, e)
+      goaway(e.http2_error_type)
+      close
     end
 
     def receive_control_frame(frame)
@@ -164,7 +176,7 @@ module Plum
       end
     end
 
-    def receive_settings(frame)
+    def receive_settings(frame, send_ack: true)
       if frame.flags.include?(:ack)
         raise ConnectionError.new(:frame_size_error) if frame.length != 0
         return
@@ -178,7 +190,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send_immediately Frame.settings(:ack)
+      send_immediately Frame.settings(:ack) if send_ack
     end
 
     def apply_remote_settings(old_remote_settings)

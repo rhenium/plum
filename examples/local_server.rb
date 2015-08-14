@@ -11,6 +11,7 @@ CONTENT_TYPES = {
   /\.jpg$/ => "image/jpeg",
   /\.css$/ => "text/css",
   /\.js$/ => "application/javascript",
+  /\.atom$/ => "application/atom+xml",
 }
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
