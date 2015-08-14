@@ -55,9 +55,7 @@ module Plum
       return if new_data.empty?
       @buffer << new_data
 
-      if @state == :negotiation
-        negotiate!
-      end
+      negotiate! if @state == :negotiation
 
       if @state != :negotiation
         while frame = Frame.parse!(@buffer)
@@ -65,6 +63,10 @@ module Plum
           receive_frame(frame)
         end
       end
+    rescue ConnectionError => e
+      callback(:connection_error, e)
+      goaway(e.http2_error_type)
+      close
     end
     alias << receive
 
@@ -84,14 +86,14 @@ module Plum
     end
 
     def negotiate!
-      if CLIENT_CONNECTION_PREFACE.start_with?(@buffer.byteslice(0, 24))
-        if @buffer.bytesize >= 24
-          @buffer.byteshift(24)
-          @state = :waiting_settings
-          settings(@local_settings)
-        end
-      else
+      unless CLIENT_CONNECTION_PREFACE.start_with?(@buffer.byteslice(0, 24))
         raise ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+      end
+
+      if @buffer.bytesize >= 24
+        @buffer.byteshift(24)
+        @state = :waiting_settings
+        settings(@local_settings)
       end
     end
 
@@ -107,26 +109,27 @@ module Plum
     end
 
     def validate_received_frame(frame)
-      case @state
-      when :waiting_settings
+      if @state == :waiting_settings
         raise ConnectionError.new(:protocol_error) if frame.type != :settings
-        @state = :negotiated
+        @state = :open
         callback(:negotiated)
-      when :waiting_continuation
+      end
+
+      if @state == :waiting_continuation
         if frame.type != :continuation || frame.stream_id != @continuation_id
-          raise Plum::ConnectionError.new(:protocol_error)
+          raise ConnectionError.new(:protocol_error)
         end
 
         if frame.flags.include?(:end_headers)
           @state = :open
           @continuation_id = nil
         end
-      else
-        if [:headers].include?(frame.type)
-          if !frame.flags.include?(:end_headers)
-            @state = :waiting_continuation
-            @continuation_id = frame.stream_id
-          end
+      end
+
+      if [:headers].include?(frame.type)
+        if !frame.flags.include?(:end_headers)
+          @state = :waiting_continuation
+          @continuation_id = frame.stream_id
         end
       end
     end
@@ -141,17 +144,11 @@ module Plum
         if @streams.key?(frame.stream_id)
           stream = @streams[frame.stream_id]
         else
-          if frame.stream_id.even? # stream started by client must have odd ID
-            raise Plum::ConnectionError.new(:protocol_error)
-          end
+          raise ConnectionError.new(:protocol_error) if frame.stream_id.even? # stream started by client must have odd ID
           stream = new_stream(frame.stream_id)
         end
         stream.receive_frame(frame)
       end
-    rescue ConnectionError => e
-      callback(:connection_error, e)
-      goaway(e.http2_error_type)
-      close
     end
 
     def receive_control_frame(frame)
@@ -179,10 +176,11 @@ module Plum
     def receive_settings(frame, send_ack: true)
       if frame.flags.include?(:ack)
         raise ConnectionError.new(:frame_size_error) if frame.length != 0
+        callback(:settings_ack)
         return
+      else
+        raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
       end
-
-      raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
 
       old_remote_settings = @remote_settings.dup
       @remote_settings.merge!(frame.parse_settings)
@@ -202,10 +200,10 @@ module Plum
       raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 8
 
       if frame.flags.include?(:ack)
-        on(:ping_ack)
+        callback(:ping_ack)
       else
-        on(:ping)
         opaque_data = frame.payload
+        callback(:ping, opaque_data)
         send_immediately Frame.ping(:ack, opaque_data)
       end
     end

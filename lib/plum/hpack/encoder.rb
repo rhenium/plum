@@ -13,8 +13,8 @@ module Plum
       def encode(headers)
         out = ""
         headers.each do |name, value|
-          name = name.to_s.force_encoding(Encoding::BINARY)
-          value = value.to_s.force_encoding(Encoding::BINARY)
+          name = name.to_s.b
+          value = value.to_s.b
           if index = search(name, value)
             out << encode_indexed(index)
           elsif index = search(name, nil)
