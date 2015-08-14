@@ -54,10 +54,10 @@ class HPACKContextTest < Minitest::Test
 
   private
   def new_context(limit = 1 << 31)
-    @c ||= Class.new {
+    klass = Class.new {
       include Plum::HPACK::Context
       public *Plum::HPACK::Context.private_instance_methods
     }
-    @c.new(limit)
+    klass.new(limit)
   end
 end
