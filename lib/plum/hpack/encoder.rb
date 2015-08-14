@@ -5,9 +5,10 @@ module Plum
     class Encoder
       include HPACK::Context
 
-      def initialize(dynamic_table_limit, indexing: true)
+      def initialize(dynamic_table_limit, indexing: true, huffman: true)
         super(dynamic_table_limit)
         @indexing = indexing
+        @huffman = huffman
       end
 
       def encode(headers)
@@ -94,14 +95,24 @@ module Plum
       end
 
       def encode_string(str)
-        huffman_str = Huffman.encode(str)
-        if huffman_str.bytesize < str.bytesize
-          lenstr = encode_integer(huffman_str.bytesize, 7)
-          lenstr.setbyte(0, lenstr.uint8(0) | 0b10000000)
-          lenstr.force_encoding(Encoding::BINARY) << huffman_str
+        if @huffman
+          hs = encode_string_huffman(str)
+          ps = encode_string_plain(str)
+          hs.bytesize < ps.bytesize ? hs : ps
         else
-          encode_integer(str.bytesize, 7) << str.force_encoding(Encoding::BINARY)
+          encode_string_plain(str)
         end
+      end
+
+      def encode_string_plain(str)
+        encode_integer(str.bytesize, 7) << str.force_encoding(Encoding::BINARY)
+      end
+
+      def encode_string_huffman(str)
+        huffman_str = Huffman.encode(str)
+        lenstr = encode_integer(huffman_str.bytesize, 7)
+        lenstr.setbyte(0, lenstr.uint8(0) | 0b10000000)
+        lenstr.force_encoding(Encoding::BINARY) << huffman_str
       end
     end
   end
