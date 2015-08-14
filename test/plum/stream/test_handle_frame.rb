@@ -160,7 +160,7 @@ class StreamHandleFrameTest < Minitest::Test
       header_block = HPACK::Encoder.new(0).encode([[":path", "/"]])
       payload = "".push_uint32((1 << 31) | parent.id)
                   .push_uint8(50)
-                  .push(header_block)
+        .push(header_block)
       stream.receive_frame(Frame.new(type: :headers,
                                      stream_id: stream.id,
                                      flags: [:end_headers, :priority],
