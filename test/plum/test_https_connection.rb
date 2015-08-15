@@ -34,4 +34,55 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
       con << Frame.new(type: :settings, stream_id: 0).assemble
     }
   end
+
+  def test_inadequate_security_ssl_socket
+    run = false
+
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.alpn_select_cb = -> protocols { "h2" }
+    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../server.crt", __FILE__))
+    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../server.key", __FILE__))
+    tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
+    ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
+
+    server_thread = Thread.new {
+      begin
+        timeout(3) {
+          sock = ssl_server.accept
+          plum = HTTPSConnection.new(sock)
+          assert_connection_error(:inadequate_security) {
+            run = true
+            plum.run
+          }
+        }
+      rescue TimeoutError
+        flunk "server timeout"
+      ensure
+        tcp_server.close
+      end
+    }
+    client_thread = Thread.new {
+      sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
+      begin
+        timeout(3) {
+          ctx = OpenSSL::SSL::SSLContext.new.tap {|ctx|
+            ctx.alpn_protocols = ["h2"]
+            ctx.ciphers = "AES256-GCM-SHA384"
+          }
+          ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
+          ssl.connect
+          ssl.write Connection::CLIENT_CONNECTION_PREFACE
+          ssl.write Frame.settings.assemble
+        }
+      rescue TimeoutError
+        flunk "client timeout"
+      ensure
+        sock.close
+      end
+    }
+    client_thread.join
+    server_thread.join
+
+    flunk "test not run" unless run
+  end
 end
