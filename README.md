@@ -7,8 +7,7 @@ A minimal implementation of HTTP/2 server.
 * [http-parser.rb gem](https://rubygems.org/gems/http_parser.rb) if you use "http" URI scheme.
 
 ## TODO
-* Stream Priority (RFC 7540 5.3)
-* Better API
+* **Better API**
 
 ## License
 MIT License
