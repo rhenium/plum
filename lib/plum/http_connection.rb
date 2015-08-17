@@ -35,8 +35,7 @@ module Plum
             settings != nil)
           switch_protocol(settings)
         else
-          respond_not_supported
-          close
+          raise LegacyHTTPError.new
         end
       }
 
@@ -56,20 +55,6 @@ module Plum
       resp << "Upgrade: h2c\r\n"
       resp << "Server: plum/#{Plum::VERSION}\r\n"
       resp << "\r\n"
-
-      io.write(resp)
-    end
-
-    def respond_not_supported
-      data = "Use modern web browser with HTTP/2 support."
-
-      resp = ""
-      resp << "HTTP/1.1 505 HTTP Version Not Supported\r\n"
-      resp << "Content-Type: text/plain\r\n"
-      resp << "Content-Length: #{data.bytesize}\r\n"
-      resp << "Server: plum/#{Plum::VERSION}\r\n"
-      resp << "\r\n"
-      resp << data
 
       io.write(resp)
     end

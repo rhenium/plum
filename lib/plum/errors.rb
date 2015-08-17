@@ -1,5 +1,6 @@
 module Plum
   class Error < StandardError; end
+  class LegacyHTTPError < Error; end
   class HPACKError < Error; end
   class HTTPError < Error
     ERROR_CODES = {

@@ -55,7 +55,8 @@ class HTTPConnectionNegotiationTest < Minitest::Test
           "User-Agent: nya\r\n" <<
           "Connection: close\r\n" <<
           "\r\n"
-    con << req
-    assert(io.string.include?("HTTP/1.1 505 "), "Response is not HTTP/1.1 505: #{io.string}")
+    assert_raises(LegacyHTTPError) {
+      con << req
+    }
   end
 end

@@ -105,6 +105,18 @@ loop do
   Thread.new {
     begin
       plum.run
+    rescue Plum::LegacyHTTPError
+      data = "Use modern web browser with HTTP/2 support."
+
+      resp = ""
+      resp << "HTTP/1.1 505 HTTP Version Not Supported\r\n"
+      resp << "Content-Type: text/plain\r\n"
+      resp << "Content-Length: #{data.bytesize}\r\n"
+      resp << "Server: plum/#{Plum::VERSION}\r\n"
+      resp << "\r\n"
+      resp << data
+
+      sock.write(resp)
     rescue
       puts $!
       puts $!.backtrace
