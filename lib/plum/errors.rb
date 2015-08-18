@@ -1,6 +1,5 @@
 module Plum
   class Error < StandardError; end
-  class LegacyHTTPError < Error; end
   class HPACKError < Error; end
   class HTTPError < Error
     ERROR_CODES = {
@@ -33,4 +32,14 @@ module Plum
   end
   class ConnectionError < HTTPError; end
   class StreamError < HTTPError; end
+
+  class LegacyHTTPError < Error
+    attr_reader :headers, :data, :parser
+
+    def initialize(headers, data, parser)
+      @headers = headers
+      @data = data
+      @parser = parser
+    end
+  end
 end

@@ -35,7 +35,7 @@ module Plum
             settings != nil)
           switch_protocol(settings)
         else
-          raise LegacyHTTPError.new
+          raise LegacyHTTPError.new(@_headers, @_body, parser)
         end
       }
 
