@@ -109,10 +109,8 @@ module Plum
     end
 
     def validate_received_frame(frame)
-      if @state == :waiting_settings
-        raise ConnectionError.new(:protocol_error) if frame.type != :settings
-        @state = :open
-        callback(:negotiated)
+      if @state == :waiting_settings && frame.type != :settings
+        raise ConnectionError.new(:protocol_error)
       end
 
       if @state == :waiting_continuation
@@ -189,6 +187,11 @@ module Plum
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
       send_immediately Frame.settings(:ack) if send_ack
+
+      if @state == :waiting_settings
+        @state = :open
+        callback(:negotiated)
+      end
     end
 
     def apply_remote_settings(old_remote_settings)
