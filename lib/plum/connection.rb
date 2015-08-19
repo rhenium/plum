@@ -161,6 +161,7 @@ module Plum
       when :ping
         receive_ping(frame)
       when :goaway
+        callback(:goaway, frame)
         goaway
         close
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation

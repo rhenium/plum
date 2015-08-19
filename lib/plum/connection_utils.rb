@@ -26,6 +26,11 @@ module Plum
       send_immediately Frame.goaway(last_id, error_type)
     end
 
+    # Returns whether peer enables server push or not
+    def push_enabled?
+      @remote_settings[:enable_push] == 1
+    end
+
     private
     def update_local_settings(new_settings)
       old_settings = @local_settings.dup

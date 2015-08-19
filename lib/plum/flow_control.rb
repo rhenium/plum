@@ -90,6 +90,8 @@ module Plum
         raise local_error.new(:protocol_error)
       end
 
+      callback(:window_update, wsi)
+
       @send_remaining_window += wsi
       consume_send_buffer
     end

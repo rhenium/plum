@@ -211,6 +211,7 @@ module Plum
         raise ConnectionError.new(:protocol_error)
       end
 
+      callback(:rst_stream, frame)
       @state = :closed # MUST NOT send RST_STREAM
     end
   end
