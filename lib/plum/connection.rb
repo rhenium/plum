@@ -74,7 +74,7 @@ module Plum
     #
     # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
-      next_id = ((@streams.keys.last / 2).to_i + 1) * 2
+      next_id = (@streams.keys.select(&:even?).max || 0) + 2
       stream = new_stream(next_id, state: :reserved_local, **args)
       stream
     end
@@ -98,10 +98,6 @@ module Plum
     end
 
     def new_stream(stream_id, **args)
-      if @streams.size > 0 && @streams.keys.max >= stream_id
-        raise Plum::ConnectionError.new(:protocol_error)
-      end
-
       stream = Stream.new(self, stream_id, **args)
       callback(:stream, stream)
       @streams[stream_id] = stream
@@ -142,7 +138,10 @@ module Plum
         if @streams.key?(frame.stream_id)
           stream = @streams[frame.stream_id]
         else
-          raise ConnectionError.new(:protocol_error) if frame.stream_id.even? # stream started by client must have odd ID
+          if frame.stream_id.even? || (@streams.size > 0 && @streams.keys.select(&:odd?).max >= frame.stream_id)
+            raise Plum::ConnectionError.new(:protocol_error)
+          end
+
           stream = new_stream(frame.stream_id)
         end
         stream.receive_frame(frame)
