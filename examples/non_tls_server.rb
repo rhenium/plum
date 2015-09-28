@@ -54,7 +54,7 @@ loop do
 
     stream.on(:open) do
       headers = nil
-      data = ""
+      data = String.new
     end
 
     stream.on(:headers) do |headers_|
@@ -70,8 +70,8 @@ loop do
     stream.on(:end_stream) do
       case [headers[":method"], headers[":path"]]
       when ["GET", "/"]
-        body = "Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>"
-        body << <<-EOF
+        body = <<-EOF
+        Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>
         <form action=post.page method=post>
         <input type=text name=key value=default_value>
         <input type=submit>
@@ -81,7 +81,7 @@ loop do
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
+          "content-length": body.bytesize
         }, body)
       when ["POST", "/post.page"]
         body = "Posted value is: #{CGI.unescape(data).gsub("<", "&lt;").gsub(">", "&gt;")}<br> <a href=/>Back to top page</a>"
@@ -89,7 +89,7 @@ loop do
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
+          "content-length": body.bytesize
         }, body)
       else
         body = "Page not found! <a href=/>Back to top page</a>"
@@ -97,7 +97,7 @@ loop do
           ":status": "404",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
+          "content-length": body.bytesize
         }, body)
       end
     end
@@ -107,15 +107,12 @@ loop do
     begin
       plum.run
     rescue Plum::LegacyHTTPError
-      data = "Use modern web browser with HTTP/2 support."
-
-      resp = ""
-      resp << "HTTP/1.1 505 HTTP Version Not Supported\r\n"
-      resp << "Content-Type: text/plain\r\n"
-      resp << "Content-Length: #{data.bytesize}\r\n"
-      resp << "Server: plum/#{Plum::VERSION}\r\n"
-      resp << "\r\n"
-      resp << data
+      resp = "HTTP/1.1 505 HTTP Version Not Supported\r\n"
+             "Content-Type: text/plain\r\n"
+             "Content-Length: #{data.bytesize}\r\n"
+             "Server: plum/#{Plum::VERSION}\r\n"
+             "\r\n"
+             "Use modern web browser with HTTP/2 support."
 
       sock.write(resp)
     rescue
