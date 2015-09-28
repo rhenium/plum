@@ -7,8 +7,8 @@ install:
   - echo openssl_version=1.0.2d >> $rvm_path/user/db
   - rvm pkg install openssl
   - $rvm_path/usr/bin/openssl version
-  - rvm install 2.2.2-alpn --patch https://gist.githubusercontent.com/rhenium/b1711edcc903e8887a51/raw/2309e469f5a3ba15917d804ac61b19e62b3d8faf/ruby-openssl-alpn-no-tests-and-docs.patch --with-openssl-dir=$rvm_path/usr
-  - rvm use 2.2.2-alpn
+  - rvm install 2.2.3-alpn --patch https://gist.githubusercontent.com/rhenium/b1711edcc903e8887a51/raw/2309e469f5a3ba15917d804ac61b19e62b3d8faf/ruby-openssl-alpn-no-tests-and-docs.patch --with-openssl-dir=$rvm_path/usr
+  - rvm use 2.2.3-alpn
   - bundle install
 script:
   - bundle exec rake test
