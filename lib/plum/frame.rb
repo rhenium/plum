@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -120,7 +121,7 @@ module Plum
     # Assembles the frame into binary representation.
     # @return [String] Binary representation of this frame.
     def assemble
-      bytes = "".force_encoding(Encoding::BINARY)
+      bytes = String.new
       bytes.push_uint24(length)
       bytes.push_uint8(type_value)
       bytes.push_uint8(flags_value)
@@ -139,11 +140,9 @@ module Plum
     # @param buffer [String] The buffer stored the data received from peer.
     # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
     def self.parse!(buffer)
-      buffer.force_encoding(Encoding::BINARY)
-
-      return nil if buffer.size < 9 # header: 9 bytes
+      return nil if buffer.bytesize < 9 # header: 9 bytes
       length = buffer.uint24
-      return nil if buffer.size < 9 + length
+      return nil if buffer.bytesize < 9 + length
 
       bhead = buffer.byteshift(9)
       payload = buffer.byteshift(length)

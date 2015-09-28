@@ -1,21 +1,22 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
   module FrameFactory
     def rst_stream(stream_id, error_type)
-      payload = "".push_uint32(HTTPError::ERROR_CODES[error_type])
+      payload = String.new.push_uint32(HTTPError::ERROR_CODES[error_type])
       Frame.new(type: :rst_stream, stream_id: stream_id, payload: payload)
     end
 
     def goaway(last_id, error_type, message = "")
-      payload = "".push_uint32((last_id || 0) | (0 << 31))
-                  .push_uint32(HTTPError::ERROR_CODES[error_type])
-                  .push(message)
+      payload = String.new.push_uint32((last_id || 0) | (0 << 31))
+                          .push_uint32(HTTPError::ERROR_CODES[error_type])
+                          .push(message)
       Frame.new(type: :goaway, stream_id: 0, payload: payload)
     end
 
     def settings(ack = nil, **args)
-      payload = args.inject("") {|payload, (key, value)|
+      payload = args.inject(String.new) {|payload, (key, value)|
         id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
         payload.push_uint16(id)
         payload.push_uint32(value)
@@ -41,8 +42,8 @@ module Plum
     end
 
     def push_promise(stream_id, new_id, encoded, *flags)
-      payload = "".push_uint32(0 << 31 | new_id)
-                  .push(encoded)
+      payload = String.new.push_uint32(0 << 31 | new_id)
+                          .push(encoded)
       Frame.new(type: :push_promise, stream_id: stream_id, flags: flags.compact, payload: payload)
     end
 

@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 module Plum
   class HTTPSConnection < Connection
     def initialize(io, local_settings = {})

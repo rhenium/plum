@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require "plum"
 require "openssl"
@@ -71,7 +72,7 @@ loop do
 
     stream.on(:open) do
       headers = nil
-      data = ""
+      data = String.new
     end
 
     stream.on(:headers) do |headers_|
@@ -87,8 +88,8 @@ loop do
     stream.on(:end_stream) do
       case [headers[":method"], headers[":path"]]
       when ["GET", "/"]
-        body = "Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>"
-        body << <<-EOF
+        body = <<-EOF
+        Hello World! <a href=/abc.html>ABC</a> <a href=/fgsd>Not found</a>
         <form action=post.page method=post>
         <input type=text name=key value=default_value>
         <input type=submit>
@@ -114,9 +115,9 @@ loop do
           "content-type": "text/html",
           "content-length": body.size
         }, body)
-        image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA" <<
-                 "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU" <<
-                 "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ" <<
+        image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA"
+                 "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU"
+                 "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ"
                  "ZtJp0zAAAAAASUVORK5CYII=").unpack("m")[0]
         i_stream.respond({
           ":status": "200",

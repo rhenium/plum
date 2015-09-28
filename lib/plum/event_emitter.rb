@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 module Plum
   module EventEmitter
     # Registers an event handler to specified event. An event can have multiple handlers.

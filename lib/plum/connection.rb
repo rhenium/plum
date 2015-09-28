@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -25,7 +26,7 @@ module Plum
       @io = io
       @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
-      @buffer = "".force_encoding(Encoding::BINARY)
+      @buffer = String.new
       @streams = {}
       @state = :negotiation
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])

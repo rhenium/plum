@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -7,7 +8,7 @@ module Plum
 
       # Static-Huffman-encodes the specified String.
       def encode(bytestr)
-        out = ""
+        out = String.new
         bytestr.each_byte do |b|
           out << HUFFMAN_TABLE[b]
         end
@@ -19,13 +20,13 @@ module Plum
       def decode(encoded)
         bits = encoded.unpack("B*")[0]
         out = []
-        buf = ""
+        buf = String.new
         bits.each_char do |cb|
           buf << cb
           if c = HUFFMAN_TABLE_INVERSED[buf]
             raise HPACKError.new("huffman: EOS detected") if c == 256
             out << c
-            buf = ""
+            buf.clear
           end
         end
 

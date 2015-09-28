@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -120,8 +121,7 @@ module Plum
     end
 
     def receive_complete_headers(frames)
-      frames = frames.dup
-      first = frames.shift
+      first, *rest = frames
 
       payload = first.payload
       first_length = first.length
@@ -144,7 +144,7 @@ module Plum
         raise ConnectionError.new(:protocol_error, "padding is too long")
       end
 
-      frames.each do |frame|
+      rest.each do |frame|
         payload << frame.payload
       end
 

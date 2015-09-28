@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 require "openssl"
 require "socket"
 require "base64"

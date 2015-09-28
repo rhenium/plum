@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -23,7 +24,7 @@ module Plum
     # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi
-      payload = "".push_uint32(wsi & ~(1 << 31))
+      payload = String.new.push_uint32(wsi & ~(1 << 31))
       sid = (Stream === self) ? self.id : 0
       send_immediately Frame.new(type: :window_update, stream_id: sid, payload: payload)
     end
