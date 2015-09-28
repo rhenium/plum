@@ -47,7 +47,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
 
     server_thread = Thread.new {
       begin
-        timeout(3) {
+        Timeout.timeout(3) {
           sock = ssl_server.accept
           plum = HTTPSConnection.new(sock)
           assert_connection_error(:inadequate_security) {
@@ -55,7 +55,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
             plum.run
           }
         }
-      rescue TimeoutError
+      rescue Timeout::Error
         flunk "server timeout"
       ensure
         tcp_server.close
@@ -64,7 +64,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     client_thread = Thread.new {
       sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
       begin
-        timeout(3) {
+        Timeout.timeout(3) {
           ctx = OpenSSL::SSL::SSLContext.new.tap {|ctx|
             ctx.alpn_protocols = ["h2"]
             ctx.ciphers = "AES256-GCM-SHA384"
@@ -74,7 +74,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
           ssl.write Connection::CLIENT_CONNECTION_PREFACE
           ssl.write Frame.settings.assemble
         }
-      rescue TimeoutError
+      rescue Timeout::Error
         flunk "client timeout"
       ensure
         sock.close
