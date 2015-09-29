@@ -7,8 +7,8 @@ install:
   - echo openssl_version=1.0.2d >> $rvm_path/user/db
   - rvm pkg install openssl
   - $rvm_path/usr/bin/openssl version
-  - rvm install 2.3-head --with-openssl-dir=$rvm_path/usr
-  - rvm use 2.3-head
+  - rvm install ruby-head --with-openssl-dir=$rvm_path/usr
+  - rvm use ruby-head
   - bundle install
 script:
   - bundle exec rake test
