@@ -26,7 +26,6 @@ module Plum
               }
             end
           rescue Errno::EBADF, Errno::ENOTSOCK, IOError => e # closed
-            @logger.debug("socket closed?: #{e}")
           rescue StandardError => e
             @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
           end
@@ -46,7 +45,6 @@ module Plum
         con = Connection.new(@app, sock, @logger)
         con.start
       rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
-        @logger.debug("connection closed while accepting: #{e}")
       rescue StandardError => e
         @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
       end

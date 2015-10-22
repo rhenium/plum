@@ -19,7 +19,6 @@ module Plum
             @plum = setup_plum
             @plum.run
           rescue Errno::EPIPE, Errno::ECONNRESET => e
-            @logger.debug("connection closed: #{e}")
           rescue StandardError => e
             @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
           end
@@ -41,12 +40,10 @@ module Plum
           }
 
           stream.on(:headers) { |h|
-            @logger.debug("headers: " + h.map {|name, value| "#{name}: #{value}" }.join(" // "))
             headers = h
           }
 
           stream.on(:data) { |d|
-            @logger.debug("data: #{d.bytesize}")
             data << d # TODO: store to file?
           }
 
