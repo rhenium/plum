@@ -3,7 +3,7 @@ module Plum
     class Server
       def initialize(app, config)
         @state = :null
-        @app = app
+        @app = config[:debug] ? ::Rack::CommonLogger.new(app) : app
         @logger = Logger.new(config[:log] || $stdout).tap { |l|
           l.level = config[:debug] ? Logger::DEBUG : Logger::INFO
         }
