@@ -1,0 +1,12 @@
+$LOAD_PATH << File.expand_path("../../../../lib", __FILE__)
+require "logger"
+require "stringio"
+require "plum"
+require "rack"
+require "rack/handler/plum"
+require "plum/rack/version"
+require "plum/rack/config"
+require "plum/rack/dsl"
+require "plum/rack/listener"
+require "plum/rack/server"
+require "plum/rack/connection"

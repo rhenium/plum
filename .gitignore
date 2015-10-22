@@ -1,0 +1,8 @@
+/.bundle/
+/.yardoc
+/Gemfile.lock
+/tmp/*
+.*.sw*
+.*.local
+/plum.yml
+/dependency.yml
