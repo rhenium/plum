@@ -55,11 +55,15 @@ module Plum
             r_headers, r_body = new_resp(@app.call(env))
 
             if r_body.is_a?(::Rack::BodyProxy)
-              stream.respond(r_headers, end_stream: false)
-              r_body.each { |part|
-                stream.send_data(part, end_stream: false)
-              }
-              stream.send_data(nil)
+              begin
+                stream.respond(r_headers, end_stream: false)
+                r_body.each { |part|
+                  stream.send_data(part, end_stream: false)
+                }
+                stream.send_data(nil)
+              ensure
+                r_body.close
+              end
             else
               stream.respond(r_headers, r_body)
             end
