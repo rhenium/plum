@@ -125,7 +125,7 @@ module Plum
       bytes.push_uint8(type_value)
       bytes.push_uint8(flags_value)
       bytes.push_uint32(stream_id & ~(1 << 31)) # first bit is reserved (MUST be 0)
-      bytes.push(payload)
+      bytes.push(payload.b)
       bytes
     end
 
