@@ -75,15 +75,15 @@ module Plum
       private
       # returns: [cert, key]
       def dummy_key
-        key = OpenSSL::PKey::RSA.new(2048)
-        public_key = key.public_key
+        puts "WARNING: Generating new dummy certificate..."
 
+        key = OpenSSL::PKey::RSA.new(2048)
         cert = OpenSSL::X509::Certificate.new
         cert.subject = cert.issuer = OpenSSL::X509::Name.parse("/C=JP/O=Test/OU=Test/CN=example.com")
         cert.not_before = Time.now
         cert.not_after = Time.now + 363 * 24 * 60 * 60
-        cert.public_key = public_key
-        cert.serial = 0x0
+        cert.public_key = key.public_key
+        cert.serial = rand((1 << 20) - 1)
         cert.version = 2
 
         ef = OpenSSL::X509::ExtensionFactory.new
