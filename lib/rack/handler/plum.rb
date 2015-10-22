@@ -7,7 +7,7 @@ module Rack
         config = ::Plum::Rack::Config.new(
           listeners: [
             {
-              listener: ::Plum::Rack::TCPListener,
+              listener: ::Plum::Rack::TLSListener,
               hostname: opts[:Host],
               port: opts[:Port].to_i
             }

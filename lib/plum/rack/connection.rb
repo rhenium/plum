@@ -1,22 +1,21 @@
 module Plum
   module Rack
     class Connection
-      attr_reader :app, :sock, :plum
+      attr_reader :app, :listener, :plum
 
-      def initialize(app, sock, logger)
+      def initialize(app, listener, logger)
         @app = app
-        @sock = sock
+        @listener = listener
         @logger = logger
       end
 
       def stop
-        @sock.close # TODO: gracefully shutdown
+        @listener.close # TODO: gracefully shutdown
       end
 
       def start
         Thread.new {
           begin
-            @sock = @sock.accept if @sock.respond_to?(:accept) # SSLSocket
             @plum = setup_plum
             @plum.run
           rescue Errno::EPIPE, Errno::ECONNRESET => e
@@ -29,7 +28,7 @@ module Plum
 
       private
       def setup_plum
-        plum = ::Plum::HTTPConnection.new(@sock)
+        plum = @listener.plum
         plum.on(:connection_error) { |ex| @logger.error(ex) }
 
         plum.on(:stream) do |stream|
