@@ -16,37 +16,37 @@ module Plum
       goaway:         0x07,
       window_update:  0x08,
       continuation:   0x09
-    }
+    }.freeze
 
     FRAME_FLAGS = {
       data: {
         end_stream:   0x01,
         padded:       0x08
-      },
+      }.freeze,
       headers: {
         end_stream:   0x01,
         end_headers:  0x04,
         padded:       0x08,
         priority:     0x20
-      },
-      priority: {},
-      rst_stream: {},
+      }.freeze,
+      priority: {}.freeze,
+      rst_stream: {}.freeze,
       settings: {
         ack:          0x01
-      },
+      }.freeze,
       push_promise: {
         end_headers:  0x04,
         padded:       0x08
-      },
+      }.freeze,
       ping: {
         ack:          0x01
-      },
-      goaway: {},
-      window_update: {},
+      }.freeze,
+      goaway: {}.freeze,
+      window_update: {}.freeze,
       continuation: {
         end_headers:  0x04
-      }
-    }
+      }.freeze
+    }.freeze
 
     SETTINGS_TYPE = {
       header_table_size:      0x01,
@@ -55,7 +55,7 @@ module Plum
       initial_window_size:    0x04,
       max_frame_size:         0x05,
       max_header_list_size:   0x06
-    }
+    }.freeze
 
     # RFC7540: 4.1 Frame format
     # +-----------------------------------------------+

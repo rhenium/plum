@@ -6,7 +6,7 @@ module Plum
     include FlowControl
     include ConnectionUtils
 
-    CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+    CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n".freeze
 
     DEFAULT_SETTINGS = {
       header_table_size:      4096,     # octets
@@ -15,7 +15,7 @@ module Plum
       initial_window_size:    65535,    # octets; <= 2 ** 31 - 1
       max_frame_size:         16384,    # octets; <= 2 ** 24 - 1
       max_header_list_size:   (1 << 32) - 1 # Fixnum
-    }
+    }.freeze
 
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings

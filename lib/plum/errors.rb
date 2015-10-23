@@ -17,7 +17,7 @@ module Plum
       enhance_your_calm:   0x0b,
       inadequate_security: 0x0c,
       http_1_1_required:   0x0d
-    }
+    }.freeze
 
     attr_reader :http2_error_type
 

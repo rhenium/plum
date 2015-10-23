@@ -64,7 +64,7 @@ module Plum
       ["vary"],
       ["via"],
       ["www-authenticate"],
-    ]
+    ].freeze
 
     HUFFMAN_TABLE = [
       "1111111111000",
@@ -324,8 +324,8 @@ module Plum
       "111111111111111111111110000",
       "11111111111111111111101110",
       "111111111111111111111111111111"
-    ]
+    ].freeze
     
-    HUFFMAN_TABLE_INVERSED = HUFFMAN_TABLE.each_with_index.to_h
+    HUFFMAN_TABLE_INVERSED = HUFFMAN_TABLE.each_with_index.to_h.freeze
   end
 end
