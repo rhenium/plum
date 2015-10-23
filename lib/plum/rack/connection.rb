@@ -49,24 +49,60 @@ module Plum
           }
 
           stream.on(:end_stream) {
-            env = new_env(headers, data)
-            r_headers, r_body = new_resp(@app.call(env))
-
-            if r_body.is_a?(::Rack::BodyProxy)
-              stream.respond(r_headers, end_stream: false)
-              begin
-                r_body.each { |part|
-                  stream.send_data(part, end_stream: false)
-                }
-              ensure
-                r_body.close
-              end
-              stream.send_data(nil)
-            else
-              stream.respond(r_headers, r_body)
-            end
+            handle_request(stream, headers, data)
           }
         end
+      end
+
+      def send_body(stream, body)
+        if body.is_a?(::Rack::BodyProxy)
+          begin
+            body.each { |part|
+              stream.send_data(part, end_stream: false)
+            }
+          ensure
+            body.close
+          end
+          stream.send_data(nil, end_stream: true)
+        else
+          stream.send_data(body, end_stream: true)
+        end
+      end
+
+      def extract_push(r_rawheaders)
+        _, pushs = r_rawheaders.find { |k, v| k == "plum.serverpush" }
+        if pushs
+          pushs.split(";").map { |push| push.split(" ", 2) }
+        else
+          []
+        end
+      end
+
+      def handle_request(stream, headers, data)
+        env = new_env(headers, data)
+        r_status, r_rawheaders, r_body = @app.call(env)
+        r_headers = extract_headers(r_status, r_rawheaders)
+        r_topushs = extract_push(r_rawheaders)
+
+        stream.send_headers(r_headers, end_stream: false)
+        r_pushstreams = r_topushs.map { |method, path|
+          preq = { ":authority" => headers.find { |k, v| k == ":authority" }[1],
+                   ":method" => method.to_s.upcase,
+                   ":scheme" => headers.find { |k, v| k == ":scheme" }[1],
+                   ":path" => path }
+          st = stream.promise(preq)
+          [st, preq]
+        }
+
+        send_body(stream, r_body)
+
+        r_pushstreams.each { |st, preq|
+          penv = new_env(preq, "")
+          p_status, p_h, p_body = @app.call(penv)
+          p_headers = extract_headers(p_status, p_h)
+          st.send_headers(p_headers, end_stream: false)
+          send_body(st, p_body)
+        }
       end
 
       def new_env(h, data)
@@ -78,11 +114,11 @@ module Plum
           end
         }.to_h
 
-        cmethod = headers.delete(":method")
-        cpath = headers.delete(":path")
+        cmethod = headers[":method"]
+        cpath = headers[":path"]
         cpath_name, cpath_query = cpath.split("?", 2).map(&:to_s)
-        cauthority = headers.delete(":authority")
-        cscheme = headers.delete(":scheme")
+        cauthority = headers[":authority"]
+        cscheme = headers[":scheme"]
         ebase = {
           "REQUEST_METHOD"    => cmethod,
           "SCRIPT_NAME"       => "",
@@ -93,7 +129,9 @@ module Plum
         }
 
         headers.each {|key, value|
-          ebase["HTTP_" + key.gsub("-", "_").upcase] = value
+          unless key.start_with?(":") && key.include?(".")
+            ebase["HTTP_" + key.gsub("-", "_").upcase] = value
+          end
         }
 
         ebase.merge!({
@@ -110,9 +148,7 @@ module Plum
         ebase
       end
 
-      def new_resp(app_call)
-        r_status, r_h, r_body = app_call
-
+      def extract_headers(r_status, r_h)
         rbase = {
           ":status" => r_status,
           "server" => "plum/#{::Plum::VERSION}",
@@ -132,7 +168,7 @@ module Plum
           end
         end
 
-        [rbase, r_body]
+        rbase
       end
     end
   end
