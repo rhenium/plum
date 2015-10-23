@@ -1,37 +1,35 @@
 module Plum
   module Rack
     class Connection
-      attr_reader :app, :listener, :plum
+      attr_reader :app, :sock, :plum
 
-      def initialize(app, listener, logger)
+      def initialize(app, plum, logger)
         @app = app
-        @listener = listener
+        @plum = plum
         @logger = logger
+
+        setup_plum
       end
 
       def stop
-        @listener.close # TODO: gracefully shutdown
+        @plum.stop
       end
 
-      def start
-        Thread.new {
-          begin
-            @plum = setup_plum
-            @plum.run
-          rescue Errno::EPIPE, Errno::ECONNRESET => e
-            @logger.debug("connection closed: #{e}")
-          rescue StandardError => e
-            @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
-          end
-        }
+      def run
+        begin
+          @plum.run
+        rescue Errno::EPIPE, Errno::ECONNRESET => e
+          @logger.debug("connection closed: #{e}")
+        rescue StandardError => e
+          @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+        end
       end
 
       private
       def setup_plum
-        plum = @listener.plum
-        plum.on(:connection_error) { |ex| @logger.error(ex) }
+        @plum.on(:connection_error) { |ex| @logger.error(ex) }
 
-        plum.on(:stream) do |stream|
+        @plum.on(:stream) do |stream|
           stream.on(:stream_error) { |ex| @logger.error(ex) }
 
           headers = data = nil
@@ -56,17 +54,19 @@ module Plum
 
             if r_body.is_a?(::Rack::BodyProxy)
               stream.respond(r_headers, end_stream: false)
-              r_body.each { |part|
-                stream.send_data(part, end_stream: false)
-              }
+              begin
+                r_body.each { |part|
+                  stream.send_data(part, end_stream: false)
+                }
+              ensure
+                r_body.close
+              end
               stream.send_data(nil)
             else
               stream.respond(r_headers, r_body)
             end
           }
         end
-
-        plum
       end
 
       def new_env(h, data)

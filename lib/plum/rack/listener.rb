@@ -9,17 +9,8 @@ module Plum
         raise "not implemented"
       end
 
-      def accept
-        @sock = to_io.accept
-        self
-      end
-
       def method_missing(name, *args)
-        if @sock
-          @sock.__send__(name, *args)
-        else
-          @server.__send__(name, *args)
-        end
+        @server.__send__(name, *args)
       end
     end
 
@@ -32,8 +23,8 @@ module Plum
         @server.to_io
       end
 
-      def plum
-        ::Plum::HTTPConnection.new(self)
+      def plum(sock)
+        ::Plum::HTTPConnection.new(sock)
       end
     end
 
@@ -56,20 +47,15 @@ module Plum
         ctx.key = OpenSSL::PKey::RSA.new(key)
         tcp_server = ::TCPServer.new(lc[:hostname], lc[:port])
         @server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
-        @server.start_immediately = true # TODO
+        @server.start_immediately = false
       end
 
       def to_io
         @server.to_io
       end
 
-      def accept
-        @sock = @server.accept
-        self
-      end
-
-      def plum
-        ::Plum::HTTPSConnection.new(self)
+      def plum(sock)
+        ::Plum::HTTPSConnection.new(sock)
       end
 
       private
@@ -111,8 +97,8 @@ module Plum
         @server.to_io
       end
 
-      def plum
-        ::Plum::HTTPConnection.new(self)
+      def plum(sock)
+        ::Plum::HTTPSConnection.new(sock)
       end
     end
   end

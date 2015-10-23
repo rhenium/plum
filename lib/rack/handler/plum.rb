@@ -31,10 +31,11 @@ module Rack
       private
       def self.default_options
         rack_env = ENV["RACK_ENV"] || "development"
+        dev = rack_env == "development"
         default_options = {
-          Host: rack_env == "development" ? "localhost" : "0.0.0.0",
+          Host: dev ? "localhost" : "0.0.0.0",
           Port: 8080,
-          Debug: true,
+          Debug: dev,
         }
       end
     end
