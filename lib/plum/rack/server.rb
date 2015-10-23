@@ -35,15 +35,27 @@ module Plum
       def stop
         @state = :stop
         @listeners.map(&:stop)
+        # TODO: gracefully shutdown connections
       end
 
       private
       def new_con(svr)
         sock = svr.accept
-        @logger.debug("accept: #{sock}")
+        Thread.new {
+          begin
+            sock = sock.accept if sock.respond_to?(:accept)
+            plum = svr.plum(sock)
+            @logger.debug("accept: #{plum}")
 
-        con = Connection.new(@app, sock, @logger)
-        con.start
+            con = Connection.new(@app, plum, @logger)
+            con.run
+          rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
+            sock.close if sock
+          rescue StandardError => e
+            @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+            sock.close if sock
+          end
+        }
       rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
       rescue StandardError => e
         @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
