@@ -32,6 +32,8 @@ module Plum
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
       initialize_flow_control(send: @remote_settings[:initial_window_size],
                               recv: @local_settings[:initial_window_size])
+      @max_odd_stream_id = 0
+      @max_even_stream_id = 0
     end
     private :initialize
 
@@ -74,7 +76,7 @@ module Plum
     #
     # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
-      next_id = (@streams.keys.select(&:even?).max || 0) + 2
+      next_id = @max_even_stream_id + 2
       stream = new_stream(next_id, state: :reserved_local, **args)
       stream
     end
@@ -98,6 +100,12 @@ module Plum
     end
 
     def new_stream(stream_id, **args)
+      if stream_id.even?
+        @max_even_stream_id = stream_id
+      else
+        @max_odd_stream_id = stream_id
+      end
+
       stream = Stream.new(self, stream_id, **args)
       callback(:stream, stream)
       @streams[stream_id] = stream
@@ -138,7 +146,7 @@ module Plum
         if @streams.key?(frame.stream_id)
           stream = @streams[frame.stream_id]
         else
-          if frame.stream_id.even? || (@streams.size > 0 && @streams.keys.select(&:odd?).max >= frame.stream_id)
+          if frame.stream_id.even? || @max_odd_stream_id >= frame.stream_id
             raise Plum::ConnectionError.new(:protocol_error)
           end
 
