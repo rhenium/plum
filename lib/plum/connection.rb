@@ -19,10 +19,10 @@ module Plum
 
     attr_reader :hpack_encoder, :hpack_decoder
     attr_reader :local_settings, :remote_settings
-    attr_reader :state, :streams, :io
+    attr_reader :state, :streams
 
-    def initialize(io, local_settings = {})
-      @io = io
+    def initialize(writer, local_settings = {})
+      @writer = writer
       @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
       @buffer = "".force_encoding(Encoding::BINARY)
@@ -37,17 +37,10 @@ module Plum
     end
     private :initialize
 
-    # Starts communication with the peer. It blocks until the io is closed, or reaches EOF.
-    def run
-      while !@io.closed? && !@io.eof?
-        receive @io.readpartial(1024)
-      end
-    end
-
-    # Closes the io.
+    # Emits :close event. Doesn't actually close socket.
     def close
       # TODO: server MAY wait streams
-      @io.close
+      callback(:close)
     end
 
     # Receives the specified data and process.
@@ -84,8 +77,7 @@ module Plum
     private
     def send_immediately(frame)
       callback(:send_frame, frame)
-      #frame.assemble
-      @io.write(frame.assemble)
+      @writer.call(frame.assemble)
     end
 
     def negotiate!

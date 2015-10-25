@@ -2,12 +2,27 @@ using Plum::BinaryString
 
 module Plum
   class HTTPConnection < Connection
-    def initialize(io, local_settings = {})
+    attr_reader :sock
+
+    def initialize(sock, local_settings = {})
       require "http/parser"
-      super
       @_headers = nil
       @_body = ""
       @_http_parser = setup_parser
+      @sock = sock
+      super(@sock.method(:write), local_settings)
+    end
+
+    # Starts communication with the peer. It blocks until the io is closed, or reaches EOF.
+    def run
+      while !@sock.closed? && !@sock.eof?
+        self << @sock.readpartial(1024)
+      end
+    end
+
+    def close
+      super
+      @sock.close
     end
 
     private
@@ -56,7 +71,7 @@ module Plum
       resp << "Server: plum/#{Plum::VERSION}\r\n"
       resp << "\r\n"
 
-      io.write(resp)
+      @sock.write(resp)
     end
 
     def process_first_request

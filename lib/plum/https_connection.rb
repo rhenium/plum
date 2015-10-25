@@ -1,15 +1,30 @@
 module Plum
   class HTTPSConnection < Connection
-    def initialize(io, local_settings = {})
-      if io.respond_to?(:cipher) # OpenSSL::SSL::SSLSocket-like
-        if CIPHER_BLACKLIST.include?(io.cipher.first) # [cipher-suite, ssl-version, keylen, alglen]
-          self.on(:negotiated) {
+    attr_reader :sock
+
+    def initialize(sock, local_settings = {})
+      @sock = sock
+      super(@sock.method(:write), local_settings)
+    end
+
+    # Starts communication with the peer. It blocks until the io is closed, or reaches EOF.
+    def run
+      if @sock.respond_to?(:cipher) # OpenSSL::SSL::SSLSocket-like
+        if CIPHER_BLACKLIST.include?(@sock.cipher.first) # [cipher-suite, ssl-version, keylen, alglen]
+          on(:negotiated) {
             raise ConnectionError.new(:inadequate_security)
           }
         end
       end
 
+      while !@sock.closed? && !@sock.eof?
+        self << @sock.readpartial(1024)
+      end
+    end
+
+    def close
       super
+      @sock.close
     end
 
     CIPHER_BLACKLIST = %w(

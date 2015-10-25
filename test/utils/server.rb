@@ -31,7 +31,7 @@ module ServerUtils
   end
 
   def sent_frames(con = nil)
-    resp = (con || @_con).io.string.dup.force_encoding(Encoding::BINARY)
+    resp = (con || @_con).sock.string.dup.force_encoding(Encoding::BINARY)
     frames = []
     while f = Frame.parse!(resp)
       frames << f
@@ -40,7 +40,7 @@ module ServerUtils
   end
 
   def capture_frames(con = nil, &blk)
-    io = (con || @_con).io
+    io = (con || @_con).sock
     pos = io.string.bytesize
     blk.call
     resp = io.string.byteslice(pos, io.string.bytesize - pos).force_encoding(Encoding::BINARY)
