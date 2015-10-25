@@ -54,7 +54,6 @@ module Plum
     end
 
     # Closes this stream. Sends RST_STREAM frame to the peer.
-    #
     # @param error_type [Symbol] The error type to be contained in the RST_STREAM frame.
     def close(error_type = :no_error)
       @state = :closed

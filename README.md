@@ -16,6 +16,7 @@ See examples in `examples/`
 
 ### As a Rack-compatible server
 Insert `require "plum/rack"` to your `config.ru`
+
 ```ruby
 require "plum/rack"
 
@@ -29,10 +30,13 @@ App = -> env {
 
 run App
 ```
+
 Then run it with:
+
 ```sh
 % plum -e production -p 8080 --https config.ru
 ```
+
 By default, Plum generates a dummy server certificate if `--cert` and `--key` options are not specified.
 
 ## Examples

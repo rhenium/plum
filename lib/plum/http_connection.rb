@@ -20,6 +20,7 @@ module Plum
       end
     end
 
+    # Closes the socket.
     def close
       super
       @sock.close

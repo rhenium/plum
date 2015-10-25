@@ -3,7 +3,6 @@ using Plum::BinaryString
 module Plum
   module FrameUtils
     # Splits the DATA frame into multiple frames if the payload size exceeds max size.
-    #
     # @param max [Integer] The maximum size of a frame payload.
     # @return [Array<Frame>] The splitted frames.
     def split_data(max)
@@ -18,7 +17,6 @@ module Plum
     end
 
     # Splits the HEADERS or PUSH_PROMISE frame into multiple frames if the payload size exceeds max size.
-    #
     # @param max [Integer] The maximum size of a frame payload.
     # @return [Array<Frame>] The splitted frames.
     def split_headers(max)
@@ -34,7 +32,6 @@ module Plum
     end
 
     # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540 6.5.2).
-    #
     # @return [Hash<Symbol, Integer>] The parsed strings.
     def parse_settings
       settings = {}

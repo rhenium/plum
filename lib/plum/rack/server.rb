@@ -27,7 +27,7 @@ module Plum
             end
           rescue Errno::EBADF, Errno::ENOTSOCK, IOError => e # closed
           rescue StandardError => e
-            @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+            log_exception(e)
           end
         end
       end
@@ -46,20 +46,21 @@ module Plum
             sock = sock.accept if sock.respond_to?(:accept)
             plum = svr.plum(sock)
 
-            #require "lineprof"
-            #Lineprof.profile(/plum/) {
-              con = Connection.new(@app, plum, @logger)
-              con.run
-            #}
+            con = Connection.new(@app, plum, @logger)
+            con.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
             sock.close if sock
           rescue StandardError => e
-            @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+            log_exception(e)
             sock.close if sock
           end
         }
       rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
       rescue StandardError => e
+        log_exception(e)
+      end
+
+      def log_exception(e)
         @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
       end
     end

@@ -5,7 +5,6 @@ module Plum
     attr_reader :send_remaining_window, :recv_remaining_window
 
     # Sends frame respecting inner-stream flow control.
-    #
     # @param frame [Frame] The frame to be sent.
     def send(frame)
       if frame.type == :data
@@ -25,7 +24,6 @@ module Plum
     end
 
     # Increases receiving window size. Sends WINDOW_UPDATE frame to the peer.
-    #
     # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi

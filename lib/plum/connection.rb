@@ -44,7 +44,6 @@ module Plum
     end
 
     # Receives the specified data and process.
-    #
     # @param new_data [String] The data received from the peer.
     def receive(new_data)
       return if new_data.empty?
@@ -66,7 +65,6 @@ module Plum
     alias << receive
 
     # Reserves a new stream to server push.
-    #
     # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
       next_id = @max_even_stream_id + 2

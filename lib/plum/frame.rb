@@ -17,6 +17,8 @@ module Plum
       window_update:  0x08,
       continuation:   0x09
     }.freeze
+
+    # @!visibility private
     FRAME_TYPES_INVERSE = FRAME_TYPES.invert.freeze
 
     FRAME_FLAGS = {
@@ -49,6 +51,7 @@ module Plum
       }.freeze
     }.freeze
 
+    # @!visibility private
     FRAME_FLAGS_MAP = FRAME_FLAGS.values.inject(:merge).freeze
 
     SETTINGS_TYPE = {
@@ -75,9 +78,9 @@ module Plum
     attr_accessor :type_value
     # [Integer] Flags. 8-bit
     attr_accessor :flags_value
-    # [Integer] Stream Identifier. unsigned 31-bit integer
+    # [Integer] Stream Identifier. Unsigned 31-bit integer
     attr_reader :stream_id
-    # [String] The payload.
+    # [String] The payload. Value is frozen.
     attr_reader :payload
 
     def initialize(type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
@@ -126,7 +129,6 @@ module Plum
     end
 
     # Frame#flag_name?() == Frame#flags().include?(:flag_name)
-    # TODO
     FRAME_FLAGS_MAP.each { |name, value|
       class_eval <<-EOS, __FILE__, __LINE__ + 1
         def #{name}?
@@ -150,7 +152,6 @@ module Plum
     end
 
     # Parses a frame from given buffer. It changes given buffer.
-    #
     # @param buffer [String] The buffer stored the data received from peer. Encoding must be Encoding::BINARY.
     # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
     def self.parse!(buffer)

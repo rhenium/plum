@@ -3,7 +3,6 @@ using Plum::BinaryString
 module Plum
   module StreamUtils
     # Responds to a HTTP request.
-    #
     # @param headers [Enumerable<String, String>] The response headers.
     # @param body [String, IO] The response body.
     def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
@@ -16,7 +15,6 @@ module Plum
     end
 
     # Reserves a stream to server push. Sends PUSH_PROMISE and create new stream.
-    #
     # @param headers [Enumerable<String, String>] The *request* headers. It must contain all of them: ':authority', ':method', ':scheme' and ':path'.
     # @return [Stream] The stream to send push response.
     def promise(headers)
@@ -30,7 +28,6 @@ module Plum
     end
 
     # Sends response headers. If the encoded frame is larger than MAX_FRAME_SIZE, the headers will be splitted into HEADERS frame and CONTINUATION frame(s).
-    #
     # @param headers [Enumerable<String, String>] The response headers.
     # @param end_stream [Boolean] Set END_STREAM flag or not.
     def send_headers(headers, end_stream:)
@@ -44,7 +41,6 @@ module Plum
     end
 
     # Sends DATA frame. If the data is larger than MAX_FRAME_SIZE, DATA frame will be splitted.
-    #
     # @param data [String, IO] The data to send.
     # @param end_stream [Boolean] Set END_STREAM flag or not.
     def send_data(data, end_stream: true)

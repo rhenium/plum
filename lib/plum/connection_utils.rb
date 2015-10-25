@@ -3,7 +3,6 @@ using Plum::BinaryString
 module Plum
   module ConnectionUtils
     # Sends local settings to the peer.
-    #
     # @param kwargs [Hash<Symbol, Integer>]
     def settings(**kwargs)
       send_immediately Frame.settings(**kwargs)
@@ -11,7 +10,6 @@ module Plum
     end
 
     # Sends a PING frame to the peer.
-    #
     # @param data [String] Must be 8 octets.
     # @raise [ArgumentError] If the data is not 8 octets.
     def ping(data = "plum\x00\x00\x00\x00")
@@ -19,7 +17,6 @@ module Plum
     end
 
     # Sends GOAWAY frame to the peer and closes the connection.
-    #
     # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
     def goaway(error_type = :no_error)
       last_id = @max_odd_stream_id > @max_even_stream_id ? @max_odd_stream_id : @max_even_stream_id

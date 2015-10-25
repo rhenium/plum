@@ -3,7 +3,11 @@ require "rack/builder"
 
 module Plum
   module Rack
+    # CLI runner. Parses command line options and start ::Plum::Rack::Server.
     class CLI
+      # Creates new CLI runner and parses command line.
+      #
+      # @param argv [Array<String>] ARGV
       def initialize(argv)
         @argv = argv
         @options = {}
@@ -11,6 +15,7 @@ module Plum
         parse!
       end
 
+      # Starts ::Plum::Rack::Server
       def run
         @server.start
       end
