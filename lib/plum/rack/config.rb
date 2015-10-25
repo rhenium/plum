@@ -8,12 +8,16 @@ module Plum
         server_push: true
       }.freeze
 
-      def initialize(config)
+      def initialize(config = {})
         @config = DEFAULT_CONFIG.merge(config)
       end
 
       def [](key)
         @config[key]
+      end
+
+      def []=(key, value)
+        @config[key] = value
       end
 
       def to_s

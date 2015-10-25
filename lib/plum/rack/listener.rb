@@ -88,9 +88,26 @@ module Plum
     end
 
     class UNIXListener < BaseListener
-      def initialize(path, permission, user, group)
-        @server = ::UNIXServer.new(path)
-        # TODO: set permission, user, group
+      def initialize(lc)
+        if File.exist?(lc[:path])
+          begin
+            old = UNIXSocket.new(lc[:path])
+          rescue SystemCallError, IOError
+            File.unlink(lc[:path])
+          else
+            old.close
+            raise "Already a server bound to: #{lc[:path]}"
+          end
+        end
+
+        @server = ::UNIXServer.new(lc[:path])
+
+        File.chmod(lc[:mode], lc[:path]) if lc[:mode]
+      end
+
+      def stop
+        super
+        File.unlink(lc[:path])
       end
 
       def to_io
