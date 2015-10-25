@@ -7,7 +7,7 @@ class App2
       [
         200,
         { "Content-Type" => "text/html" },
-        ["Hello World!"]
+        ["*10 bytes*"*400]
       ]
     else
       [

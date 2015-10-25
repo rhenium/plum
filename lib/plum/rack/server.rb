@@ -45,10 +45,12 @@ module Plum
           begin
             sock = sock.accept if sock.respond_to?(:accept)
             plum = svr.plum(sock)
-            @logger.debug("accept: #{plum}")
 
-            con = Connection.new(@app, plum, @logger)
-            con.run
+            #require "lineprof"
+            #Lineprof.profile(/plum/) {
+              con = Connection.new(@app, plum, @logger)
+              con.run
+            #}
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
             sock.close if sock
           rescue StandardError => e

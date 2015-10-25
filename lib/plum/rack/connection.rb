@@ -1,7 +1,7 @@
 module Plum
   module Rack
     class Connection
-      attr_reader :app, :sock, :plum
+      attr_reader :app, :plum
 
       def initialize(app, plum, logger)
         @app = app
@@ -12,7 +12,7 @@ module Plum
       end
 
       def stop
-        @plum.stop
+        @plum.close
       end
 
       def run
@@ -28,47 +28,43 @@ module Plum
       def setup_plum
         @plum.on(:connection_error) { |ex| @logger.error(ex) }
 
-        @plum.on(:stream) do |stream|
-          stream.on(:stream_error) { |ex| @logger.error(ex) }
+        # @plum.on(:stream) { |stream| @logger.debug("new stream: #{stream}") }
+        @plum.on(:stream_error) { |stream, ex| @logger.error(ex) }
 
-          headers = data = nil
-          stream.on(:open) {
-            headers = nil
-            data = "".force_encoding(Encoding::BINARY)
-          }
+        reqs = {}
+        @plum.on(:headers) { |stream, h|
+          reqs[stream] = { headers: h, data: "".force_encoding(Encoding::BINARY) }
+        }
 
-          stream.on(:headers) { |h|
-            headers = h
-          }
+        @plum.on(:data) { |stream, d|
+          reqs[stream][:data] << d # TODO: store to file?
+        }
 
-          stream.on(:data) { |d|
-            data << d # TODO: store to file?
-          }
-
-          stream.on(:end_stream) {
-            handle_request(stream, headers, data)
-          }
-        end
+        @plum.on(:end_stream) { |stream|
+          handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+        }
       end
 
       def send_body(stream, body)
-        if body.is_a?(::Rack::BodyProxy)
-          begin
-            body.each { |part|
-              stream.send_data(part, end_stream: false)
+        begin
+          if body.is_a?(Array)
+            last = body.size - 1
+            body.each_with_index { |part, i|
+              stream.send_data(part, end_stream: last == i)
             }
-          ensure
-            body.close
+          elsif body.is_a?(IO)
+            stream.send_data(body, end_stream: true)
+          else
+            body.each { |part| stream.send_data(part, end_stream: false) }
+            stream.send_data(nil, end_stream: true)
           end
-          stream.send_data(nil, end_stream: true)
-        else
-          stream.send_data(body, end_stream: true)
+        ensure
+          body.close if body.respond_to?(:close)
         end
       end
 
-      def extract_push(r_rawheaders)
-        _, pushs = r_rawheaders.find { |k, v| k == "plum.serverpush" }
-        if pushs
+      def extract_push(r_extheaders)
+        if pushs = r_extheaders["plum.serverpush"]
           pushs.split(";").map { |push| push.split(" ", 2) }
         else
           []
@@ -78,8 +74,8 @@ module Plum
       def handle_request(stream, headers, data)
         env = new_env(headers, data)
         r_status, r_rawheaders, r_body = @app.call(env)
-        r_headers = extract_headers(r_status, r_rawheaders)
-        r_topushs = extract_push(r_rawheaders)
+        r_headers, r_extheaders = extract_headers(r_status, r_rawheaders)
+        r_topushs = extract_push(r_extheaders)
 
         stream.send_headers(r_headers, end_stream: false)
         r_pushstreams = r_topushs.map { |method, path|
@@ -132,7 +128,7 @@ module Plum
             if k.start_with?(":")
               # unknown HTTP/2 pseudo-headers
             else
-              if "cookie" == k && headers["HTTP_COOKIE"]
+              if "cookie" == k && ebase["HTTP_COOKIE"]
                 ebase["HTTP_COOKIE"] << "; " << v
               else
                 ebase["HTTP_" << k.tr("-", "_").upcase!] = v
@@ -149,22 +145,24 @@ module Plum
           ":status" => r_status,
           "server" => "plum/#{::Plum::VERSION}",
         }
+        rext = {}
 
         r_h.each do |key, v_|
-          if key.start_with?("rack.")
-            next
-          end
-
-          key = key.downcase
-          if "set-cookie".freeze == key
-            rbase[key] = v_.gsub("\n", "; ") # RFC 7540 8.1.2.5
+          if key.include?(".")
+            rext[key] = v_
           else
-            key = key.byteshift(2) if key.start_with?("x-")
-            rbase[key] = v_.tr("\n", ",") # RFC 7230 7
+            key = key.downcase
+
+            if "set-cookie" == key
+              rbase[key] = v_.gsub("\n", "; ") # RFC 7540 8.1.2.5
+            else
+              key = key.byteshift(2) if key.start_with?("x-")
+              rbase[key] = v_.tr("\n", ",") # RFC 7230 7
+            end
           end
         end
 
-        rbase
+        [rbase, rext]
       end
     end
   end
