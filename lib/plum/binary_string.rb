@@ -17,7 +17,7 @@ module Plum
       # @param pos [Integer] The start position to read.
       def uint24(pos = 0)
         a, b = byteslice(pos, 3).unpack("nC")
-        (a * 0x100) | b
+        (a * 0x100) + b
       end
 
       # Reads a 32-bit unsigned integer.

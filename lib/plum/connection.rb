@@ -121,7 +121,7 @@ module Plum
         end
       end
 
-      if [:headers].include?(frame.type)
+      if frame.type == :headers
         if !frame.end_headers?
           @state = :waiting_continuation
           @continuation_id = frame.stream_id

@@ -76,12 +76,13 @@ module Plum
     # [Integer] Flags. 8-bit
     attr_accessor :flags_value
     # [Integer] Stream Identifier. unsigned 31-bit integer
-    attr_accessor :stream_id
+    attr_reader :stream_id
     # [String] The payload.
-    attr_accessor :payload
+    attr_reader :payload
 
     def initialize(type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
-      @payload = payload.to_s
+      @payload = payload || ""
+      @length = @payload.bytesize
       @type_value = type_value or self.type = type
       @flags_value = flags_value or self.flags = flags
       @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
@@ -90,7 +91,7 @@ module Plum
     # Returns the length of payload.
     # @return [Integer] The length.
     def length
-      @payload.bytesize
+      @length
     end
 
     # Returns the type of the frame in Symbol.
@@ -157,17 +158,15 @@ module Plum
       length = buffer.uint24
       return nil if buffer.bytesize < 9 + length
 
-      bhead = buffer.byteshift(9)
-      payload = buffer.byteshift(length)
-
-      type_value, flags_value, r_sid = bhead.byteslice(3, 6).unpack("CCN")
+      cur = buffer.byteshift(9 + length)
+      type_value, flags_value, r_sid = cur.byteslice(3, 6).unpack("CCN")
       # r = r_sid >> 31 # currently not used
       stream_id = r_sid # & ~(1 << 31)
 
       self.new(type_value: type_value,
                flags_value: flags_value,
                stream_id: stream_id,
-               payload: payload).freeze
+               payload: cur.byteslice(9, length)).freeze
     end
   end
 end

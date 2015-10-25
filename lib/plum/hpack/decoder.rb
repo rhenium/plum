@@ -23,7 +23,7 @@ module Plum
 
       private
       def parse(str, pos)
-        first_byte = str.uint8(pos)
+        first_byte = str.getbyte(pos)
         if first_byte >= 0x80 # 0b1XXXXXXX
           parse_indexed(str, pos)
         elsif first_byte >= 0x40 # 0b01XXXXXX
@@ -38,11 +38,11 @@ module Plum
 
       def read_integer(str, pos, prefix_length)
         raise HPACKError.new("integer: end of buffer") if str.empty?
-        first_byte = str.uint8(pos)
+        first_byte = str.getbyte(pos)
 
-        mask = (1 << prefix_length) - 1
-        ret = first_byte & mask
-        return [ret, 1] if ret != mask
+        mask = 1 << prefix_length
+        ret = first_byte % mask
+        return [ret, 1] if ret != mask - 1
 
         octets = 0
         while next_value = str.uint8(pos + octets + 1)

@@ -4,16 +4,16 @@ module Plum
     # @param name [String] The name of event.
     # @yield Gives event-specific parameters.
     def on(name, &blk)
-      callbacks[name] << blk
+      (callbacks[name] ||= []) << blk
     end
 
     def callback(name, *args)
-      callbacks[name].each {|cb| cb.call(*args) }
+      (cbs = callbacks[name]) && cbs.each {|cb| cb.call(*args) }
     end
 
     private
     def callbacks
-      @callbacks ||= Hash.new {|hash, key| hash[key] = [] }
+      @callbacks ||= {}
     end
   end
 end

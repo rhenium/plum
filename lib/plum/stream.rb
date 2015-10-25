@@ -8,23 +8,19 @@ module Plum
     attr_reader :id, :state, :connection
     attr_reader :weight, :exclusive
     attr_accessor :parent
+    # The child (depending on this stream) streams.
+    attr_reader :children
 
     def initialize(con, id, state: :idle, weight: 16, parent: nil, exclusive: false)
       @connection = con
       @id = id
       @state = state
       @continuation = []
+      @children = Set.new
 
       initialize_flow_control(send: @connection.remote_settings[:initial_window_size],
                               recv: @connection.local_settings[:initial_window_size])
       update_dependency(weight: weight, parent: parent, exclusive: exclusive)
-    end
-
-    # Returns the child (depending on this stream) streams.
-    #
-    # @return [Array<Stream>] The child streams.
-    def children
-      @connection.streams.values.select {|c| c.parent == self }.freeze
     end
 
     # Processes received frames for this stream. Internal use.
@@ -66,20 +62,30 @@ module Plum
 
     private
     def send_immediately(frame)
-      callback(:send_frame, frame)
       @connection.send(frame)
     end
 
     def update_dependency(weight: nil, parent: nil, exclusive: nil)
       raise StreamError.new(:protocol_error, "A stream cannot depend on itself.") if parent == self
-      @weight = weight unless weight.nil?
-      @parent = parent unless parent.nil?
-      @exclusive = exclusive unless exclusive.nil?
 
-      if exclusive == true
-        parent.children.each do |child|
-          next if child == self
-          child.parent = self
+      if weight
+        @weight = weight
+      end
+
+      if parent
+        @parent = parent
+        @parent.children << self
+      end
+
+      if exclusive != nil
+        @exclusive = exclusive
+        if @parent && exclusive
+          @parent.children.to_a.each do |child|
+            next if child == self
+            @parent.children.delete(child)
+            child.parent = self
+            @children << child
+          end
         end
       end
     end

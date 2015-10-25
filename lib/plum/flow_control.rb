@@ -8,11 +8,17 @@ module Plum
     #
     # @param frame [Frame] The frame to be sent.
     def send(frame)
-      case frame.type
-      when :data
+      if frame.type == :data
         @send_buffer << frame
-        callback(:send_deferred, frame) if @send_remaining_window < frame.length
-        consume_send_buffer
+        if @send_remaining_window < frame.length
+          if Stream === self
+            connection.callback(:send_deferred, self, frame)
+          else
+            callback(:send_deferred, self, frame)
+          end
+        else
+          consume_send_buffer
+        end
       else
         send_immediately frame
       end
@@ -23,7 +29,7 @@ module Plum
     # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi
-      payload = "".push_uint32(wsi & ~(1 << 31))
+      payload = "".push_uint32(wsi)
       sid = (Stream === self) ? self.id : 0
       send_immediately Frame.new(type: :window_update, stream_id: sid, payload: payload)
     end
@@ -57,8 +63,7 @@ module Plum
     end
 
     def consume_recv_window(frame)
-      case frame.type
-      when :data
+      if frame.type == :data
         @recv_remaining_window -= frame.length
         if @recv_remaining_window < 0
           local_error = (Connection === self) ? ConnectionError : StreamError
@@ -90,7 +95,11 @@ module Plum
         raise local_error.new(:protocol_error)
       end
 
-      callback(:window_update, wsi)
+      if Stream === self
+        connection.callback(:window_update, self, wsi)
+      else
+        callback(:window_update, self, wsi)
+      end
 
       @send_remaining_window += wsi
       consume_send_buffer

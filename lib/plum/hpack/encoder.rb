@@ -101,7 +101,7 @@ module Plum
       end
 
       def encode_string_plain(str)
-        encode_integer(str.bytesize, 7, 0b00000000) << str.force_encoding(Encoding::BINARY)
+        encode_integer(str.bytesize, 7, 0b00000000) << str
       end
 
       def encode_string_huffman(str)

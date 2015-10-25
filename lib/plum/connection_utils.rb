@@ -22,7 +22,7 @@ module Plum
     #
     # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
     def goaway(error_type = :no_error)
-      last_id = @streams.keys.max || 0
+      last_id = @max_odd_stream_id > @max_even_stream_id ? @max_odd_stream_id : @max_even_stream_id
       send_immediately Frame.goaway(last_id, error_type)
     end
 
