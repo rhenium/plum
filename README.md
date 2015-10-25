@@ -31,9 +31,9 @@ run App
 ```
 Then run it with:
 ```sh
-% rackup -s plum config.ru -E production
+% plum -e production -p 8080 --https config.ru
 ```
-By default, Plum generates a dummy server certificate and listens `0.0.0.0:9292` in HTTPS mode.
+By default, Plum generates a dummy server certificate if `--cert` and `--key` options are not specified.
 
 ## Examples
 * examples/ - Minimal usage.
