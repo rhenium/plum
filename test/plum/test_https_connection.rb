@@ -64,24 +64,21 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     client_thread = Thread.new {
       sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
       begin
-        Timeout.timeout(3) {
-          ctx = OpenSSL::SSL::SSLContext.new.tap {|ctx|
-            ctx.alpn_protocols = ["h2"]
-            ctx.ciphers = "AES256-GCM-SHA384"
-          }
-          ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-          ssl.connect
-          ssl.write Connection::CLIENT_CONNECTION_PREFACE
-          ssl.write Frame.settings.assemble
+        ctx = OpenSSL::SSL::SSLContext.new.tap {|ctx|
+          ctx.alpn_protocols = ["h2"]
+          ctx.ciphers = "AES256-GCM-SHA384"
         }
-      rescue Timeout::Error
-        flunk "client timeout"
+        ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
+        ssl.connect
+        ssl.write Connection::CLIENT_CONNECTION_PREFACE
+        ssl.write Frame.settings.assemble
+        sleep
       ensure
         sock.close
       end
     }
-    client_thread.join
     server_thread.join
+    client_thread.kill
 
     flunk "test not run" unless run
   end

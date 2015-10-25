@@ -8,7 +8,7 @@ class StreamHandleFrameTest < Minitest::Test
     payload = "ABC" * 5
     open_new_stream(state: :open) {|stream|
       data = nil
-      stream.on(:data) {|_data| data = _data }
+      stream.connection.on(:data) {|_, _data| data = _data }
       stream.receive_frame(Frame.new(type: :data, stream_id: stream.id,
                                      flags: [], payload: payload))
       assert_equal(payload, data)
@@ -19,7 +19,7 @@ class StreamHandleFrameTest < Minitest::Test
     payload = "ABC" * 5
     open_new_stream(state: :open) {|stream|
       data = nil
-      stream.on(:data) {|_data| data = _data }
+      stream.connection.on(:data) {|_, _data| data = _data }
       stream.receive_frame(Frame.new(type: :data, stream_id: stream.id,
                                      flags: [:padded], payload: "".push_uint8(6).push(payload).push("\x00"*6)))
       assert_equal(payload, data)
@@ -59,7 +59,7 @@ class StreamHandleFrameTest < Minitest::Test
   def test_stream_handle_headers_single
     open_new_stream {|stream|
       headers = nil
-      stream.on(:headers) {|_headers|
+      stream.connection.on(:headers) {|_, _headers|
         headers = _headers
       }
       stream.receive_frame(Frame.new(type: :headers,
@@ -75,7 +75,7 @@ class StreamHandleFrameTest < Minitest::Test
     open_new_stream {|stream|
       payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
       headers = nil
-      stream.on(:headers) {|_headers|
+      stream.connection.on(:headers) {|_, _headers|
         headers = _headers
       }
       stream.receive_frame(Frame.new(type: :headers,
@@ -96,7 +96,7 @@ class StreamHandleFrameTest < Minitest::Test
     open_new_stream {|stream|
       payload = HPACK::Encoder.new(0).encode([[":path", "/"]])
       headers = nil
-      stream.on(:headers) {|_headers|
+      stream.connection.on(:headers) {|_, _headers|
         headers = _headers
       }
       stream.receive_frame(Frame.new(type: :headers,
@@ -156,7 +156,7 @@ class StreamHandleFrameTest < Minitest::Test
       stream = open_new_stream(con)
 
       headers = nil
-      stream.on(:headers) {|_headers| headers = _headers }
+      stream.connection.on(:headers) {|_, _headers| headers = _headers }
       header_block = HPACK::Encoder.new(0).encode([[":path", "/"]])
       payload = "".push_uint32((1 << 31) | parent.id)
                   .push_uint8(50)

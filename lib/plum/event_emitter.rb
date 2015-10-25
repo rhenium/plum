@@ -7,11 +7,11 @@ module Plum
       callbacks[name] << blk
     end
 
-    private
     def callback(name, *args)
       callbacks[name].each {|cb| cb.call(*args) }
     end
 
+    private
     def callbacks
       @callbacks ||= Hash.new {|hash, key| hash[key] = [] }
     end
