@@ -17,11 +17,11 @@ A minimal pure Ruby implementation of HTTP/2 library / server.
 * [rhenium/plum-server](https://github.com/rhenium/plum-server) - A static-file server for https://rhe.jp and http://rhe.jp.
 
 ### As a Rack-compatible server
-Insert `require "plum/rack"` to your `config.ru`
+
+Most existing Rack-based applications (plum doesn't support Rack hijack API) should work without modification.
 
 ```ruby
-require "plum/rack"
-
+# config.ru
 App = -> env {
   [
     200,
@@ -33,7 +33,7 @@ App = -> env {
 run App
 ```
 
-Then run it with:
+You can run it:
 
 ```sh
 % plum -e production -p 8080 --https config.ru
