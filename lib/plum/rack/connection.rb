@@ -1,3 +1,5 @@
+using Plum::BinaryString
+
 module Plum
   module Rack
     class Connection
@@ -156,7 +158,7 @@ module Plum
             if "set-cookie" == key
               rbase[key] = v_.gsub("\n", "; ") # RFC 7540 8.1.2.5
             else
-              key = key.byteshift(2) if key.start_with?("x-")
+              key.byteshift(2) if key.start_with?("x-")
               rbase[key] = v_.tr("\n", ",") # RFC 7230 7
             end
           end
