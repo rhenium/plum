@@ -4,6 +4,7 @@ class FrameTest < Minitest::Test
   # Frame.parse!
   def test_parse_header_uncomplete
     buffer = "\x00\x00\x00" << "\x00" << "\x00"
+    buffer.force_encoding(Encoding::BINARY)
     buffer_orig = buffer.dup
     assert_nil(Plum::Frame.parse!(buffer))
     assert_equal(buffer_orig, buffer)
@@ -11,6 +12,7 @@ class FrameTest < Minitest::Test
 
   def test_parse_body_uncomplete
     buffer = "\x00\x00\x03" << "\x00" << "\x00" << "\x00\x00\x00\x00" << "ab"
+    buffer.force_encoding(Encoding::BINARY)
     buffer_orig = buffer.dup
     assert_nil(Plum::Frame.parse!(buffer))
     assert_equal(buffer_orig, buffer)
@@ -18,7 +20,8 @@ class FrameTest < Minitest::Test
 
   def test_parse
     # R 0x1, stream_id 0x4, body "abc"
-    buffer = "\x00\x00\x03" << "\x00" << "\x09" << "\x80\x00\x00\x04" << "abc" << "next_frame_data"
+    buffer = "\x00\x00\x03" << "\x00" << "\x09" << "\x00\x00\x00\x04" << "abc" << "next_frame_data"
+    buffer.force_encoding(Encoding::BINARY)
     frame = Plum::Frame.parse!(buffer)
     assert_equal(3, frame.length)
     assert_equal(:data, frame.type)

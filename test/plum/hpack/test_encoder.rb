@@ -3,19 +3,19 @@ require "test_helper"
 class HPACKEncoderTest < Minitest::Test
   # C.1.1
   def test_hpack_encode_integer_small
-    result = new_encoder(1 << 31).__send__(:encode_integer, 10, 5)
+    result = new_encoder(1 << 31).__send__(:encode_integer, 10, 5, 0b00000000)
     assert_equal([0b00001010].pack("C*"), result)
   end
 
   # C.1.2
   def test_hpack_encode_integer_big
-    result = new_encoder(1 << 31).__send__(:encode_integer, 1337, 5)
+    result = new_encoder(1 << 31).__send__(:encode_integer, 1337, 5, 0b000000)
     assert_equal([0b00011111, 0b10011010, 0b00001010].pack("C*"), result)
   end
 
   # C.1.3
   def test_hpack_encode_integer_8prefix
-    result = new_encoder(1 << 31).__send__(:encode_integer, 42, 8)
+    result = new_encoder(1 << 31).__send__(:encode_integer, 42, 8, 0b000000)
     assert_equal([0b00101010].pack("C*"), result)
   end
 

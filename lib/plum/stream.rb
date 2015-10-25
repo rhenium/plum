@@ -105,7 +105,7 @@ module Plum
         raise StreamError.new(:stream_closed)
       end
 
-      if frame.flags.include?(:padded)
+      if frame.padded?
         padding_length = frame.payload.uint8(0)
         if padding_length >= frame.length
           raise ConnectionError.new(:protocol_error, "padding is too long")
@@ -116,18 +116,17 @@ module Plum
       end
       callback(:data, body)
 
-      receive_end_stream if frame.flags.include?(:end_stream)
+      receive_end_stream if frame.end_stream?
     end
 
     def receive_complete_headers(frames)
-      frames = frames.dup
       first = frames.shift
 
       payload = first.payload
       first_length = first.length
       padding_length = 0
 
-      if first.flags.include?(:padded)
+      if first.padded?
         padding_length = payload.uint8
         first_length -= 1 + padding_length
         payload = payload.byteslice(1, first_length)
@@ -135,7 +134,7 @@ module Plum
         payload = payload.dup
       end
 
-      if first.flags.include?(:priority)
+      if first.priority?
         receive_priority_payload(payload.byteshift(5))
         first_length -= 5
       end
@@ -156,7 +155,7 @@ module Plum
 
       callback(:headers, decoded_headers)
 
-      receive_end_stream if first.flags.include?(:end_stream)
+      receive_end_stream if first.end_stream?
     end
 
     def receive_headers(frame)
@@ -171,7 +170,7 @@ module Plum
       @state = :open
       callback(:open)
 
-      if frame.flags.include?(:end_headers)
+      if frame.end_headers?
         receive_complete_headers([frame])
       else
         @continuation << frame
@@ -182,7 +181,7 @@ module Plum
       # state error mustn't happen: server_connection validates
       @continuation << frame
 
-      if frame.flags.include?(:end_headers)
+      if frame.end_headers?
         receive_complete_headers(@continuation)
         @continuation.clear
       end

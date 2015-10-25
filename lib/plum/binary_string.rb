@@ -4,7 +4,7 @@ module Plum
       # Reads a 8-bit unsigned integer.
       # @param pos [Integer] The start position to read.
       def uint8(pos = 0)
-        byteslice(pos, 1).unpack("C")[0]
+        getbyte(pos)
       end
 
       # Reads a 16-bit unsigned integer.
@@ -16,7 +16,8 @@ module Plum
       # Reads a 24-bit unsigned integer.
       # @param pos [Integer] The start position to read.
       def uint24(pos = 0)
-        (uint16(pos) << 8) | uint8(pos + 2)
+        a, b = byteslice(pos, 3).unpack("nC")
+        (a * 0x100) | b
       end
 
       # Reads a 32-bit unsigned integer.
@@ -27,7 +28,7 @@ module Plum
 
       # Appends a 8-bit unsigned integer to this string.
       def push_uint8(val)
-        self << [val].pack("C")
+        self << val.chr
       end
 
       # Appends a 16-bit unsigned integer to this string.
@@ -37,8 +38,7 @@ module Plum
 
       # Appends a 24-bit unsigned integer to this string.
       def push_uint24(val)
-        push_uint16(val >> 8)
-        push_uint8(val & ((1 << 8) - 1))
+        self << [val / 0x100, val % 0x100].pack("nC")
       end
 
       # Appends a 32-bit unsigned integer to this string.

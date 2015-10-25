@@ -84,6 +84,7 @@ module Plum
     private
     def send_immediately(frame)
       callback(:send_frame, frame)
+      #frame.assemble
       @io.write(frame.assemble)
     end
 
@@ -107,8 +108,8 @@ module Plum
       end
 
       stream = Stream.new(self, stream_id, **args)
-      callback(:stream, stream)
       @streams[stream_id] = stream
+      callback(:stream, stream)
       stream
     end
 
@@ -122,14 +123,14 @@ module Plum
           raise ConnectionError.new(:protocol_error)
         end
 
-        if frame.flags.include?(:end_headers)
+        if frame.end_headers?
           @state = :open
           @continuation_id = nil
         end
       end
 
       if [:headers].include?(frame.type)
-        if !frame.flags.include?(:end_headers)
+        if !frame.end_headers?
           @state = :waiting_continuation
           @continuation_id = frame.stream_id
         end
@@ -180,7 +181,7 @@ module Plum
     end
 
     def receive_settings(frame, send_ack: true)
-      if frame.flags.include?(:ack)
+      if frame.ack?
         raise ConnectionError.new(:frame_size_error) if frame.length != 0
         callback(:settings_ack)
         return
@@ -210,7 +211,7 @@ module Plum
     def receive_ping(frame)
       raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 8
 
-      if frame.flags.include?(:ack)
+      if frame.ack?
         callback(:ping_ack)
       else
         opaque_data = frame.payload

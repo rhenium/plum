@@ -4,38 +4,38 @@ class HPACKDecoderTest < Minitest::Test
   # C.1.1
   def test_hpack_read_integer_small
     buf = [0b11001010, 0b00001111].pack("C*")
-    result = new_decoder.__send__(:read_integer!, buf, 5)
+    result, succ = new_decoder.__send__(:read_integer, buf, 0, 5)
     assert_equal(10, result)
-    assert_equal([0b00001111].pack("C*"), buf)
+    assert_equal(1, succ)
   end
 
   # C.1.2
   def test_hpack_read_integer_big
     buf = [0b11011111, 0b10011010, 0b00001010, 0b00001111].pack("C*")
-    result = new_decoder.__send__(:read_integer!, buf, 5)
+    result, succ = new_decoder.__send__(:read_integer, buf, 0, 5)
     assert_equal(1337, result)
-    assert_equal([0b00001111].pack("C*"), buf)
+    assert_equal(3, succ)
   end
 
   # C.1.3
   def test_hpack_read_integer_8prefix
     buf = [0b00101010, 0b00001111].pack("C*")
-    result = new_decoder.__send__(:read_integer!, buf, 8)
+    result, succ = new_decoder.__send__(:read_integer, buf, 0, 8)
     assert_equal(42, result)
-    assert_equal([0b00001111].pack("C*"), buf)
+    assert_equal(1, succ)
   end
 
   def test_hpack_read_integer_too_big
     buf = [0b11011111, 0b10011010, 0b10001010, 0b10001111, 0b11111111, 0b00000011].pack("C*")
     assert_raises(HPACKError) {
-      new_decoder.__send__(:read_integer!, buf, 5)
+      new_decoder.__send__(:read_integer, buf, 0, 5)
     }
   end
 
   def test_hpack_read_integer_incomplete
     buf = [0b11011111, 0b10011010].pack("C*")
     assert_raises(HPACKError) {
-      new_decoder.__send__(:read_integer!, buf, 5)
+      new_decoder.__send__(:read_integer, buf, 0, 5)
     }
   end
 

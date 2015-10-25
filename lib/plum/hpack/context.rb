@@ -16,8 +16,9 @@ module Plum
       end
 
       def store(name, value)
+        value = value.to_s
         @dynamic_table.unshift([name, value])
-        @size += name.bytesize + value.to_s.bytesize + 32
+        @size += name.bytesize + value.bytesize + 32
         evict
       end
 
@@ -34,7 +35,7 @@ module Plum
       end
 
       def search(name, value)
-        pr = proc {|n, v|
+        pr = proc { |n, v|
           n == name && (!value || v == value)
         }
 
@@ -47,7 +48,7 @@ module Plum
       def evict
         while @limit && @size > @limit
           name, value = @dynamic_table.pop
-          @size -= name.bytesize + value.to_s.bytesize + 32
+          @size -= name.bytesize + value.bytesize + 32
         end
       end
     end

@@ -17,6 +17,7 @@ module Plum
       window_update:  0x08,
       continuation:   0x09
     }.freeze
+    FRAME_TYPES_INVERSE = FRAME_TYPES.invert.freeze
 
     FRAME_FLAGS = {
       data: {
@@ -48,6 +49,8 @@ module Plum
       }.freeze
     }.freeze
 
+    FRAME_FLAGS_MAP = FRAME_FLAGS.values.inject(:merge).freeze
+
     SETTINGS_TYPE = {
       header_table_size:      0x01,
       enable_push:            0x02,
@@ -78,10 +81,10 @@ module Plum
     attr_accessor :payload
 
     def initialize(type: nil, type_value: nil, flags: nil, flags_value: nil, stream_id: nil, payload: nil)
-      self.payload = (payload || "")
-      self.type_value = type_value or self.type = type
-      self.flags_value = flags_value or self.flags = flags
-      self.stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
+      @payload = payload.to_s
+      @type_value = type_value or self.type = type
+      @flags_value = flags_value or self.flags = flags
+      @stream_id = stream_id or raise ArgumentError.new("stream_id is necessary")
     end
 
     # Returns the length of payload.
@@ -93,13 +96,13 @@ module Plum
     # Returns the type of the frame in Symbol.
     # @return [Symbol] The type.
     def type
-      FRAME_TYPES.key(type_value) || ("unknown_%02x" % type_value).to_sym
+      FRAME_TYPES_INVERSE[@type_value] || ("unknown_%02x" % @type_value).to_sym
     end
 
     # Sets the frame type.
     # @param value [Symbol] The type.
     def type=(value)
-      self.type_value = FRAME_TYPES[value] or raise ArgumentError.new("unknown frame type: #{value}")
+      @type_value = FRAME_TYPES[value] or raise ArgumentError.new("unknown frame type: #{value}")
     end
 
     # Returns the set flags on the frame.
@@ -107,26 +110,37 @@ module Plum
     def flags
       fs = FRAME_FLAGS[type]
       [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]
-        .select {|v| flags_value & v > 0 }
+        .select {|v| @flags_value & v > 0 }
         .map {|val| fs && fs.key(val) || ("unknown_%02x" % val).to_sym }
     end
 
     # Sets the frame flags.
-    # @param value [Array<Symbol>] The flags.
-    def flags=(value)
-      self.flags_value = (value && value.map {|flag| FRAME_FLAGS[self.type][flag] }.inject(:|) || 0)
+    # @param values [Array<Symbol>] The flags.
+    def flags=(values)
+      val = 0
+      FRAME_FLAGS_MAP.values_at(*values).each { |c|
+        val |= c if c
+      }
+      @flags_value = val
     end
+
+    # Frame#flag_name?() == Frame#flags().include?(:flag_name)
+    # TODO
+    FRAME_FLAGS_MAP.each { |name, value|
+      class_eval <<-EOS, __FILE__, __LINE__ + 1
+        def #{name}?
+          @flags_value & #{value} > 0
+        end
+      EOS
+    }
 
     # Assembles the frame into binary representation.
     # @return [String] Binary representation of this frame.
     def assemble
-      bytes = "".force_encoding(Encoding::BINARY)
-      bytes.push_uint24(length)
-      bytes.push_uint8(type_value)
-      bytes.push_uint8(flags_value)
-      bytes.push_uint32(stream_id & ~(1 << 31)) # first bit is reserved (MUST be 0)
-      bytes.push(payload.b)
-      bytes
+      [length / 0x100, length % 0x100,
+       @type_value,
+       @flags_value,
+       @stream_id].pack("nCCCN") << @payload
     end
 
     # @private
@@ -136,23 +150,19 @@ module Plum
 
     # Parses a frame from given buffer. It changes given buffer.
     #
-    # @param buffer [String] The buffer stored the data received from peer.
+    # @param buffer [String] The buffer stored the data received from peer. Encoding must be Encoding::BINARY.
     # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
     def self.parse!(buffer)
-      buffer.force_encoding(Encoding::BINARY)
-
-      return nil if buffer.size < 9 # header: 9 bytes
+      return nil if buffer.bytesize < 9 # header: 9 bytes
       length = buffer.uint24
-      return nil if buffer.size < 9 + length
+      return nil if buffer.bytesize < 9 + length
 
       bhead = buffer.byteshift(9)
       payload = buffer.byteshift(length)
 
-      type_value = bhead.uint8(3)
-      flags_value = bhead.uint8(4)
-      r_sid = bhead.uint32(5)
-      r = r_sid >> 31
-      stream_id = r_sid & ~(1 << 31)
+      type_value, flags_value, r_sid = bhead.byteslice(3, 6).unpack("CCN")
+      # r = r_sid >> 31 # currently not used
+      stream_id = r_sid # & ~(1 << 31)
 
       self.new(type_value: type_value,
                flags_value: flags_value,

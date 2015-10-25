@@ -14,8 +14,8 @@ module Plum
       def encode(headers)
         out = ""
         headers.each do |name, value|
-          name = name.to_s.b
-          value = value.to_s.b
+          name = name.to_s
+          value = value.to_s
           if index = search(name, value)
             out << encode_indexed(index)
           elsif index = search(name, nil)
@@ -59,10 +59,9 @@ module Plum
       def encode_half_indexed(index, value)
         if @indexing
           store(fetch(index)[0], value)
-          fb = encode_integer(index, 6)
-          fb.setbyte(0, fb.uint8 | 0b01000000)
+          fb = encode_integer(index, 6, 0b01000000)
         else
-          fb = encode_integer(index, 4)
+          fb = encode_integer(index, 4, 0b00000000)
         end
         fb << encode_string(value)
       end
@@ -71,27 +70,24 @@ module Plum
       # | 1 |        Index (7+)         |
       # +---+---------------------------+
       def encode_indexed(index)
-        s = encode_integer(index, 7)
-        s.setbyte(0, s.uint8 | 0b10000000)
-        s
+        encode_integer(index, 7, 0b10000000)
       end
 
-      def encode_integer(value, prefix_length)
+      def encode_integer(value, prefix_length, hmask)
         mask = (1 << prefix_length) - 1
-        out = ""
 
         if value < mask
-          out.push_uint8(value)
+          (value + hmask).chr.force_encoding(Encoding::BINARY)
         else
+          vals = [mask + hmask]
           value -= mask
-          out.push_uint8(mask)
           while value >= mask
-            out.push_uint8((value % 0b10000000) + 0b10000000)
-            value >>= 7
+            vals << (value % 0x80) + 0x80
+            value /= 0x80
           end
-          out.push_uint8(value)
+          vals << value
+          vals.pack("C*")
         end
-        out.force_encoding(Encoding::BINARY)
       end
 
       def encode_string(str)
@@ -105,14 +101,13 @@ module Plum
       end
 
       def encode_string_plain(str)
-        encode_integer(str.bytesize, 7) << str.force_encoding(Encoding::BINARY)
+        encode_integer(str.bytesize, 7, 0b00000000) << str.force_encoding(Encoding::BINARY)
       end
 
       def encode_string_huffman(str)
         huffman_str = Huffman.encode(str)
-        lenstr = encode_integer(huffman_str.bytesize, 7)
-        lenstr.setbyte(0, lenstr.uint8(0) | 0b10000000)
-        lenstr.force_encoding(Encoding::BINARY) << huffman_str
+        lenstr = encode_integer(huffman_str.bytesize, 7, 0b10000000)
+        lenstr << huffman_str
       end
     end
   end

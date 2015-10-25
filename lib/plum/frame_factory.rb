@@ -20,7 +20,7 @@ module Plum
         payload.push_uint16(id)
         payload.push_uint32(value)
       }
-      Frame.new(type: :settings, stream_id: 0, flags: [ack].compact, payload: payload)
+      Frame.new(type: :settings, stream_id: 0, flags: [ack], payload: payload)
     end
 
     def ping(arg1 = "plum\x00\x00\x00\x00", arg2 = nil)
@@ -33,21 +33,21 @@ module Plum
     end
 
     def data(stream_id, payload, *flags)
-      Frame.new(type: :data, stream_id: stream_id, flags: flags.compact, payload: payload.to_s)
+      Frame.new(type: :data, stream_id: stream_id, flags: flags, payload: payload)
     end
 
     def headers(stream_id, encoded, *flags)
-      Frame.new(type: :headers, stream_id: stream_id, flags: flags.compact, payload: encoded)
+      Frame.new(type: :headers, stream_id: stream_id, flags: flags, payload: encoded)
     end
 
     def push_promise(stream_id, new_id, encoded, *flags)
       payload = "".push_uint32(0 << 31 | new_id)
                   .push(encoded)
-      Frame.new(type: :push_promise, stream_id: stream_id, flags: flags.compact, payload: payload)
+      Frame.new(type: :push_promise, stream_id: stream_id, flags: flags, payload: payload)
     end
 
     def continuation(stream_id, payload, *flags)
-      Frame.new(type: :continuation, stream_id: stream_id, flags: flags.compact, payload: payload)
+      Frame.new(type: :continuation, stream_id: stream_id, flags: flags, payload: payload)
     end
   end
 end

@@ -82,8 +82,8 @@ module Plum
       end
 
       r_wsi = frame.payload.uint32
-      r = r_wsi >> 31
-      wsi = r_wsi & ~(1 << 31)
+      # r = r_wsi >> 31 # currently not used
+      wsi = r_wsi # & ~(1 << 31)
 
       if wsi == 0
         local_error = (Connection === self) ? ConnectionError : StreamError
