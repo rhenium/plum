@@ -131,7 +131,11 @@ module Plum
               # unknown HTTP/2 pseudo-headers
             else
               if "cookie" == k && ebase["HTTP_COOKIE"]
-                ebase["HTTP_COOKIE"] << "; " << v
+                if ebase["HTTP_COOKIE"].frozen?
+                  ebase["HTTP_COOKIE"] += "; " << v
+                else
+                  ebase["HTTP_COOKIE"] << "; " << v
+                end
               else
                 ebase["HTTP_" << k.tr("-", "_").upcase!] = v
               end
