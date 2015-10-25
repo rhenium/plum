@@ -2,6 +2,7 @@ using Plum::BinaryString
 
 module Plum
   class Stream
+    include EventEmitter
     include FlowControl
     include StreamUtils
 
@@ -48,7 +49,7 @@ module Plum
         # MUST ignore unknown frame
       end
     rescue StreamError => e
-      connection.callback(:stream_error, self, e)
+      callback(:stream_error, e)
       close(e.http2_error_type)
     end
 
@@ -101,7 +102,7 @@ module Plum
     end
 
     def receive_end_stream
-      connection.callback(:end_stream, self)
+      callback(:end_stream)
       @state = :half_closed_remote
     end
 
@@ -119,7 +120,7 @@ module Plum
       else
         body = frame.payload
       end
-      connection.callback(:data, self, body)
+      callback(:data, body)
 
       receive_end_stream if frame.end_stream?
     end
@@ -158,7 +159,7 @@ module Plum
         raise ConnectionError.new(:compression_error, e)
       end
 
-      connection.callback(:headers, self, decoded_headers)
+      callback(:headers, decoded_headers)
 
       receive_end_stream if first.end_stream?
     end
@@ -173,7 +174,7 @@ module Plum
       end
 
       @state = :open
-      connection.callback(:open, self)
+      callback(:open)
 
       if frame.end_headers?
         receive_complete_headers([frame])
@@ -215,8 +216,14 @@ module Plum
         raise ConnectionError.new(:protocol_error)
       end
 
-      connection.callback(:rst_stream, self, frame)
+      callback(:rst_stream, frame)
       @state = :closed # MUST NOT send RST_STREAM
+    end
+
+    # override EventEmitter
+    def callback(name, *args)
+      super(name, *args)
+      @connection.callback(name, self, *args)
     end
   end
 end
