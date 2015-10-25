@@ -16,8 +16,12 @@ module Rack
         )
 
         @server = ::Plum::Rack::Server.new(app, config)
-        yield @server if block_given?
+        yield @server if block_given? # TODO
         @server.start
+      end
+
+      def self.shutdown
+        @server.stop if @server
       end
 
       def self.valid_options

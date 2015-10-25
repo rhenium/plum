@@ -34,7 +34,7 @@ module Plum
           headers = data = nil
           stream.on(:open) {
             headers = nil
-            data = "".b
+            data = "".force_encoding(Encoding::BINARY)
           }
 
           stream.on(:headers) { |h|
@@ -103,44 +103,43 @@ module Plum
       end
 
       def new_env(h, data)
-        headers = h.group_by { |k, v| k }.map { |k, kvs|
-          if k == "cookie"
-            [k, kvs.map(&:last).join("; ")]
-          else
-            [k, kvs.first.last]
-          end
-        }.to_h
-
-        cmethod = headers[":method"]
-        cpath = headers[":path"]
-        cpath_name, cpath_query = cpath.split("?", 2).map(&:to_s)
-        cauthority = headers[":authority"]
-        cscheme = headers[":scheme"]
         ebase = {
-          "REQUEST_METHOD"    => cmethod,
           "SCRIPT_NAME"       => "",
-          "PATH_INFO"         => cpath_name,
-          "QUERY_STRING"      => cpath_query.to_s,
-          "SERVER_NAME"       => cauthority.split(":").first,
-          "SERVER_PORT"       => (cauthority.split(":").last || 443), # TODO: forwarded header (RFC 7239)
-        }
-
-        headers.each {|key, value|
-          unless key.start_with?(":") && key.include?(".")
-            ebase["HTTP_" + key.gsub("-", "_").upcase] = value
-          end
-        }
-
-        ebase.merge!({
           "rack.version"      => ::Rack::VERSION,
-          "rack.url_scheme"   => cscheme,
           "rack.input"        => StringIO.new(data),
           "rack.errors"       => $stderr,
           "rack.multithread"  => true,
           "rack.multiprocess" => false,
           "rack.run_once"     => false,
           "rack.hijack?"      => false,
-        })
+        }
+
+        h.each { |k, v|
+          case k
+          when ":method"
+            ebase["REQUEST_METHOD"] = v
+          when ":path"
+            cpath_name, cpath_query = v.split("?", 2)
+            ebase["PATH_INFO"] = cpath_name
+            ebase["QUERY_STRING"] = cpath_query || ""
+          when ":authority"
+            chost, cport = v.split(":", 2)
+            ebase["SERVER_NAME"] = chost
+            ebase["SERVER_PORT"] = (cport || 443).to_i
+          when ":scheme"
+            ebase["rack.url_scheme"] = v
+          else
+            if k.start_with?(":")
+              # unknown HTTP/2 pseudo-headers
+            else
+              if "cookie" == k && headers["HTTP_COOKIE"]
+                ebase["HTTP_COOKIE"] << "; " << v
+              else
+                ebase["HTTP_" << k.tr("-", "_").upcase!] = v
+              end
+            end
+          end
+        }
 
         ebase
       end
@@ -156,12 +155,12 @@ module Plum
             next
           end
 
-          key = key.downcase.gsub(/^x-/, "")
-          vs = v_.split("\n")
-          if key == "set-cookie"
-            rbase[key] = vs.join("; ") # RFC 7540 8.1.2.5
+          key = key.downcase
+          if "set-cookie".freeze == key
+            rbase[key] = v_.gsub("\n", "; ") # RFC 7540 8.1.2.5
           else
-            rbase[key] = vs.join(",") # RFC 7230 7
+            key = key.byteshift(2) if key.start_with?("x-")
+            rbase[key] = v_.tr("\n", ",") # RFC 7230 7
           end
         end
 
