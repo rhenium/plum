@@ -17,7 +17,7 @@ module Plum
 
       def store(name, value)
         value = value.to_s
-        @dynamic_table.unshift([name, value])
+        @dynamic_table.unshift([name.freeze, value.freeze])
         @size += name.bytesize + value.bytesize + 32
         evict
       end
