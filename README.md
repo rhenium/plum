@@ -12,7 +12,9 @@ A minimal pure Ruby implementation of HTTP/2 library / server.
 
 ## Usage
 ### As a library
-See examples in `examples/`
+* See documentation: http://www.rubydoc.info/gems/plum
+* See examples in `examples/`
+* [rhenium/plum-server](https://github.com/rhenium/plum-server) - A static-file server for https://rhe.jp and http://rhe.jp.
 
 ### As a Rack-compatible server
 Insert `require "plum/rack"` to your `config.ru`
@@ -38,10 +40,6 @@ Then run it with:
 ```
 
 By default, Plum generates a dummy server certificate if `--cert` and `--key` options are not specified.
-
-## Examples
-* examples/ - Minimal usage.
-* [rhenium/plum-server](https://github.com/rhenium/plum-server) - A example server for https://rhe.jp and http://rhe.jp.
 
 ## TODO
 * **Better API**
