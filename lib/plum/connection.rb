@@ -134,9 +134,7 @@ module Plum
       if frame.stream_id == 0
         receive_control_frame(frame)
       else
-        if @streams.key?(frame.stream_id)
-          stream = @streams[frame.stream_id]
-        else
+        unless stream = @streams[frame.stream_id]
           if frame.stream_id.even? || @max_odd_stream_id >= frame.stream_id
             raise Plum::ConnectionError.new(:protocol_error)
           end

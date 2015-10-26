@@ -49,13 +49,15 @@ module Plum
 
       def send_body(stream, body)
         begin
-          if body.is_a?(Array)
-            last = body.size - 1
-            body.each_with_index { |part, i|
-              stream.send_data(part, end_stream: last == i)
-            }
-          elsif body.is_a?(IO)
+          if body.is_a?(IO)
             stream.send_data(body, end_stream: true)
+          elsif body.respond_to?(:size)
+            last = body.size - 1
+            i = 0
+            body.each { |part|
+              stream.send_data(part, end_stream: last == i)
+              i += 1
+            }
           else
             body.each { |part| stream.send_data(part, end_stream: false) }
             stream.send_data(nil, end_stream: true)
@@ -65,9 +67,20 @@ module Plum
         end
       end
 
-      def extract_push(r_extheaders)
-        if pushs = r_extheaders["plum.serverpush"]
-          pushs.split(";").map { |push| push.split(" ", 2) }
+      def extract_push(reqheaders, extheaders)
+        if pushs = extheaders["plum.serverpush"]
+          authority = reqheaders.find { |k, v| k == ":authority" }[1]
+          scheme = reqheaders.find { |k, v| k == ":scheme" }[1]
+
+          pushs.split(";").map { |push|
+            method, path = push.split(" ", 2)
+            {
+              ":authority" => authority,
+              ":method" => method.to_s.upcase,
+              ":scheme" => scheme,
+              ":path" => path
+            }
+          }
         else
           []
         end
@@ -77,21 +90,16 @@ module Plum
         env = new_env(headers, data)
         r_status, r_rawheaders, r_body = @app.call(env)
         r_headers, r_extheaders = extract_headers(r_status, r_rawheaders)
-        r_topushs = extract_push(r_extheaders)
 
         stream.send_headers(r_headers, end_stream: false)
-        r_pushstreams = r_topushs.map { |method, path|
-          preq = { ":authority" => headers.find { |k, v| k == ":authority" }[1],
-                   ":method" => method.to_s.upcase,
-                   ":scheme" => headers.find { |k, v| k == ":scheme" }[1],
-                   ":path" => path }
-          st = stream.promise(preq)
-          [st, preq]
+
+        push_sts = extract_push(headers, r_extheaders).map { |preq|
+          [stream.promise(preq), preq]
         }
 
         send_body(stream, r_body)
 
-        r_pushstreams.each { |st, preq|
+        push_sts.each { |st, preq|
           penv = new_env(preq, "")
           p_status, p_h, p_body = @app.call(penv)
           p_headers = extract_headers(p_status, p_h)

@@ -7,13 +7,13 @@ class App2
       [
         200,
         { "Content-Type" => "text/html" },
-        ["*10 bytes*"*400]
+        ["8 bytes-" * 512]
       ]
     else
       [
         404,
         { "Content-Type" => "text/html" },
-        [""]
+        ["#{env["REQUEST_METHOD"]} #{env["PATH_INFO"]}"]
       ]
     end
   end
