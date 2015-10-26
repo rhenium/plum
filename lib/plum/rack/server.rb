@@ -50,11 +50,11 @@ module Plum
             sock = sock.accept if sock.respond_to?(:accept)
             plum = svr.plum(sock)
 
-            con = Connection.new(app: @app,
-                                 plum: plum,
-                                 logger: @logger,
-                                 server_push: @config[:server_push],
-                                 remote_addr: sock.peeraddr.last)
+            con = Session.new(app: @app,
+                              plum: plum,
+                              logger: @logger,
+                              server_push: @config[:server_push],
+                              remote_addr: sock.peeraddr.last)
             con.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
             sock.close if sock

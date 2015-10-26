@@ -5,7 +5,7 @@ module Plum
   module Rack
     INVALID_HEADERS = Set["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade"].freeze
 
-    class Connection
+    class Session
       attr_reader :app, :plum
 
       def initialize(app:, plum:, logger:, server_push: true, remote_addr: "127.0.0.1")
