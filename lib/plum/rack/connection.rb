@@ -3,6 +3,8 @@ using Plum::BinaryString
 
 module Plum
   module Rack
+    INVALID_HEADERS = Set["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade"].freeze
+
     class Connection
       attr_reader :app, :plum
 
@@ -139,10 +141,8 @@ module Plum
           when ":scheme"
             ebase["rack.url_scheme"] = v
           else
-            if k.start_with?(":")
-              # unknown HTTP/2 pseudo-headers
-            else
-              if "cookie" == k && ebase["HTTP_COOKIE"]
+            unless k.start_with?(":") # ignore unknown pseudo-headers
+              if k == "cookie" && ebase["HTTP_COOKIE"]
                 if ebase["HTTP_COOKIE"].frozen?
                   (ebase["HTTP_COOKIE"] += "; ") << v
                 else
@@ -173,7 +173,7 @@ module Plum
 
             if "set-cookie" == key
               rbase[key] = v_.gsub("\n", "; ") # RFC 7540 8.1.2.5
-            else
+            elsif !INVALID_HEADERS.member?(key)
               key.byteshift(2) if key.start_with?("x-")
               rbase[key] = v_.tr("\n", ",") # RFC 7230 7
             end
