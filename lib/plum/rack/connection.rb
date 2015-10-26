@@ -8,11 +8,12 @@ module Plum
     class Connection
       attr_reader :app, :plum
 
-      def initialize(app, plum, logger, server_push:)
+      def initialize(app:, plum:, logger:, server_push: true, remote_addr: "127.0.0.1")
         @app = app
         @plum = plum
         @logger = logger
         @server_push = server_push
+        @remote_addr = remote_addr
 
         setup_plum
       end
@@ -62,6 +63,7 @@ module Plum
               stream.send_data(part, end_stream: last == i)
               i += 1
             }
+            stream.send_data(nil, end_stream: true) if i == 0
           else
             body.each { |part| stream.send_data(part, end_stream: false) }
             stream.send_data(nil, end_stream: true)
@@ -116,7 +118,6 @@ module Plum
 
       def new_env(h, data)
         ebase = {
-          "SCRIPT_NAME"       => "",
           "rack.version"      => ::Rack::VERSION,
           "rack.input"        => StringIO.new(data),
           "rack.errors"       => $stderr,
@@ -124,6 +125,8 @@ module Plum
           "rack.multiprocess" => false,
           "rack.run_once"     => false,
           "rack.hijack?"      => false,
+          "SCRIPT_NAME"       => "",
+          "REMOTE_ADDR"       => @remote_addr,
         }
 
         h.each { |k, v|
@@ -137,7 +140,7 @@ module Plum
           when ":authority"
             chost, cport = v.split(":", 2)
             ebase["SERVER_NAME"] = chost
-            ebase["SERVER_PORT"] = (cport || 443).to_i
+            ebase["SERVER_PORT"] = cport || "443"
           when ":scheme"
             ebase["rack.url_scheme"] = v
           else
