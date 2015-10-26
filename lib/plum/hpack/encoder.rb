@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -10,9 +11,8 @@ module Plum
         @indexing = indexing
         @huffman = huffman
       end
-
       def encode(headers)
-        out = ""
+        out = String.new.force_encoding(Encoding::BINARY)
         headers.each do |name, value|
           name = name.to_s
           value = value.to_s
@@ -24,7 +24,7 @@ module Plum
             out << encode_literal(name, value)
           end
         end
-        out.force_encoding(Encoding::BINARY)
+        out
       end
 
       private
@@ -46,7 +46,7 @@ module Plum
         else
           fb = "\x00"
         end
-        fb.force_encoding(Encoding::BINARY) << encode_string(name) << encode_string(value)
+        (fb + encode_string(name)) << encode_string(value)
       end
 
       # +---+---+---+---+---+---+---+---+
@@ -106,8 +106,7 @@ module Plum
 
       def encode_string_huffman(str)
         huffman_str = Huffman.encode(str)
-        lenstr = encode_integer(huffman_str.bytesize, 7, 0b10000000)
-        lenstr << huffman_str
+        encode_integer(huffman_str.bytesize, 7, 0b10000000) << huffman_str
       end
     end
   end

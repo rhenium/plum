@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 module Rack
   module Handler
     class Plum

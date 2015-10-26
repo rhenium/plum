@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -35,7 +36,7 @@ module Plum
 
         reqs = {}
         @plum.on(:headers) { |stream, h|
-          reqs[stream] = { headers: h, data: "".force_encoding(Encoding::BINARY) }
+          reqs[stream] = { headers: h, data: String.new.force_encoding(Encoding::BINARY) }
         }
 
         @plum.on(:data) { |stream, d|
@@ -140,12 +141,12 @@ module Plum
             else
               if "cookie" == k && ebase["HTTP_COOKIE"]
                 if ebase["HTTP_COOKIE"].frozen?
-                  ebase["HTTP_COOKIE"] += "; " << v
+                  (ebase["HTTP_COOKIE"] += "; ") << v
                 else
                   ebase["HTTP_COOKIE"] << "; " << v
                 end
               else
-                ebase["HTTP_" << k.tr("-", "_").upcase!] = v
+                ebase["HTTP_" + k.tr("-", "_").upcase!] = v
               end
             end
           end

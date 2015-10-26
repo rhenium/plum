@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 module Plum
   module HPACK
     # RFC7541 Appendix A

@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 using Plum::BinaryString
 
 module Plum
@@ -7,7 +8,7 @@ module Plum
     def initialize(sock, local_settings = {})
       require "http/parser"
       @_headers = nil
-      @_body = ""
+      @_body = String.new
       @_http_parser = setup_parser
       @sock = sock
       super(@sock.method(:write), local_settings)
@@ -65,12 +66,11 @@ module Plum
         process_first_request
       }
 
-      resp = ""
-      resp << "HTTP/1.1 101 Switching Protocols\r\n"
-      resp << "Connection: Upgrade\r\n"
-      resp << "Upgrade: h2c\r\n"
-      resp << "Server: plum/#{Plum::VERSION}\r\n"
-      resp << "\r\n"
+      resp = "HTTP/1.1 101 Switching Protocols\r\n"
+             "Connection: Upgrade\r\n"
+             "Upgrade: h2c\r\n"
+             "Server: plum/#{Plum::VERSION}\r\n"
+             "\r\n"
 
       @sock.write(resp)
     end

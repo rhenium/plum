@@ -1,3 +1,4 @@
+# -*- frozen-string-literal: true -*-
 module Plum
   class Error < StandardError; end
   class HPACKError < Error; end
