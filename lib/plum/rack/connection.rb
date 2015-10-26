@@ -6,10 +6,11 @@ module Plum
     class Connection
       attr_reader :app, :plum
 
-      def initialize(app, plum, logger)
+      def initialize(app, plum, logger, server_push:)
         @app = app
         @plum = plum
         @logger = logger
+        @server_push = server_push
 
         setup_plum
       end
@@ -69,7 +70,9 @@ module Plum
       end
 
       def extract_push(reqheaders, extheaders)
-        if pushs = extheaders["plum.serverpush"]
+        if @server_push &&
+            @plum.push_enabled? &&
+            pushs = extheaders["plum.serverpush"]
           authority = reqheaders.find { |k, v| k == ":authority" }[1]
           scheme = reqheaders.find { |k, v| k == ":scheme" }[1]
 

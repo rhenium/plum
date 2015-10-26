@@ -2,7 +2,10 @@
 module Plum
   module Rack
     class Server
+      attr_reader :config
+
       def initialize(app, config)
+        @config = config
         @state = :null
         @app = config[:debug] ? ::Rack::CommonLogger.new(app) : app
         @logger = Logger.new(config[:log] || $stdout).tap { |l|
@@ -47,7 +50,7 @@ module Plum
             sock = sock.accept if sock.respond_to?(:accept)
             plum = svr.plum(sock)
 
-            con = Connection.new(@app, plum, @logger)
+            con = Connection.new(@app, plum, @logger, server_push: @config[:server_push])
             con.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
             sock.close if sock
