@@ -41,9 +41,10 @@ module Plum
     #   @param payload [String] 8 bytes length data to send.
     # @overload ping(payload = "plum\x00\x00\x00\x00")
     #   @param payload [String] 8 bytes length data to send.
-    def ping(arg1 = "plum\x00\x00\x00\x00", arg2 = nil)
+    def ping(arg1 = "plum\x00\x00\x00\x00".b, arg2 = nil)
       if !arg2
         raise ArgumentError.new("data must be 8 octets") if arg1.bytesize != 8
+        arg1 = arg1.b if arg1.encoding != Encoding::BINARY
         Frame.new(type: :ping, stream_id: 0, payload: arg1)
       else
         Frame.new(type: :ping, stream_id: 0, flags: [:ack], payload: arg2)
@@ -55,10 +56,11 @@ module Plum
     # @param payload [String] Payload.
     # @param flags [Array<Symbol>] Flags.
     def data(stream_id, payload, *flags)
+      payload = payload.b if payload && payload.encoding != Encoding::BINARY
       Frame.new(type: :data, stream_id: stream_id, flags: flags, payload: payload)
     end
 
-    # Creates a DATA frame.
+    # Creates a HEADERS frame.
     # @param stream_id [Integer] The stream ID.
     # @param encoded [String] Headers.
     # @param flags [Array<Symbol>] Flags.
