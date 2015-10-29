@@ -39,10 +39,9 @@ module Plum
 
       def read_integer(str, pos, prefix_length)
         raise HPACKError.new("integer: end of buffer") if str.empty?
-        first_byte = str.getbyte(pos)
 
         mask = 1 << prefix_length
-        ret = first_byte % mask
+        ret = str.getbyte(pos) % mask
         return [ret, 1] if ret != mask - 1
 
         octets = 0
@@ -105,18 +104,10 @@ module Plum
         # +---+---------------------------+
         # | Value String (Length octets)  |
         # +-------------------------------+
-        index, ilen = read_integer(str, pos, 6)
-        if index == 0
-          name, nlen = read_string(str, pos + ilen)
-        else
-          name, = fetch(index)
-          nlen = 0
-        end
+        ret, len = parse_literal(str, pos, 6)
+        store(*ret)
 
-        val, vlen = read_string(str, pos + ilen + nlen)
-        store(name, val)
-
-        [[name, val], ilen + nlen + vlen]
+        [ret, len]
       end
 
       def parse_no_indexing(str, pos)
@@ -139,7 +130,13 @@ module Plum
         # +---+---------------------------+
         # | Value String (Length octets)  |
         # +-------------------------------+
-        index, ilen = read_integer(str, pos, 4)
+        ret, len = parse_literal(str, pos, 4)
+
+        [ret, len]
+      end
+
+      def parse_literal(str, pos, pref)
+        index, ilen = read_integer(str, pos, pref)
         if index == 0
           name, nlen = read_string(str, pos + ilen)
         else
