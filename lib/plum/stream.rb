@@ -112,40 +112,35 @@ module Plum
       end
 
       if frame.padded?
-        padding_length = frame.payload.uint8(0)
+        padding_length = frame.payload.uint8
         if padding_length >= frame.length
           raise ConnectionError.new(:protocol_error, "padding is too long")
         end
-        body = frame.payload.byteslice(1, frame.length - padding_length - 1)
+        callback(:data, frame.payload.byteslice(1, frame.length - padding_length - 1))
       else
-        body = frame.payload
+        callback(:data, frame.payload)
       end
-      callback(:data, body)
 
       receive_end_stream if frame.end_stream?
     end
 
     def receive_complete_headers(frames)
       first = frames.shift
-
       payload = first.payload
-      first_length = first.length
-      padding_length = 0
 
       if first.padded?
         padding_length = payload.uint8
-        first_length -= 1 + padding_length
-        payload = payload.byteslice(1, first_length)
+        payload = payload.byteslice(1, payload.bytesize - padding_length - 1)
       else
+        padding_length = 0
         payload = payload.dup
       end
 
       if first.priority?
         receive_priority_payload(payload.byteshift(5))
-        first_length -= 5
       end
 
-      if padding_length > first_length
+      if padding_length > payload.bytesize
         raise ConnectionError.new(:protocol_error, "padding is too long")
       end
 
