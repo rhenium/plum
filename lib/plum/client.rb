@@ -2,7 +2,8 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      https: true
+      https: true,
+      verify_mode: OpenSSL::SSL::VERIFY_NONE,
     }.freeze
 
     attr_reader :host, :port, :config
@@ -101,10 +102,6 @@ module Plum
       response
     end
 
-    def get(path, headers = {})
-      request({ ":method" => "GET", ":path" => path }.merge(headers))
-    end
-
     # @!method get
     # @!method head
     # @!method delete
@@ -159,9 +156,6 @@ module Plum
         sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
         sock.sync_close = true
         sock.connect
-        if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
-          sock.post_connection_check(@config[:hostname] || @host)
-        end
       end
 
       @socket = sock
@@ -201,6 +195,7 @@ module Plum
     def new_ssl_ctx
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
+      ctx.verify_mode = @config[:verify_mode]
       if ctx.respond_to?(:hostname=)
         ctx.hostname = @config[:hostname] || @host
       end
