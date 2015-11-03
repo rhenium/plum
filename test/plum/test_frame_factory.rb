@@ -53,4 +53,41 @@ class FrameFactoryTest < Minitest::Test
                  flags: [:ack],
                  payload: "12345678")
   end
+
+  def test_continuation
+    frame = Frame.continuation(123, "abc", :end_headers)
+    assert_frame(frame,
+                 type: :continuation,
+                 stream_id: 123,
+                 flags: [:end_headers],
+                 payload: "abc")
+  end
+
+  def test_data
+    frame = Frame.data(123, "abc".force_encoding("UTF-8"))
+    assert_frame(frame,
+                 type: :data,
+                 stream_id: 123,
+                 flags: [],
+                 payload: "abc")
+    assert_equal(Encoding::BINARY, frame.payload.encoding)
+  end
+
+  def test_headers
+    frame = Frame.headers(123, "abc", :end_stream)
+    assert_frame(frame,
+                 type: :headers,
+                 stream_id: 123,
+                 flags: [:end_stream],
+                 payload: "abc")
+  end
+
+  def test_push_promise
+    frame = Frame.push_promise(345, 2, "abc", :end_headers)
+    assert_frame(frame,
+                 type: :push_promise,
+                 stream_id: 345,
+                 flags: [:end_headers],
+                 payload: "\x00\x00\x00\x02abc")
+  end
 end

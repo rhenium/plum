@@ -7,5 +7,6 @@ class ClientConnectionTest < Minitest::Test
     stream = con.open_stream(weight: 256)
     assert(stream.id % 2 == 1)
     assert_equal(256, stream.weight)
+    assert_equal(:idle, stream.state)
   end
 end
