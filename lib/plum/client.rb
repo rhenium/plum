@@ -89,18 +89,64 @@ module Plum
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
     def request(headers, body = nil)
-      response = request_async(headers, body)
+      raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
+
+      base_headers = { ":method" => nil,
+                       ":path" => nil,
+                       ":authority" => (@config[:hostname] || @host),
+                       ":scheme" => @config[:https] ? "https" : "http" }
+
+      response = request_async(base_headers.merge(headers), body)
       wait(response)
       response
     end
 
-    %w(GET POST HEAD PUT DELETE).each { |method|
-      define_method(method.downcase.to_sym) do |headers = {}|
-        request(headers)
-      end
+    def get(path, headers = {})
+      request({ ":method" => "GET", ":path" => path }.merge(headers))
+    end
 
-      define_method(:"#{method.downcase}_async") do |headers = {}, &block|
-        request_async(headers, &block)
+    # @!method get
+    # @!method head
+    # @!method delete
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param headers [Hash] the request headers
+    # Shorthand method for `#request`
+
+    # @!method get_async
+    # @!method head_async
+    # @!method delete_async
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param headers [Hash] the request headers
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `#request_async`
+    %w(GET HEAD DELETE).each { |method|
+      define_method(:"#{method.downcase}") do |path, headers = {}|
+        request({ ":method" => method, ":path" => path }.merge(headers))
+      end
+      define_method(:"#{method.downcase}_async") do |path, headers = {}, &block|
+        request_async({ ":method" => method, ":path" => path }.merge(headers), nil, &block)
+      end
+    }
+    # @!method post
+    # @!method put
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param body [String] the request body
+    # @param headers [Hash] the request headers
+    # Shorthand method for `#request`
+
+    # @!method post_async
+    # @!method put_async
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param body [String] the request body
+    # @param headers [Hash] the request headers
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `#request_async`
+    %w(POST PUT).each { |method|
+      define_method(:"#{method.downcase}") do |path, body = nil, headers = {}|
+        request({ ":method" => method, ":path" => path }.merge(headers), body)
+      end
+      define_method(:"#{method.downcase}_async") do |path, body = nil, headers = {}, &block|
+        request_async({ ":method" => method, ":path" => path }.merge(headers), body, &block)
       end
     }
 
@@ -155,21 +201,17 @@ module Plum
     def new_ssl_ctx
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
-
       if ctx.respond_to?(:hostname=)
         ctx.hostname = @config[:hostname] || @host
       end
-
       if ctx.respond_to?(:alpn_protocols)
         ctx.alpn_protocols = ["h2", "http/1.1"]
       end
-
       if ctx.respond_to?(:npn_select_cb)
         ctx.alpn_select_cb = -> protocols {
           protocols.include?("h2") ? "h2" : protocols.first
         }
       end
-
       ctx
     end
   end
