@@ -49,7 +49,7 @@ Plum::Client.start("http2.rhe.jp", 443) { |client|
   client.get_async("/large") do |res|
     p res.status # => 200
     File.open("/tmp/large.file", "wb") { |file|
-      res.each_body do |chunk|
+      res.each_chunk do |chunk|
         file << chunk
       end
     }
