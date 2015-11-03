@@ -26,4 +26,13 @@ class ServerConnectionUtilsTest < Minitest::Test
       assert_equal(HTTPError::ERROR_CODES[:stream_closed], last.payload.uint32(4))
     }
   end
+
+  def test_push_enabled
+    open_server_connection {|con|
+      con << Frame.settings(enable_push: 0).assemble
+      assert_equal(false, con.push_enabled?)
+      con << Frame.settings(enable_push: 1).assemble
+      assert_equal(true, con.push_enabled?)
+    }
+  end
 end
