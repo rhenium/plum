@@ -9,6 +9,7 @@ module Plum
     def initialize
       @body = Queue.new
       @finished = false
+      @failed = false
       @body_read = false
     end
 
@@ -31,13 +32,23 @@ module Plum
       @finished
     end
 
+    # Returns whether the request has failed or not.
+    # @return [Boolean]
+    def failed?
+      @failed
+    end
+
     # Yields a chunk of the response body until EOF.
     # @yield [chunk] A chunk of the response body.
     def each_chunk(&block)
       raise "Body already read" if @body_read
       @body_read = true
       while chunk = @body.pop
-        yield chunk
+        if chunk == :failed
+          raise EOFError
+        else
+          yield chunk
+        end
       end
     end
 
@@ -64,6 +75,12 @@ module Plum
     def _finish
       @finished = true
       @body << nil # @body.close is not implemented in Ruby 2.2
+    end
+
+    # @api private
+    def _fail
+      @failed = true
+      @body << :failed
     end
   end
 end

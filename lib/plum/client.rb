@@ -168,8 +168,16 @@ module Plum
         initial_window_size: (1 << 30) - 1,
       }
       plum = ClientConnection.new(sock.method(:write), local_settings)
-      plum.on(:protocol_error) { |ex| raise ex }
-      plum.on(:stream_error) { |stream, ex| raise ex }
+      plum.on(:protocol_error) { |ex|
+        _fail
+        raise ex
+      }
+      plum.on(:stream_error) { |stream, ex|
+        if res = @responses.delete(stream)
+          res._fail unless res.finished?
+        end
+        raise ex
+      }
       plum.on(:headers) { |stream, headers|
         response = @responses[stream]
         response._headers(headers)
@@ -189,7 +197,16 @@ module Plum
     end
 
     def _succ
+      _fail if @socket.closed? || @socket.eof?
       @plum << @socket.readpartial(1024)
+    end
+
+    def _fail
+      while res = @responses.pop
+        res._fail unless res.finished?
+      end
+    ensure
+      close
     end
 
     def new_ssl_ctx
