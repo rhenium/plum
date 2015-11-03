@@ -36,7 +36,6 @@ module Plum
       @max_odd_stream_id = 0
       @max_even_stream_id = 0
     end
-    private :initialize
 
     # Emits :close event. Doesn't actually close socket.
     def close
@@ -77,18 +76,6 @@ module Plum
     def send_immediately(frame)
       callback(:send_frame, frame)
       @writer.call(frame.assemble)
-    end
-
-    def negotiate!
-      unless CLIENT_CONNECTION_PREFACE.start_with?(@buffer.byteslice(0, 24))
-        raise ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
-      end
-
-      if @buffer.bytesize >= 24
-        @buffer.byteshift(24)
-        @state = :waiting_settings
-        settings(@local_settings)
-      end
     end
 
     def new_stream(stream_id, **args)

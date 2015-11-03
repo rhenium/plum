@@ -25,7 +25,7 @@ module Plum
       end
 
       def plum(sock)
-        ::Plum::HTTPConnection.new(sock)
+        ::Plum::HTTPServerConnection.new(sock)
       end
     end
 
@@ -56,7 +56,7 @@ module Plum
       end
 
       def plum(sock)
-        ::Plum::HTTPSConnection.new(sock)
+        ::Plum::HTTPSServerConnection.new(sock)
       end
 
       private
@@ -116,7 +116,7 @@ module Plum
       end
 
       def plum(sock)
-        ::Plum::HTTPSConnection.new(sock)
+        ::Plum::HTTPSServerConnection.new(sock)
       end
     end
   end

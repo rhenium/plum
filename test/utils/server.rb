@@ -3,7 +3,7 @@ require "timeout"
 module ServerUtils
   def open_server_connection(scheme = :https)
     io = StringIO.new
-    @_con = (scheme == :https ? HTTPSConnection : HTTPConnection).new(io)
+    @_con = (scheme == :https ? HTTPSServerConnection : HTTPServerConnection).new(io)
     @_con << Connection::CLIENT_CONNECTION_PREFACE
     @_con << Frame.new(type: :settings, stream_id: 0).assemble
     if block_given?
@@ -14,7 +14,7 @@ module ServerUtils
   end
 
   def open_new_stream(arg1 = nil, **kwargs)
-    if arg1.is_a?(Connection)
+    if arg1.is_a?(ServerConnection)
       con = arg1
     else
       con = open_server_connection

@@ -25,7 +25,7 @@ loop do
     next
   end
 
-  plum = Plum::HTTPConnection.new(sock)
+  plum = Plum::HTTPServerConnection.new(sock)
 
   plum.on(:frame) do |frame|
     log(id, frame.stream_id, "recv: #{frame.inspect}")

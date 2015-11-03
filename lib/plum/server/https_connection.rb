@@ -1,6 +1,6 @@
 # -*- frozen-string-literal: true -*-
 module Plum
-  class HTTPSConnection < Connection
+  class HTTPSServerConnection < ServerConnection
     attr_reader :sock
 
     def initialize(sock, local_settings = {})

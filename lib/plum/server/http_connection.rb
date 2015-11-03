@@ -2,7 +2,7 @@
 using Plum::BinaryString
 
 module Plum
-  class HTTPConnection < Connection
+  class HTTPServerConnection < ServerConnection
     attr_reader :sock
 
     def initialize(sock, local_settings = {})

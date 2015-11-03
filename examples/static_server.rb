@@ -43,7 +43,7 @@ loop do
     next
   end
 
-  plum = Plum::HTTPSConnection.new(sock)
+  plum = Plum::HTTPSServerConnection.new(sock)
 
   plum.on(:frame) do |frame|
     log(id, frame.stream_id, "recv: #{frame.inspect}")
@@ -115,9 +115,9 @@ loop do
           "content-type": "text/html",
           "content-length": body.size
         }, body)
-        image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA"
-                 "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU"
-                 "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ"
+        image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA" \
+                 "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU" \
+                 "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ" \
                  "ZtJp0zAAAAAASUVORK5CYII=").unpack("m")[0]
         i_stream.respond({
           ":status": "200",
