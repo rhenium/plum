@@ -14,13 +14,6 @@ module Plum
       super(@sock.method(:write), local_settings)
     end
 
-    # Starts communication with the peer. It blocks until the io is closed, or reaches EOF.
-    def run
-      while !@sock.closed? && !@sock.eof?
-        self << @sock.readpartial(1024)
-      end
-    end
-
     # Closes the socket.
     def close
       super

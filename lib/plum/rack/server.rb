@@ -52,6 +52,7 @@ module Plum
 
             con = Session.new(app: @app,
                               plum: plum,
+                              sock: sock,
                               logger: @logger,
                               server_push: @config[:server_push],
                               remote_addr: sock.peeraddr.last)

@@ -66,7 +66,10 @@ class ClientTest < Minitest::Test
           }
 
           yield plum if block_given?
-          plum.run
+
+          while !sock.closed? && !sock.eof?
+            plum << sock.readpartial(1024)
+          end
         }
       rescue OpenSSL::SSL::SSLError
       rescue Timeout::Error

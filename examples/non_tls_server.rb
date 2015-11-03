@@ -105,7 +105,9 @@ loop do
 
   Thread.new {
     begin
-      plum.run
+      while !sock.closed? && !sock.eof?
+        plum << sock.readpartial(1024)
+      end
     rescue Plum::LegacyHTTPError
       resp = "HTTP/1.1 505 HTTP Version Not Supported\r\n"
              "Content-Type: text/plain\r\n"

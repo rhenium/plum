@@ -8,9 +8,10 @@ module Plum
     class Session
       attr_reader :app, :plum
 
-      def initialize(app:, plum:, logger:, server_push: true, remote_addr: "127.0.0.1")
+      def initialize(app:, plum:, sock:, logger:, server_push: true, remote_addr: "127.0.0.1")
         @app = app
         @plum = plum
+        @sock = sock
         @logger = logger
         @server_push = server_push
         @remote_addr = remote_addr
@@ -24,7 +25,9 @@ module Plum
 
       def run
         begin
-          @plum.run
+          while !@sock.closed? && !@sock.eof?
+            @plum << @sock.readpartial(1024)
+          end
         rescue Errno::EPIPE, Errno::ECONNRESET => e
         rescue StandardError => e
           @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")

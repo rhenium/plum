@@ -40,8 +40,8 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
 
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../../server.crt", __FILE__))
-    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../../server.key", __FILE__))
+    ctx.cert = TLS_CERT
+    ctx.key = TLS_KEY
     tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
@@ -52,7 +52,9 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
           plum = HTTPSServerConnection.new(sock)
           assert_connection_error(:inadequate_security) {
             run = true
-            plum.run
+            while !sock.closed? && !sock.eof?
+              plum << sock.readpartial(1024)
+            end
           }
         }
       rescue Timeout::Error

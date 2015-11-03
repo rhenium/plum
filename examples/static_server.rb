@@ -147,7 +147,9 @@ loop do
 
   Thread.new {
     begin
-      plum.run
+      while !sock.closed? && !sock.eof?
+        plum << sock.readpartial(1024)
+      end
     rescue
       puts $!
       puts $!.backtrace
