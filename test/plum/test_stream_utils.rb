@@ -1,7 +1,6 @@
 require "test_helper"
 
 using BinaryString
-
 class StreamUtilsTest < Minitest::Test
   def test_stream_promise
     open_new_stream {|stream|

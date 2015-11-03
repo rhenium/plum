@@ -23,7 +23,6 @@ class ConnectionTest < Minitest::Test
         con << Frame.new(type: :settings, stream_id: 0, payload: _settings * (limit / 6 + 1)).assemble
       }
     }
-
     new_con.call {|con|
       assert_connection_error(:frame_size_error) {
         con << Frame.new(type: :headers, stream_id: 3, payload: "\x00" * (limit + 1)).assemble
