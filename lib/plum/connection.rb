@@ -23,12 +23,12 @@ module Plum
     attr_reader :state, :streams
 
     def initialize(writer, local_settings = {})
+      @state = nil
       @writer = writer
       @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
       @buffer = String.new
       @streams = {}
-      @state = :negotiation
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
       initialize_flow_control(send: @remote_settings[:initial_window_size],
@@ -36,6 +36,7 @@ module Plum
       @max_odd_stream_id = 0
       @max_even_stream_id = 0
     end
+    private :initialize
 
     # Emits :close event. Doesn't actually close socket.
     def close
@@ -48,15 +49,7 @@ module Plum
     def receive(new_data)
       return if new_data.empty?
       @buffer << new_data
-
-      negotiate! if @state == :negotiation
-
-      if @state != :negotiation
-        while frame = Frame.parse!(@buffer)
-          callback(:frame, frame)
-          receive_frame(frame)
-        end
-      end
+      consume_buffer
     rescue ConnectionError => e
       callback(:connection_error, e)
       goaway(e.http2_error_type)
@@ -64,15 +57,14 @@ module Plum
     end
     alias << receive
 
-    # Reserves a new stream to server push.
-    # @param args [Hash] The argument to pass to Stram.new.
-    def reserve_stream(**args)
-      next_id = @max_even_stream_id + 2
-      stream = new_stream(next_id, state: :reserved_local, **args)
-      stream
+    private
+    def consume_buffer
+      while frame = Frame.parse!(@buffer)
+        callback(:frame, frame)
+        receive_frame(frame)
+      end
     end
 
-    private
     def send_immediately(frame)
       callback(:send_frame, frame)
       @writer.call(frame.assemble)
