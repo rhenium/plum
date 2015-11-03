@@ -1,5 +1,3 @@
-LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
-
 unless ENV["SKIP_COVERAGE"]
   begin
     require "simplecov"
@@ -26,3 +24,7 @@ include Plum
 Dir.glob(File.expand_path("../utils/*.rb", __FILE__)).each do |file|
   require file
 end
+
+LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
+TLS_CERT = OpenSSL::X509::Certificate.new File.read(File.expand_path("../server.crt", __FILE__))
+TLS_KEY = OpenSSL::PKey::RSA.new File.read(File.expand_path("../server.key", __FILE__))
