@@ -44,7 +44,9 @@ module Plum
         receive_window_update(frame)
       when :continuation
         receive_continuation(frame)
-      when :ping, :goaway, :settings, :push_promise
+      when :push_promise
+        receive_push_promise(frame)
+      when :ping, :goaway, :settings
         raise ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       else
         # MUST ignore unknown frame
@@ -61,11 +63,12 @@ module Plum
       send_immediately Frame.rst_stream(id, error_type)
     end
 
-    private
-    def send_immediately(frame)
-      @connection.send(frame)
+    # @api private
+    def set_state(state)
+      @state = state
     end
 
+    # @api private
     def update_dependency(weight: nil, parent: nil, exclusive: nil)
       raise StreamError.new(:protocol_error, "A stream cannot depend on itself.") if parent == self
 
@@ -89,6 +92,11 @@ module Plum
           end
         end
       end
+    end
+
+    private
+    def send_immediately(frame)
+      @connection.send(frame)
     end
 
     def validate_received_frame(frame)
@@ -166,6 +174,10 @@ module Plum
         raise StreamError.new(:stream_closed)
       elsif @state == :closed
         raise ConnectionError.new(:stream_closed)
+      elsif @state == :closed_implicitly
+        raise ConnectionError.new(:protocol_error)
+      elsif @state == :idle && self.id.even?
+        raise ConnectionError.new(:protocol_error)
       end
 
       @state = :open
@@ -175,6 +187,18 @@ module Plum
         receive_complete_headers([frame])
       else
         @continuation << frame
+      end
+    end
+
+    def receive_push_promise(frame)
+      raise NotImplementedError
+
+      if promised_stream.state == :closed_implicitly
+        # 5.1.1 An endpoint that receives an unexpected stream identifier MUST respond with a connection error of type PROTOCOL_ERROR.
+        raise ConnectionError.new(:protocol_error)
+      elsif promised_id.odd?
+        # 5.1.1 Streams initiated by the server MUST use even-numbered stream identifiers.
+        raise ConnectionError.new(:protocol_error)
       end
     end
 

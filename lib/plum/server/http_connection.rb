@@ -70,7 +70,7 @@ module Plum
 
     def process_first_request
       encoder = HPACK::Encoder.new(0, indexing: false) # don't pollute connection's HPACK context
-      stream = new_stream(1)
+      stream = stream(1)
       max_frame_size = local_settings[:max_frame_size]
       headers = @_headers.merge({ ":method" => @_http_parser.http_method,
                                   ":path" => @_http_parser.request_url,

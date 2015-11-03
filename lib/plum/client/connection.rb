@@ -12,10 +12,9 @@ module Plum
 
     # Create a new stream for HTTP request.
     # @param args [Hash] the argument for Stream.new
-    def open_stream(**args)
-      next_id = @max_odd_stream_id > 0 ? @max_odd_stream_id + 2 : 1
-      stream = new_stream(next_id, **args)
-      stream
+    def open_stream
+      next_id = @max_stream_id + (@max_stream_id.even? ? 1 : 2)
+      stream(next_id)
     end
   end
 end

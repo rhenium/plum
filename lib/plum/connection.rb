@@ -23,7 +23,7 @@ module Plum
     attr_reader :state, :streams
 
     def initialize(writer, local_settings = {})
-      @state = nil
+      @state = :open
       @writer = writer
       @local_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new {|hash, key| DEFAULT_SETTINGS[key] }
@@ -33,10 +33,8 @@ module Plum
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
       initialize_flow_control(send: @remote_settings[:initial_window_size],
                               recv: @local_settings[:initial_window_size])
-      @max_odd_stream_id = 0
-      @max_even_stream_id = 0
+      @max_stream_id = 0
     end
-    private :initialize
 
     # Emits :close event. Doesn't actually close socket.
     def close
@@ -70,16 +68,24 @@ module Plum
       @writer.call(frame.assemble)
     end
 
-    def new_stream(stream_id, **args)
-      if stream_id.even?
-        @max_even_stream_id = stream_id
+    def stream(stream_id)
+      raise ArgumentError, "stream_id can't be 0" if stream_id == 0
+
+      stream = @streams[stream_id]
+      if stream
+        if stream.state == :idle && stream.id < @max_stream_id
+          stream.set_state(:closed_implicitly)
+        end
+      elsif stream_id > @max_stream_id
+        @max_stream_id = stream_id
+        stream = Stream.new(self, stream_id, state: :idle)
+        callback(:stream, stream)
+        @streams[stream_id] = stream
       else
-        @max_odd_stream_id = stream_id
+        stream = Stream.new(self, stream_id, state: :closed_implicitly)
+        callback(:stream, stream)
       end
 
-      stream = Stream.new(self, stream_id, **args)
-      @streams[stream_id] = stream
-      callback(:stream, stream)
       stream
     end
 
@@ -92,14 +98,12 @@ module Plum
         if frame.type != :continuation || frame.stream_id != @continuation_id
           raise ConnectionError.new(:protocol_error)
         end
-
         if frame.end_headers?
           @state = :open
-          @continuation_id = nil
         end
       end
 
-      if frame.type == :headers
+      if frame.type == :headers || frame.type == :push_promise
         if !frame.end_headers?
           @state = :waiting_continuation
           @continuation_id = frame.stream_id
@@ -114,14 +118,7 @@ module Plum
       if frame.stream_id == 0
         receive_control_frame(frame)
       else
-        unless stream = @streams[frame.stream_id]
-          if frame.stream_id.even? || @max_odd_stream_id >= frame.stream_id
-            raise Plum::ConnectionError.new(:protocol_error)
-          end
-
-          stream = new_stream(frame.stream_id)
-        end
-        stream.receive_frame(frame)
+        stream(frame.stream_id).receive_frame(frame)
       end
     end
 

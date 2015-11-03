@@ -13,16 +13,16 @@ module ServerUtils
     end
   end
 
-  def open_new_stream(arg1 = nil, **kwargs)
+  def open_new_stream(arg1 = nil, state: :idle, **kwargs)
     if arg1.is_a?(ServerConnection)
       con = arg1
     else
       con = open_server_connection
     end
 
-    @_stream = con.instance_eval {
-      new_stream((con.streams.keys.last||0/2)*2+1, **kwargs)
-    }
+    @_stream = con.instance_eval { stream(((@max_stream_id+1)/2)*2+1) }
+    @_stream.set_state(state)
+    @_stream.update_dependency(**kwargs)
     if block_given?
       yield @_stream
     else

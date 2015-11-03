@@ -59,6 +59,8 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
         }
       rescue Timeout::Error
         flunk "server timeout"
+      rescue => e
+        flunk e
       ensure
         tcp_server.close
       end
@@ -75,6 +77,8 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
         ssl.write Connection::CLIENT_CONNECTION_PREFACE
         ssl.write Frame.settings.assemble
         sleep
+      rescue => e
+        flunk e
       ensure
         sock.close
       end

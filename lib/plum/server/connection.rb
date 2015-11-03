@@ -11,8 +11,10 @@ module Plum
     # Reserves a new stream to server push.
     # @param args [Hash] The argument to pass to Stram.new.
     def reserve_stream(**args)
-      next_id = @max_even_stream_id + 2
-      stream = new_stream(next_id, state: :reserved_local, **args)
+      next_id = @max_stream_id + (@max_stream_id.odd? ? 1 : 2)
+      stream = stream(next_id)
+      stream.set_state(:reserved_local)
+      stream.update_dependency(**args)
       stream
     end
 
