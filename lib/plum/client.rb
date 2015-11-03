@@ -8,11 +8,16 @@ module Plum
     attr_reader :host, :port, :config
     attr_reader :socket
 
+    # Creates a new HTTP client and starts communication.
+    # A shorthand for `Plum::Client.new(args).start(&block)`
     def self.start(host, port, config = {}, &block)
       client = self.new(host, port, config)
       client.start(&block)
     end
 
+    # @param host [String] the host to connect
+    # @param port [Integer] the port number to connect
+    # @param config [Hash<Symbol, Object>] the client configuration
     def initialize(host, port, config = {})
       @host = host
       @port = port
@@ -21,7 +26,9 @@ module Plum
       @responses = {}
     end
 
-    def start
+    # Starts communication.
+    # If block passed, waits for asynchronous requests and closes the connection after calling the block.
+    def start(&block)
       raise IOError, "Session already started" if @started
       _start
       if block_given?
@@ -36,12 +43,17 @@ module Plum
       self
     end
 
-    def wait
-      while !@responses.empty?
-        _succ
+    # Waits for the asynchronous response(s) to finish.
+    # @param response [Response] if specified, waits only for the response
+    def wait(response = nil)
+      if response
+        _succ while !response.finished?
+      else
+        _succ while !@responses.empty?
       end
     end
 
+    # Closes the connection.
     def close
       begin
         @plum.close if @plum
@@ -50,6 +62,10 @@ module Plum
       end
     end
 
+    # Creates a new HTTP request.
+    # @param headers [Hash<String, String>] the request headers
+    # @param body [String] the request body
+    # @param block [Proc] if specified, calls the block when finished
     def request_async(headers, body = nil, &block)
       stream = @plum.open_stream
       response = Response.new
@@ -69,9 +85,12 @@ module Plum
       response
     end
 
+    # Creates a new HTTP request and waits for the response
+    # @param headers [Hash<String, String>] the request headers
+    # @param body [String] the request body
     def request(headers, body = nil)
       response = request_async(headers, body)
-      _succ while !response.finished?
+      wait(response)
       response
     end
 
@@ -85,15 +104,11 @@ module Plum
       end
     }
 
-    def https?
-      !!@config[:https]
-    end
-
     private
     def _start
       @started = true
       sock = TCPSocket.open(host, port)
-      if https?
+      if config[:https]
         ctx = @config[:ssl_context] || new_ssl_ctx
         sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
         sock.sync_close = true

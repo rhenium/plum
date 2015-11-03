@@ -10,9 +10,11 @@ module Plum
       @state = :waiting_settings
     end
 
+    # Create a new stream for HTTP request.
+    # @param args [Hash] the argument for Stream.new
     def open_stream(**args)
       next_id = @max_odd_stream_id > 0 ? @max_odd_stream_id + 2 : 1
-      stream = new_stream(next_id, state: :open, **args)
+      stream = new_stream(next_id, **args)
       stream
     end
   end

@@ -40,8 +40,8 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
 
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../server.crt", __FILE__))
-    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../server.key", __FILE__))
+    ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../../server.crt", __FILE__))
+    ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../../server.key", __FILE__))
     tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
