@@ -62,7 +62,7 @@ module Plum
 
     # Closes the connection.
     def close
-      @plum.close if @plum && @plum.state != :closed
+      @plum.close if @plum
     ensure
       @socket.close if @socket
     end

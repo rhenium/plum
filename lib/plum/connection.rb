@@ -38,6 +38,7 @@ module Plum
 
     # Emits :close event. Doesn't actually close socket.
     def close
+      return if @state == :closed
       @state = :closed
       # TODO: server MAY wait streams
       callback(:close)
