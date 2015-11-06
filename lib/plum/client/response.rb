@@ -10,7 +10,7 @@ module Plum
       @body = Queue.new
       @finished = false
       @failed = false
-      @body_read = false
+      @body = []
     end
 
     # Return the HTTP status code.
@@ -38,26 +38,26 @@ module Plum
       @failed
     end
 
-    # Yields a chunk of the response body until EOF.
+    # Set callback tha called when received a chunk of response body.
     # @yield [chunk] A chunk of the response body.
-    def each_chunk(&block)
-      raise "Body already read" if @body_read
-      @body_read = true
-      while !(finished? && @body.empty?) && chunk = @body.pop
-        if Exception === chunk
-          raise chunk
-        else
-          yield chunk
-        end
+    def on_chunk(&block)
+      raise "Body already read" if @on_chunk
+      @on_chunk = block
+      unless @body.empty?
+        @body.each(&block)
+        @body.clear
       end
     end
 
     # Returns the complete response body. Use #each_body instead if the body can be very large.
     # @return [String] the whole response body
     def body
-      body = String.new
-      each_chunk { |chunk| body << chunk }
-      body
+      raise "Body already read" if @on_chunk
+      if finished?
+        @body.join
+      else
+        raise "Response body is not complete"
+      end
     end
 
     # @api private
@@ -68,19 +68,21 @@ module Plum
 
     # @api private
     def _chunk(chunk)
-      @body << chunk
+      if @on_chunk
+        @on_chunk.call(chunk)
+      else
+        @body << chunk
+      end
     end
 
     # @api private
     def _finish
       @finished = true
-      @body << nil # @body.close is not implemented in Ruby 2.2
     end
 
     # @api private
     def _fail(ex)
       @failed = true
-      @body << ex
     end
   end
 end

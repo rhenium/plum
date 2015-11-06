@@ -68,23 +68,6 @@ class ClientTest < Minitest::Test
     server_thread.join
   end
 
-  def test_raise_error_async_seq_wait_headers
-    server_thread = start_tls_server
-    client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res = client.get_async("/error_in_data")
-    client.wait_headers(res)
-    data = String.new
-    tt = Thread.new { client.wait }
-    assert_raises(LocalConnectionError) {
-      res.each_chunk { |c| data << c }
-    }
-    tt.join
-    client.close
-    assert_equal("a", data)
-  ensure
-    server_thread.join
-  end
-
   def test_raise_error_async_block
     client = nil
     server_thread = start_tls_server

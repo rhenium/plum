@@ -11,21 +11,9 @@ class ResponseTest < Minitest::Test
 
   def test_fail
     resp = Response.new
-    ret = ""
-    run = false
-    t = Thread.new {
-      assert_raises {
-        run = true
-        resp.each_chunk { |chunk| ret << chunk } } }
     resp._chunk("a")
     resp._fail(RuntimeError.new)
-    timeout(3) {
-      t.join }
-    assert(run)
     assert(true, resp.failed?)
-  rescue Timeout::Error
-    t.kill
-    flunk "timeout"
   end
 
   def test_status
@@ -53,13 +41,13 @@ class ResponseTest < Minitest::Test
     assert_equal("ab", resp.body)
   end
 
-  def test_each_chunk
+  def test_on_chunk
     resp = Response.new
     res = []
     resp._chunk("a")
     resp._chunk("b")
     resp._finish
-    resp.each_chunk { |chunk| res << chunk }
+    resp.on_chunk { |chunk| res << chunk }
     assert_equal(["a", "b"], res)
   end
 end
