@@ -18,7 +18,7 @@ class ResponseTest < Minitest::Test
         run = true
         resp.each_chunk { |chunk| ret << chunk } } }
     resp._chunk("a")
-    resp._fail
+    resp._fail(RuntimeError.new)
     timeout(3) {
       t.join }
     assert(run)

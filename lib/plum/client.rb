@@ -2,8 +2,9 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      https: true,
-      verify_mode: OpenSSL::SSL::VERIFY_NONE,
+      tls: true,
+      scheme: "https",
+      verify_mode: OpenSSL::SSL::VERIFY_PEER,
     }.freeze
 
     attr_reader :host, :port, :config
@@ -11,20 +12,26 @@ module Plum
 
     # Creates a new HTTP client and starts communication.
     # A shorthand for `Plum::Client.new(args).start(&block)`
-    def self.start(host, port, config = {}, &block)
+    def self.start(host, port = nil, config = {}, &block)
       client = self.new(host, port, config)
       client.start(&block)
     end
 
-    # @param host [String] the host to connect
+    # Creates a new HTTP client.
+    # @param host [String | IO] the host to connect, or IO object.
     # @param port [Integer] the port number to connect
     # @param config [Hash<Symbol, Object>] the client configuration
-    def initialize(host, port, config = {})
-      @host = host
-      @port = port
+    def initialize(host, port = nil, config = {})
+      if host.is_a?(IO)
+        @socket = host
+      else
+        @host = host
+        @port = port || (config[:tls] ? 443 : 80)
+      end
       @config = DEFAULT_CONFIG.merge(config)
       @response_handlers = {}
       @responses = {}
+      @started = false
     end
 
     # Starts communication.
@@ -99,7 +106,7 @@ module Plum
       base_headers = { ":method" => nil,
                        ":path" => nil,
                        ":authority" => (@config[:hostname] || @host),
-                       ":scheme" => @config[:https] ? "https" : "http" }
+                       ":scheme" => (@config[:scheme] || "https") }
 
       response = request_async(base_headers.merge(headers), body)
       wait(response)
@@ -154,16 +161,19 @@ module Plum
     private
     def _start
       @started = true
-      sock = TCPSocket.open(host, port)
-      if config[:https]
-        ctx = @config[:ssl_context] || new_ssl_ctx
-        sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-        sock.sync_close = true
-        sock.connect
+      unless @socket
+        sock = TCPSocket.open(host, port)
+        if config[:tls]
+          ctx = @config[:ssl_context] || new_ssl_ctx
+          sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
+          sock.sync_close = true
+          sock.connect
+        end
+
+        @socket = sock
       end
 
-      @socket = sock
-      @plum = setup_plum(sock)
+      @plum = setup_plum(@socket)
     end
 
     def setup_plum(sock)
