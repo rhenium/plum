@@ -54,7 +54,7 @@ module Plum
                               plum: plum,
                               sock: sock,
                               logger: @logger,
-                              server_push: @config[:server_push],
+                              config: @config,
                               remote_addr: sock.peeraddr.last)
             con.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed

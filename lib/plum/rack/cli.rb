@@ -44,6 +44,7 @@ module Plum
         ENV["RACK_ENV"] = @options[:env] if @options[:env]
         config[:debug] = @options[:debug] unless @options[:debug].nil?
         config[:server_push] = @options[:server_push] unless @options[:server_push].nil?
+        config[:threaded] = @options[:threaded] unless @options[:threaded].nil?
 
         if @options[:socket]
           config[:listeners] << { listener: UNIXListener,
@@ -111,6 +112,10 @@ module Plum
 
           o.on "--key PATH", "Use PATH as server certificate's private key" do |arg|
             @options[:key] = arg
+          end
+
+          o.on "--threaded", "Call the Rack application in threads (experimental)" do
+            @options[:threaded] = true
           end
 
           o.on "-v", "--version", "Show version" do

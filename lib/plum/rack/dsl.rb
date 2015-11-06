@@ -39,6 +39,10 @@ module Plum
         def server_push(bool)
           @config[:server_push] = !!bool
         end
+
+        def threaded(bool)
+          @config[:threaded] = !!bool
+        end
       end
     end
   end

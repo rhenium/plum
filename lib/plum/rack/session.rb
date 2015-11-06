@@ -8,13 +8,14 @@ module Plum
     class Session
       attr_reader :app, :plum
 
-      def initialize(app:, plum:, sock:, logger:, server_push: true, remote_addr: "127.0.0.1")
+      def initialize(app:, plum:, sock:, logger:, config:, remote_addr: "127.0.0.1")
         @app = app
         @plum = plum
         @sock = sock
         @logger = logger
-        @server_push = server_push
+        @config = config
         @remote_addr = remote_addr
+        @request_thread = {} # used if threaded
 
         setup_plum
       end
@@ -24,14 +25,15 @@ module Plum
       end
 
       def run
-        begin
-          while !@sock.closed? && !@sock.eof?
-            @plum << @sock.readpartial(1024)
-          end
-        rescue Errno::EPIPE, Errno::ECONNRESET => e
-        rescue StandardError => e
-          @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+        while !@sock.closed? && !@sock.eof?
+          @plum << @sock.readpartial(1024)
         end
+      rescue Errno::EPIPE, Errno::ECONNRESET => e
+      rescue StandardError => e
+        @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+      ensure
+        @request_thread.each { |stream, thread| thread.kill }
+        stop
       end
 
       private
@@ -51,7 +53,13 @@ module Plum
         }
 
         @plum.on(:end_stream) { |stream|
-          handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+          if @config[:threaded]
+            @request_thread[stream] = Thread.new {
+              handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+            }
+          else
+            handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+          end
         }
       end
 
@@ -77,9 +85,7 @@ module Plum
       end
 
       def extract_push(reqheaders, extheaders)
-        if @server_push &&
-            @plum.push_enabled? &&
-            pushs = extheaders["plum.serverpush"]
+        if @config[:server_push] && @plum.push_enabled? && pushs = extheaders["plum.serverpush"]
           authority = reqheaders.find { |k, v| k == ":authority" }[1]
           scheme = reqheaders.find { |k, v| k == ":scheme" }[1]
 
@@ -117,6 +123,8 @@ module Plum
           st.send_headers(p_headers, end_stream: false)
           send_body(st, p_body)
         }
+
+        @request_thread.delete(stream)
       end
 
       def new_env(h, data)
