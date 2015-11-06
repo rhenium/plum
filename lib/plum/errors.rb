@@ -43,4 +43,8 @@ module Plum
       @parser = parser
     end
   end
+
+  # Client
+  class LocalConnectionError < HTTPError; end
+  class LocalStreamError < HTTPError; end
 end

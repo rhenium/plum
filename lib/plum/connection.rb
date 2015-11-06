@@ -38,6 +38,7 @@ module Plum
 
     # Emits :close event. Doesn't actually close socket.
     def close
+      @state = :closed
       # TODO: server MAY wait streams
       callback(:close)
     end
@@ -45,6 +46,7 @@ module Plum
     # Receives the specified data and process.
     # @param new_data [String] The data received from the peer.
     def receive(new_data)
+      return if @state == :closed
       return if new_data.empty?
       @buffer << new_data
       consume_buffer
@@ -135,9 +137,7 @@ module Plum
       when :ping
         receive_ping(frame)
       when :goaway
-        callback(:goaway, frame)
-        goaway
-        close
+        receive_goaway(frame)
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
         raise Plum::ConnectionError.new(:protocol_error)
       else
@@ -182,6 +182,19 @@ module Plum
         opaque_data = frame.payload
         callback(:ping, opaque_data)
         send_immediately Frame.ping(:ack, opaque_data)
+      end
+    end
+
+    def receive_goaway(frame)
+      callback(:goaway, frame)
+      goaway
+      close
+
+      last_id = frame.payload.uint32(0)
+      error_code = frame.payload.uint32(4)
+      message = frame.payload.byteslice(8, frame.length - 8)
+      if error_code > 0
+        raise LocalConnectionError.new(HTTPError::ERROR_CODES.key(error_code), message)
       end
     end
   end

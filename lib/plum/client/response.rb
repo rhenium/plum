@@ -43,9 +43,9 @@ module Plum
     def each_chunk(&block)
       raise "Body already read" if @body_read
       @body_read = true
-      while chunk = @body.pop
-        if chunk == :failed
-          raise EOFError
+      while !(finished? && @body.empty?) && chunk = @body.pop
+        if Exception === chunk
+          raise chunk
         else
           yield chunk
         end
@@ -78,9 +78,9 @@ module Plum
     end
 
     # @api private
-    def _fail
+    def _fail(ex)
       @failed = true
-      @body << :failed
+      @body << ex
     end
   end
 end

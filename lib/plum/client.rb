@@ -48,19 +48,23 @@ module Plum
     # @param response [Response] if specified, waits only for the response
     def wait(response = nil)
       if response
-        _succ while !response.finished?
+        _succ while !response.failed? && !response.finished?
       else
         _succ while !@responses.empty?
       end
     end
 
+    # Waits for the response headers.
+    # @param response [Response] the incomplete response.
+    def wait_headers(response)
+      _succ while !response.failed? && !response.headers
+    end
+
     # Closes the connection.
     def close
-      begin
-        @plum.close if @plum
-      ensure
-        @socket.close if @socket
-      end
+      @plum.close if @plum && @plum.state != :closed
+    ensure
+      @socket.close if @socket
     end
 
     # Creates a new HTTP request.
@@ -169,18 +173,22 @@ module Plum
       }
       plum = ClientConnection.new(sock.method(:write), local_settings)
       plum.on(:protocol_error) { |ex|
-        _fail
+        _fail(ex)
         raise ex
       }
+      plum.on(:close) { _fail(RuntimeError.new(:closed)) }
       plum.on(:stream_error) { |stream, ex|
         if res = @responses.delete(stream)
-          res._fail unless res.finished?
+          res._fail(ex) unless res.finished?
         end
         raise ex
       }
       plum.on(:headers) { |stream, headers|
         response = @responses[stream]
         response._headers(headers)
+        if handler = @response_handlers.delete(stream)
+          handler.call(response)
+        end
       }
       plum.on(:data) { |stream, chunk|
         response = @responses[stream]
@@ -189,21 +197,18 @@ module Plum
       plum.on(:end_stream) { |stream|
         response = @responses.delete(stream)
         response._finish
-        if handler = @response_handlers.delete(stream)
-          handler.call(response)
-        end
       }
       plum
     end
 
     def _succ
-      _fail if @socket.closed? || @socket.eof?
       @plum << @socket.readpartial(1024)
     end
 
-    def _fail
-      while res = @responses.pop
-        res._fail unless res.finished?
+    def _fail(ex)
+      while sr = @responses.shift
+        stream, res = sr
+        res._fail(ex) unless res.finished?
       end
     ensure
       close

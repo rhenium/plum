@@ -88,7 +88,7 @@ class ConnectionTest < Minitest::Test
     }
     prepare.call {|con|
       assert_equal(:waiting_continuation, con.state)
-      con << Frame.new(type: :continuation, flags: [:end_headers], stream_id: 3, payload: "hello").assemble
+      con << Frame.new(type: :continuation, flags: [:end_headers], stream_id: 3, payload: "").assemble
       assert_equal(:open, con.state)
     }
   end

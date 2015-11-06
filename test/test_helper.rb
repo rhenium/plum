@@ -28,3 +28,4 @@ end
 LISTEN_PORT = ENV["PLUM_LISTEN_PORT"] || 40444
 TLS_CERT = OpenSSL::X509::Certificate.new File.read(File.expand_path("../server.crt", __FILE__))
 TLS_KEY = OpenSSL::PKey::RSA.new File.read(File.expand_path("../server.key", __FILE__))
+ExampleError = Class.new(RuntimeError)

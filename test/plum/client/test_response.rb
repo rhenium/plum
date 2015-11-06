@@ -9,6 +9,25 @@ class ResponseTest < Minitest::Test
     assert_equal(true, resp.finished?)
   end
 
+  def test_fail
+    resp = Response.new
+    ret = ""
+    run = false
+    t = Thread.new {
+      assert_raises {
+        run = true
+        resp.each_chunk { |chunk| ret << chunk } } }
+    resp._chunk("a")
+    resp._fail
+    timeout(3) {
+      t.join }
+    assert(run)
+    assert(true, resp.failed?)
+  rescue Timeout::Error
+    t.kill
+    flunk "timeout"
+  end
+
   def test_status
     resp = Response.new
     resp._headers([
