@@ -166,11 +166,10 @@ module Plum
         if config[:tls]
           ctx = @config[:ssl_context] || new_ssl_ctx
           sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-          if sock.respond_to?(:hostname=)
-            sock.hostname = @config[:hostname] || @host
-          end
+          sock.hostname = (@config[:hostname] || @host) if sock.respond_to?(:hostname=)
           sock.sync_close = true
           sock.connect
+          sock.post_connection_check(@config[:hostname] || @host)
         end
 
         @socket = sock
@@ -231,11 +230,14 @@ module Plum
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
       ctx.verify_mode = @config[:verify_mode]
+      cert_store = OpenSSL::X509::Store.new
+      cert_store.set_default_paths
+      ctx.cert_store = cert_store
       if ctx.respond_to?(:alpn_protocols)
         ctx.alpn_protocols = ["h2", "http/1.1"]
       end
       if ctx.respond_to?(:npn_select_cb)
-        ctx.alpn_select_cb = -> protocols {
+        ctx.npn_select_cb = -> protocols {
           protocols.include?("h2") ? "h2" : protocols.first
         }
       end
