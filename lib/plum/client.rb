@@ -5,6 +5,7 @@ module Plum
       tls: true,
       scheme: "https",
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
+      ssl_context: nil
     }.freeze
 
     attr_reader :host, :port, :config
@@ -28,7 +29,7 @@ module Plum
         @host = host
         @port = port || (config[:tls] ? 443 : 80)
       end
-      @config = DEFAULT_CONFIG.merge(config)
+      @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
       @response_handlers = {}
       @responses = {}
       @started = false
@@ -105,8 +106,8 @@ module Plum
 
       base_headers = { ":method" => nil,
                        ":path" => nil,
-                       ":authority" => (@config[:hostname] || @host),
-                       ":scheme" => (@config[:scheme] || "https") }
+                       ":authority" => @config[:hostname],
+                       ":scheme" => @config[:scheme] }
 
       response = request_async(base_headers.merge(headers), body)
       wait(response)
@@ -166,10 +167,10 @@ module Plum
         if config[:tls]
           ctx = @config[:ssl_context] || new_ssl_ctx
           sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-          sock.hostname = (@config[:hostname] || @host) if sock.respond_to?(:hostname=)
+          sock.hostname = @config[:hostname] if sock.respond_to?(:hostname=)
           sock.sync_close = true
           sock.connect
-          sock.post_connection_check(@config[:hostname] || @host)
+          sock.post_connection_check(@config[:hostname])
         end
 
         @socket = sock
