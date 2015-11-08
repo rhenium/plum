@@ -3,7 +3,7 @@ A pure Ruby HTTP/2 server and client implementation.
 
 WARNING: Plum is currently under heavy development. You *will* encounter bugs when using it.
 
-[![Build Status](https://travis-ci.org/rhenium/plum.png?branch=master)](https://travis-ci.org/rhenium/plum) [![Code Climate](https://codeclimate.com/github/rhenium/plum/badges/gpa.svg)](https://codeclimate.com/github/rhenium/plum) [![Test Coverage](https://codeclimate.com/github/rhenium/plum/badges/coverage.svg)](https://codeclimate.com/github/rhenium/plum/coverage)
+[![Circle CI](https://circleci.com/gh/rhenium/plum.svg?style=svg)](https://circleci.com/gh/rhenium/plum) [![Build Status](https://travis-ci.org/rhenium/plum.png?branch=master)](https://travis-ci.org/rhenium/plum) [![Code Climate](https://codeclimate.com/github/rhenium/plum/badges/gpa.svg)](https://codeclimate.com/github/rhenium/plum) [![Test Coverage](https://codeclimate.com/github/rhenium/plum/badges/coverage.svg)](https://codeclimate.com/github/rhenium/plum/coverage)
 
 ## Requirements
 * Ruby
