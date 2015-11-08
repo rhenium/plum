@@ -9,6 +9,7 @@ module Plum
       hostname: nil,
       http2_settings: {},
       user_agent: "plum/#{Plum::VERSION}",
+      http2: true,
     }.freeze
 
     attr_reader :host, :port, :config
@@ -146,7 +147,7 @@ module Plum
     def _start
       @started = true
 
-      http2 = true
+      http2 = @config[:http2]
       unless @socket
         @socket = TCPSocket.open(host, port)
         if config[:tls]
@@ -159,7 +160,7 @@ module Plum
 
           if @socket.respond_to?(:alpn_protocol)
             http2 = @socket.alpn_protocol == "h2"
-          elsif sock.respond_to?(:npn_protocol)
+          elsif @socket.respond_to?(:npn_protocol) # TODO: remove
             http2 = @socket.npn_protocol == "h2"
           else
             http2 = false
@@ -178,17 +179,19 @@ module Plum
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
       ctx.verify_mode = @config[:verify_mode]
-      ctx.ciphers = "ALL:!" + HTTPSServerConnection::CIPHER_BLACKLIST.join(":!")
       cert_store = OpenSSL::X509::Store.new
       cert_store.set_default_paths
       ctx.cert_store = cert_store
-      if ctx.respond_to?(:alpn_protocols)
-        ctx.alpn_protocols = ["h2", "http/1.1"]
-      end
-      if ctx.respond_to?(:npn_select_cb) # TODO: RFC 7540 does not define protocol negotiation with NPN
-        ctx.npn_select_cb = -> protocols {
-          protocols.include?("h2") ? "h2" : protocols.first
-        }
+      if @config[:http2]
+        ctx.ciphers = "ALL:!" + HTTPSServerConnection::CIPHER_BLACKLIST.join(":!")
+        if ctx.respond_to?(:alpn_protocols)
+          ctx.alpn_protocols = ["h2", "http/1.1"]
+        end
+        if ctx.respond_to?(:npn_select_cb) # TODO: RFC 7540 does not define protocol negotiation with NPN
+          ctx.npn_select_cb = -> protocols {
+            protocols.include?("h2") ? "h2" : protocols.first
+         }
+        end
       end
       ctx
     end
