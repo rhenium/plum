@@ -30,8 +30,18 @@ module Plum
     end
 
     def request(headers, body, options, &headers_cb)
+      headers["host"] = headers[":authority"] || headers["host"] || @config[:hostname]
+      if body
+        if headers["content-length"] || headers["transfer-encoding"]
+          chunked = false
+        else
+          chunked = true
+          headers["transfer-encoding"] = "chunked"
+        end
+      end
+
       response = Response.new
-      @requests << [response, headers, body, headers_cb]
+      @requests << [response, headers, body, chunked, headers_cb]
       consume_queue
       response
     end
@@ -45,20 +55,40 @@ module Plum
     def consume_queue
       return if @response || @requests.empty?
 
-      response, headers, body, cb = @requests.shift
-      headers["host"] = headers[":authority"] || headers["host"] || @config[:hostname]
+      response, headers, body, chunked, cb = @requests.shift
       @response = response
       @headers_callback = cb
 
-      @socket << "%s %s HTTP/1.1\r\n" % [headers[":method"], headers[":path"]]
-      headers.each { |key, value|
-        next if key.start_with?(":") # HTTP/2 psuedo headers
-        @socket << "%s: %s\r\n" % [key, value]
-      }
-      @socket << "\r\n"
+      @socket << construct_request(headers)
 
       if body
-        @socket << body
+        if chunked
+          read_object(body) { |chunk|
+            @socket << chunk.bytesize.to_s(16) << "\r\n" << chunk << "\r\n"
+          }
+        else
+          read_object(body) { |chunk| @socket << chunk }
+        end
+      end
+    end
+
+    def construct_request(headers)
+      out = String.new
+      out << "%s %s HTTP/1.1\r\n" % [headers[":method"], headers[":path"]]
+      headers.each { |key, value|
+        next if key.start_with?(":") # HTTP/2 psuedo headers
+        out << "%s: %s\r\n" % [key, value]
+      }
+      out << "\r\n"
+    end
+
+    def read_object(body)
+      if body.is_a?(String)
+        yield body
+      else # IO
+        until body.eof?
+          yield body.readpartial(1024)
+        end
       end
     end
 
