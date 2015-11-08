@@ -43,7 +43,7 @@ module Plum
     end
 
     def consume_queue
-      return if @response
+      return if @response || @requests.empty?
 
       response, headers, body, cb = @requests.shift
       headers["host"] = headers[":authority"] || headers["host"] || @config[:hostname]
