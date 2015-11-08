@@ -16,8 +16,8 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
 
 ##### Sequential request
 ```ruby
-client = Plum::Client.start("http2.rhe.jp", 443)
-res1 = client.get("/")
+client = Plum::Client.start("http2.rhe.jp", 443, user_agent: "nyaan")
+res1 = client.get("/", headers: { "accept" => "*/*" })
 puts res1.body # => "..."
 res2 = client.post("/post", "data")
 puts res2.body # => "..."

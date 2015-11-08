@@ -8,6 +8,7 @@ module Plum
       ssl_context: nil,
       hostname: nil,
       http2_settings: {},
+      user_agent: "plum/#{Plum::VERSION}",
     }.freeze
 
     attr_reader :host, :port, :config
@@ -80,61 +81,63 @@ module Plum
     # Creates a new HTTP request.
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
+    # @param options [Hash<Symbol, Object>] request options
     # @param block [Proc] if passed, it will be called when received response headers.
-    def request_async(headers, body = nil, &block)
+    def request_async(headers, body, options = {}, &block)
       raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
-      @session.request(headers, body, &block)
+      @session.request(headers, body, options, &block)
     end
 
     # Creates a new HTTP request and waits for the response
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
-    def request(headers, body = nil, &block)
-      wait request_async(headers, body, &block)
+    # @param options [Hash<Symbol, Object>] the request options
+    def request(headers, body, options = {}, &block)
+      wait request_async(headers, body, options, &block)
     end
 
     # @!method get
     # @!method head
     # @!method delete
     # @param path [String] the absolute path to request (translated into :path header)
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # Shorthand method for `#request`
 
     # @!method get_async
     # @!method head_async
     # @!method delete_async
     # @param path [String] the absolute path to request (translated into :path header)
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request_async`
     %w(GET HEAD DELETE).each { |method|
-      define_method(:"#{method.downcase}") do |path, headers = {}, &block|
-        request({ ":method" => method, ":path" => path }.merge(headers), &block)
+      define_method(:"#{method.downcase}") do |path, options = {}, &block|
+        wait _request_helper(method, path, nil, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, headers = {}, &block|
-        request_async({ ":method" => method, ":path" => path }.merge(headers), nil, &block)
+      define_method(:"#{method.downcase}_async") do |path, options = {}, &block|
+        _request_helper(method, path, nil, options, &block)
       end
     }
     # @!method post
     # @!method put
     # @param path [String] the absolute path to request (translated into :path header)
     # @param body [String] the request body
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # Shorthand method for `#request`
 
     # @!method post_async
     # @!method put_async
     # @param path [String] the absolute path to request (translated into :path header)
     # @param body [String] the request body
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request_async`
     %w(POST PUT).each { |method|
-      define_method(:"#{method.downcase}") do |path, body = nil, headers = {}, &block|
-        request({ ":method" => method, ":path" => path }.merge(headers), body, &block)
+      define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
+        wait _request_helper(method, path, body, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, body = nil, headers = {}, &block|
-        request_async({ ":method" => method, ":path" => path }.merge(headers), body, &block)
+      define_method(:"#{method.downcase}_async") do |path, body, options = {}, &block|
+        _request_helper(method, path, body, options, &block)
       end
     }
 
@@ -187,6 +190,14 @@ module Plum
         }
       end
       ctx
+    end
+
+    def _request_helper(method, path, body, options, &block)
+      base = { ":method" => method,
+               ":path" => path,
+               "user-agent" => @config[:user_agent] }
+      base.merge!(options[:headers]) if options[:headers]
+      request_async(base, body, options, &block)
     end
   end
 end

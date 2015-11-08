@@ -33,7 +33,7 @@ module Plum
       @plum.close
     end
 
-    def request(headers, body = nil, &headers_cb)
+    def request(headers, body, options, &headers_cb)
       headers = { ":method" => nil,
                   ":path" => nil,
                   ":authority" => @config[:hostname],

@@ -7,7 +7,7 @@ class ClientTest < Minitest::Test
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
     res1 = client.request({ ":path" => "/", ":method" => "POST", ":scheme" => "https", "header" => "ccc" }, "abc")
     assert_equal("POSTcccabc", res1.body)
-    res2 = client.put("/", "aaa", { "header" => "ccc" })
+    res2 = client.put("/", "aaa", headers: { "header" => "ccc" })
     assert_equal("PUTcccaaa", res2.body)
     client.close
   ensure
@@ -20,12 +20,12 @@ class ClientTest < Minitest::Test
     server_thread = start_tls_server
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
-      res1 = client.request_async({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }) { |res1|
+      res1 = client.request_async({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1|
         assert(res1.headers)
       }
       assert_nil(res1.headers)
 
-      res2 = client.get_async("/", "header" => "ccc")
+      res2 = client.get_async("/", headers: { "header" => "ccc" })
     }
     assert(res2.headers)
     assert_equal("GETccc", res2.body)

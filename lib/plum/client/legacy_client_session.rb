@@ -29,7 +29,7 @@ module Plum
       @response._fail if @response
     end
 
-    def request(headers, body = nil, &headers_cb)
+    def request(headers, body, options, &headers_cb)
       response = Response.new
       @requests << [response, headers, body, headers_cb]
       consume_queue
