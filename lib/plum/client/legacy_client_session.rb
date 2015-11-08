@@ -96,7 +96,7 @@ module Plum
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc {
         resp_headers = parser.headers.map { |key, value| [key.downcase, value] }.to_h
-        @response._headers({ ":status" => parser.status_code }.merge(resp_headers))
+        @response._headers({ ":status" => parser.status_code.to_s }.merge(resp_headers))
         @headers_callback.call(@response) if @headers_callback
       }
 
