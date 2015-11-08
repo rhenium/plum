@@ -1,14 +1,16 @@
 # -*- frozen-string-literal: true -*-
 module Plum
+  # HTTP/2 client session.
   class ClientSession
     HTTP2_DEFAULT_SETTINGS = {
       enable_push: 0, # TODO: api?
-      initial_window_size: (1 << 30) - 1, # TODO: maximum size: disable flow control
+      initial_window_size: 2 ** 30, # TODO
     }
 
     def initialize(socket, config)
       @socket = socket
       @config = config
+      @http2_settings = HTTP2_DEFAULT_SETTINGS.merge(@config[:http2_settings])
 
       @plum = setup_plum
       @responses = Set.new
@@ -26,22 +28,20 @@ module Plum
 
     def close
       @closed = true
-      @responses.each { |response| response._fail }
+      @responses.each(&:_fail)
       @responses.clear
       @plum.close
     end
 
     def request(headers, body = nil, &headers_cb)
-      raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
-
-      @responses << (response = Response.new)
-
       headers = { ":method" => nil,
                   ":path" => nil,
                   ":authority" => @config[:hostname],
                   ":scheme" => @config[:scheme]
-                }.merge(headers)
+      }.merge(headers)
 
+      response = Response.new
+      @responses << response
       stream = @plum.open_stream
       stream.send_headers(headers, end_stream: !body)
       stream.send_data(body, end_stream: true) if body
@@ -52,6 +52,7 @@ module Plum
       }
       stream.on(:data) { |chunk|
         response._chunk(chunk)
+        check_window(stream)
       }
       stream.on(:end_stream) {
         response._finish
@@ -61,7 +62,6 @@ module Plum
         response._fail
         raise ex
       }
-
       response
     end
 
@@ -72,11 +72,18 @@ module Plum
     end
 
     def setup_plum
-      plum = ClientConnection.new(@socket.method(:write), HTTP2_DEFAULT_SETTINGS)
+      plum = ClientConnection.new(@socket.method(:write), @http2_settings)
       plum.on(:connection_error) { |ex|
         fail(ex)
       }
+      plum.window_update(@http2_settings[:initial_window_size])
       plum
+    end
+
+    def check_window(stream)
+      ws = @http2_settings[:initial_window_size]
+      stream.window_update(ws) if stream.recv_remaining_window < (ws / 2)
+      @plum.window_update(ws) if @plum.recv_remaining_window < (ws / 2)
     end
   end
 end

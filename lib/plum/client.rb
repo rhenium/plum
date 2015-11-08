@@ -5,7 +5,9 @@ module Plum
       tls: true,
       scheme: "https",
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
-      ssl_context: nil
+      ssl_context: nil,
+      hostname: nil,
+      http2_settings: {},
     }.freeze
 
     attr_reader :host, :port, :config
@@ -80,6 +82,7 @@ module Plum
     # @param body [String] the request body
     # @param block [Proc] if passed, it will be called when received response headers.
     def request_async(headers, body = nil, &block)
+      raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
       @session.request(headers, body, &block)
     end
 
@@ -87,7 +90,7 @@ module Plum
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
     def request(headers, body = nil, &block)
-      wait @session.request(headers, body, &block)
+      wait request_async(headers, body, &block)
     end
 
     # @!method get
@@ -171,6 +174,7 @@ module Plum
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
       ctx.verify_mode = @config[:verify_mode]
+      ctx.ciphers = "ALL:!" + HTTPSServerConnection::CIPHER_BLACKLIST.join(":!")
       cert_store = OpenSSL::X509::Store.new
       cert_store.set_default_paths
       ctx.cert_store = cert_store
