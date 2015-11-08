@@ -77,28 +77,31 @@ loop do
         <input type=submit>
         </form>
         EOF
-        stream.respond({
+        stream.send_headers({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.bytesize
-        }, body)
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       when ["POST", "/post.page"]
         body = "Posted value is: #{CGI.unescape(data).gsub("<", "&lt;").gsub(">", "&gt;")}<br> <a href=/>Back to top page</a>"
-        stream.respond({
+        stream.send_headers({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.bytesize
-        }, body)
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       else
         body = "Page not found! <a href=/>Back to top page</a>"
-        stream.respond({
+        stream.send_headers({
           ":status": "404",
           "server": "plum",
           "content-type": "text/html",
           "content-length": body.bytesize
-        }, body)
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       end
     end
   end
@@ -109,12 +112,13 @@ loop do
         plum << sock.readpartial(1024)
       end
     rescue Plum::LegacyHTTPError
+      data = "Use modern web browser with HTTP/2 support."
       resp = "HTTP/1.1 505 HTTP Version Not Supported\r\n"
              "Content-Type: text/plain\r\n"
              "Content-Length: #{data.bytesize}\r\n"
              "Server: plum/#{Plum::VERSION}\r\n"
              "\r\n"
-             "Use modern web browser with HTTP/2 support."
+             "#{data}"
 
       sock.write(resp)
     rescue

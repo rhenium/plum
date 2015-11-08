@@ -3,18 +3,6 @@ using Plum::BinaryString
 
 module Plum
   module StreamUtils
-    # Responds to a HTTP request.
-    # @param headers [Enumerable<String, String>] The response headers.
-    # @param body [String, IO] The response body.
-    def respond(headers, body = nil, end_stream: true) # TODO: priority, padding
-      if body
-        send_headers(headers, end_stream: false)
-        send_data(body, end_stream: end_stream)
-      else
-        send_headers(headers, end_stream: end_stream)
-      end
-    end
-
     # Reserves a stream to server push. Sends PUSH_PROMISE and create new stream.
     # @param headers [Enumerable<String, String>] The *request* headers. It must contain all of them: ':authority', ':method', ':scheme' and ':path'.
     # @return [Stream] The stream to send push response.

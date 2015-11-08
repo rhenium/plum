@@ -95,52 +95,57 @@ loop do
         <input type=submit>
         </form>
         EOF
-        stream.respond({
+        stream.send_headers({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
-        }, body)
+          "content-length": body.bytesize
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       when ["GET", "/abc.html"]
         body = "ABC! <a href=/>Back to top page</a><br><img src=/image.nyan>"
+        stream.send_headers({
+          ":status": "200",
+          "server": "plum",
+          "content-type": "text/html",
+          "content-length": body.bytesize
+        }, end_stream: false)
         i_stream = stream.promise({
           ":authority": "localhost:40443",
           ":method": "GET",
           ":scheme": "https",
           ":path": "/image.nyan"
         })
-        stream.respond({
-          ":status": "200",
-          "server": "plum",
-          "content-type": "text/html",
-          "content-length": body.size
-        }, body)
+        stream.send_data(body, end_stream: true)
         image = ("iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAACVBMVEX///93o0jG/4mTMy20AAAA" \
                  "bklEQVQ4y2NgoAoIRQJkCoSimIdTgJGBBU1ABE1A1AVdBQuaACu6gCALhhZ0axlZCDgMWYAB6ilU" \
                  "35IoADEMxWyyBDD45AhQCFahM0kXWIVu3sAJrILzyBcgytoFeATABBcXWohhCEC14BCgGAAAX1ZQ" \
                  "ZtJp0zAAAAAASUVORK5CYII=").unpack("m")[0]
-        i_stream.respond({
+        i_stream.send_headers({
           ":status": "200",
           "server": "plum",
           "content-type": "image/png",
-          "content-length": image.size
-        }, image)
+          "content-length": image.bytesize
+        }, end_stream: false)
+        i_stream.send_data(image, end_stream: true)
       when ["POST", "/post.page"]
         body = "Posted value is: #{CGI.unescape(data).gsub("<", "&lt;").gsub(">", "&gt;")}<br> <a href=/>Back to top page</a>"
-        stream.respond({
+        stream.send_headers({
           ":status": "200",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
-        }, body)
+          "content-length": body.bytesize
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       else
         body = "Page not found! <a href=/>Back to top page</a>"
-        stream.respond({
+        stream.send_headers({
           ":status": "404",
           "server": "plum",
           "content-type": "text/html",
-          "content-length": body.size
-        }, body)
+          "content-length": body.bytesize
+        }, end_stream: false)
+        stream.send_data(body, end_stream: true)
       end
     end
   end

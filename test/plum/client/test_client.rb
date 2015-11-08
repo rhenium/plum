@@ -112,7 +112,8 @@ class ClientTest < Minitest::Test
                 stream.send_data("a", end_stream: false)
                 raise ExampleError, "example error"
               else
-                stream.respond({ ":status" => 200 }, headers.to_h[":method"] + headers.to_h["header"].to_s + data.to_s)
+                stream.send_headers({ ":status" => 200 }, end_stream: false)
+                stream.send_data(headers.to_h[":method"] + headers.to_h["header"].to_s + data.to_s, end_stream: true)
               end } }
 
           yield plum if block_given?
