@@ -16,8 +16,8 @@ credentials = { consumer_key: "",
 rest = Plum::Client.start("api.twitter.com", 443)
 Plum::Client.start("userstream.twitter.com", 443) { |streaming|
   streaming.get("/1.1/user.json",
-                "authorization" => SimpleOAuth::Header.new(:get, "https://userstream.twitter.com/1.1/user.json", {}, credentials).to_s,
-                "accept-encoding" => "identity;q=1") { |res| # plum doesn't have built-in gzip/deflate decoder
+                headers: { "authorization" => SimpleOAuth::Header.new(:get, "https://userstream.twitter.com/1.1/user.json", {}, credentials).to_s,
+                           "accept-encoding" => "identity;q=1" }) { |res| # plum doesn't have built-in gzip/deflate decoder
     if res.status != 200
       puts "failed userstream"
       exit
@@ -41,8 +41,8 @@ Plum::Client.start("userstream.twitter.com", 443) { |streaming|
                    "in_reply_to_status_id" => json["id"].to_s }
           rest.post("/1.1/statuses/update.json",
                     args.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join("&"),
-                    "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
-                    "content-type" => "application/x-www-form-urlencoded")
+                    headers: { "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
+                               "content-type" => "application/x-www-form-urlencoded" })
         end
       end
     }
