@@ -53,7 +53,7 @@ module Plum
       self
     end
 
-    # Waits for the asynchronous response(s) to finish.
+    # Resume communication with the server, until the specified (or all running) requests are complete.
     # @param response [Response] if specified, waits only for the response
     # @return [Response] if parameter response is specified
     def wait(response = nil)
@@ -65,7 +65,7 @@ module Plum
       end
     end
 
-    # Waits for the response headers.
+    # Resume communication with the server until the response headers are sent.
     # @param response [Response] the incomplete response.
     def wait_headers(response)
       @session.succ while !response.failed? && !response.headers
@@ -92,6 +92,7 @@ module Plum
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
     # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if passed, it will be called when received response headers.
     def request(headers, body, options = {}, &block)
       wait request_async(headers, body, options, &block)
     end

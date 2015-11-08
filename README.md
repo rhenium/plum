@@ -8,7 +8,7 @@ A pure Ruby HTTP/2 implementation.
 * OpenSSL 1.0.2 or newer (HTTP/2 requires ALPN)
 * Optional:
   * [http_parser.rb gem](https://rubygems.org/gems/http_parser.rb) (HTTP/1.x parser; if you use "http" URI scheme)
-  * [rack gem](https://rubygems.org/gems/rack) if you use Plum as Rack server.
+  * [rack gem](https://rubygems.org/gems/rack) (if you use Plum as Rack server)
 
 ## Usage
 ### As a HTTP/2 (HTTP/1.x) client library
@@ -82,6 +82,9 @@ By default, Plum generates a dummy server certificate if `--cert` and `--key` op
 
 ## TODO
 * **Better API**
+* Plum::Client
+  * Stream Priority support
+  * PING frame handling
 
 ## License
 MIT License
