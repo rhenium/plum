@@ -11,8 +11,7 @@ class ResponseTest < Minitest::Test
 
   def test_fail
     resp = Response.new
-    resp._chunk("a")
-    resp._fail(RuntimeError.new)
+    resp._fail
     assert(true, resp.failed?)
   end
 
@@ -41,6 +40,15 @@ class ResponseTest < Minitest::Test
     assert_equal("ab", resp.body)
   end
 
+  def test_body_not_finished
+    resp = Response.new
+    resp._chunk("a")
+    resp._chunk("b")
+    assert_raises { # TODO
+      resp.body
+    }
+  end
+
   def test_on_chunk
     resp = Response.new
     res = []
@@ -49,5 +57,7 @@ class ResponseTest < Minitest::Test
     resp._finish
     resp.on_chunk { |chunk| res << chunk }
     assert_equal(["a", "b"], res)
+    resp._chunk("c")
+    assert_equal(["a", "b", "c"], res)
   end
 end

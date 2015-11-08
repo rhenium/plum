@@ -13,7 +13,7 @@ module Plum
       @body = []
     end
 
-    # Return the HTTP status code.
+    # Returns the HTTP status code.
     # @return [String] the HTTP status code
     def status
       @headers && @headers[":status"]
@@ -81,7 +81,7 @@ module Plum
     end
 
     # @api private
-    def _fail(ex)
+    def _fail
       @failed = true
     end
   end

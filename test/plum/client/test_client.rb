@@ -7,7 +7,7 @@ class ClientTest < Minitest::Test
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
     res1 = client.request({ ":path" => "/", ":method" => "POST", ":scheme" => "https", "header" => "ccc" }, "abc")
     assert_equal("POSTcccabc", res1.body)
-    res2 = client.put("/", "aaa", { ":scheme" => "https", "header" => "ccc" })
+    res2 = client.put("/", "aaa", { "header" => "ccc" })
     assert_equal("PUTcccaaa", res2.body)
     client.close
   ensure
@@ -93,7 +93,7 @@ class ClientTest < Minitest::Test
     server_thread = Thread.new {
       plum = nil
       begin
-        Timeout.timeout(3) {
+        Timeout.timeout(1) {
           sock = ssl_server.accept
           plum = HTTPSServerConnection.new(sock)
 
