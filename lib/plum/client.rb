@@ -2,17 +2,17 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
+      http2: true,
       scheme: "https",
+      hostname: nil,
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
       ssl_context: nil,
-      hostname: nil,
       http2_settings: {},
       user_agent: "plum/#{Plum::VERSION}",
-      http2: true,
     }.freeze
 
     attr_reader :host, :port, :config
-    attr_reader :socket
+    attr_reader :socket, :session
 
     # Creates a new HTTP client and starts communication.
     # A shorthand for `Plum::Client.new(args).start(&block)`
