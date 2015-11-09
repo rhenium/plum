@@ -23,7 +23,7 @@ module Plum
     private
     def negotiate!
       super
-    rescue ConnectionError
+    rescue RemoteConnectionError
       # Upgrade from HTTP/1.1
       offset = @_http_parser << @buffer
       @buffer.byteshift(offset)

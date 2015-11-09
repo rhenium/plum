@@ -51,7 +51,7 @@ module Plum
       return if new_data.empty?
       @buffer << new_data
       consume_buffer
-    rescue ConnectionError => e
+    rescue RemoteConnectionError => e
       callback(:connection_error, e)
       goaway(e.http2_error_type)
       close
@@ -94,12 +94,12 @@ module Plum
 
     def validate_received_frame(frame)
       if @state == :waiting_settings && frame.type != :settings
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       end
 
       if @state == :waiting_continuation
         if frame.type != :continuation || frame.stream_id != @continuation_id
-          raise ConnectionError.new(:protocol_error)
+          raise RemoteConnectionError.new(:protocol_error)
         end
         if frame.end_headers?
           @state = :open
@@ -127,7 +127,7 @@ module Plum
 
     def receive_control_frame(frame)
       if frame.length > @local_settings[:max_frame_size]
-        raise ConnectionError.new(:frame_size_error)
+        raise RemoteConnectionError.new(:frame_size_error)
       end
 
       case frame.type
@@ -140,7 +140,7 @@ module Plum
       when :goaway
         receive_goaway(frame)
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
-        raise Plum::ConnectionError.new(:protocol_error)
+        raise Plum::RemoteConnectionError.new(:protocol_error)
       else
         # MUST ignore unknown frame type.
       end
@@ -148,11 +148,11 @@ module Plum
 
     def receive_settings(frame, send_ack: true)
       if frame.ack?
-        raise ConnectionError.new(:frame_size_error) if frame.length != 0
+        raise RemoteConnectionError.new(:frame_size_error) if frame.length != 0
         callback(:settings_ack)
         return
       else
-        raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
+        raise RemoteConnectionError.new(:frame_size_error) if frame.length % 6 != 0
       end
 
       old_remote_settings = @remote_settings.dup
@@ -175,7 +175,7 @@ module Plum
     end
 
     def receive_ping(frame)
-      raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 8
+      raise Plum::RemoteConnectionError.new(:frame_size_error) if frame.length != 8
 
       if frame.ack?
         callback(:ping_ack)

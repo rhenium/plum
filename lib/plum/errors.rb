@@ -31,9 +31,6 @@ module Plum
       ERROR_CODES[@http2_error_type]
     end
   end
-  class ConnectionError < HTTPError; end
-  class StreamError < HTTPError; end
-
   class LegacyHTTPError < Error
     attr_reader :headers, :data, :parser
 
@@ -44,7 +41,10 @@ module Plum
     end
   end
 
-  # Client
-  class LocalConnectionError < HTTPError; end
-  class LocalStreamError < HTTPError; end
+  class RemoteHTTPError < HTTPError; end
+  class RemoteConnectionError < RemoteHTTPError; end
+  class RemoteStreamError < RemoteHTTPError; end
+  class LocalHTTPError < HTTPError; end
+  class LocalConnectionError < LocalHTTPError; end
+  class LocalStreamError < LocalHTTPError; end
 end

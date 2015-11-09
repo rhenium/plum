@@ -92,4 +92,12 @@ class ConnectionTest < Minitest::Test
       assert_equal(:open, con.state)
     }
   end
+
+  def test_connection_local_error
+    open_server_connection { |con|
+      assert_raises(LocalConnectionError) {
+        con << Frame.goaway(0, :frame_size_error).assemble
+      }
+    }
+  end
 end

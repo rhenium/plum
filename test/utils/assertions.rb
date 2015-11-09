@@ -1,21 +1,21 @@
 module CustomAssertions
   def assert_connection_error(type, &blk)
-    assert_http_error(Plum::ConnectionError, type, &blk)
+    assert_http_error(Plum::RemoteConnectionError, type, &blk)
   end
 
   def assert_stream_error(type, &blk)
-    assert_http_error(Plum::StreamError, type, &blk)
+    assert_http_error(Plum::RemoteStreamError, type, &blk)
   end
 
   def assert_no_error(stream: nil, connection: nil, &blk)
-    Plum::ConnectionError.reset
-    Plum::StreamError.reset
+    Plum::RemoteConnectionError.reset
+    Plum::RemoteStreamError.reset
     begin
       blk.call
-    rescue Plum::HTTPError
+    rescue Plum::RemoteHTTPError
     end
-    assert_nil(Plum::StreamError.last, "No stream error expected but raised: #{Plum::StreamError.last}")
-    assert_nil(Plum::ConnectionError.last, "No connection error expected but raised: #{Plum::ConnectionError.last}")
+    assert_nil(Plum::RemoteStreamError.last, "No stream error expected but raised: #{Plum::RemoteStreamError.last}")
+    assert_nil(Plum::RemoteConnectionError.last, "No connection error expected but raised: #{Plum::RemoteConnectionError.last}")
   end
 
   def assert_frame(frame, **args)
@@ -56,5 +56,5 @@ module LastErrorExtension
     base.reset
   end
 end
-Plum::ConnectionError.__send__(:prepend, LastErrorExtension)
-Plum::StreamError.__send__(:prepend, LastErrorExtension)
+Plum::RemoteConnectionError.__send__(:prepend, LastErrorExtension)
+Plum::RemoteStreamError.__send__(:prepend, LastErrorExtension)

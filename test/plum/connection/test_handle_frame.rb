@@ -62,7 +62,10 @@ class ServerConnectionHandleFrameTest < Minitest::Test
   def test_server_handle_goaway_reply
     open_server_connection {|con|
       assert_no_error {
-        con << Frame.goaway(1234, :stream_closed).assemble
+        begin
+          con << Frame.goaway(1, :stream_closed).assemble
+        rescue LocalHTTPError
+        end
       }
       assert_equal(:goaway, sent_frames.last.type)
     }
