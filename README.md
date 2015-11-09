@@ -1,4 +1,4 @@
- Plum: An HTTP/2 Library for Ruby
+# Plum: An HTTP/2 Library for Ruby
 A pure Ruby HTTP/2 server and client implementation.
 
 WARNING: Plum is currently under heavy development. You *will* encounter bugs when using it.
