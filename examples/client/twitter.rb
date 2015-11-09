@@ -18,7 +18,7 @@ Plum::Client.start("userstream.twitter.com", 443) { |streaming|
   streaming.get("/1.1/user.json",
                 headers: { "authorization" => SimpleOAuth::Header.new(:get, "https://userstream.twitter.com/1.1/user.json", {}, credentials).to_s,
                            "accept-encoding" => "identity;q=1" }) { |res| # plum doesn't have built-in gzip/deflate decoder
-    if res.status != 200
+    if res.status != "200"
       puts "failed userstream"
       exit
     end
