@@ -1,4 +1,4 @@
-# Plum: An HTTP/2 Library for Ruby
+ Plum: An HTTP/2 Library for Ruby
 A pure Ruby HTTP/2 server and client implementation.
 
 WARNING: Plum is currently under heavy development. You *will* encounter bugs when using it.
@@ -54,9 +54,9 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
 ##### Sequential request
 ```ruby
 client = Plum::Client.start("http2.rhe.jp", 443, user_agent: "nyaan")
-res1 = client.get("/", headers: { "accept" => "*/*" })
+res1 = client.get!("/", headers: { "accept" => "*/*" })
 puts res1.body # => "..."
-res2 = client.post("/post", "data")
+res2 = client.post!("/post", "data")
 puts res2.body # => "..."
 
 client.close
@@ -66,8 +66,9 @@ client.close
 ```ruby
 res1 = res2 = nil
 Plum::Client.start("rhe.jp", http2_settings: { max_frame_size: 32768 }) { |client|
-  res1 = client.get_async("/")
-  res2 = client.post_async("/post", "data")
+  res1 = client.get("/")
+  res2 = client.post("/post", "data")
+  # res1.status == nil ; because it's async request
 } # wait for response(s) and close
 
 p res1.status # => "200"
@@ -76,10 +77,10 @@ p res1.status # => "200"
 ##### Download a large file
 ```ruby
 Plum::Client.start("http2.rhe.jp", hostname: "assets.rhe.jp") { |client|
-  client.get_async("/large") do |res| # called when received response headers
+  client.get("/large") do |res| # called when received response headers
     p res.status # => "200"
     File.open("/tmp/large.file", "wb") { |file|
-      res.on_chunk do |chunk|
+      res.on_chunk do |chunk| # called when each chunk of response body arrived
         file << chunk
       end
     }

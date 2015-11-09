@@ -83,6 +83,14 @@ module Plum
       @session.request(headers, body, options, &block)
     end
 
+    # @!method get!
+    # @!method head!
+    # @!method delete!
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `Client#resume(Client#request(*args))`
+
     # @!method get
     # @!method head
     # @!method delete
@@ -90,22 +98,22 @@ module Plum
     # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
-
-    # @!method get_async
-    # @!method head_async
-    # @!method delete_async
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `#request_async`
     %w(GET HEAD DELETE).each { |method|
-      define_method(:"#{method.downcase}") do |path, options = {}, &block|
+      define_method(:"#{method.downcase}!") do |path, options = {}, &block|
         resume _request_helper(method, path, nil, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, options = {}, &block|
+      define_method(:"#{method.downcase}") do |path, options = {}, &block|
         _request_helper(method, path, nil, options, &block)
       end
     }
+    # @!method post!
+    # @!method put!
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param body [String] the request body
+    # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `Client#resume(Client#request(*args))`
+
     # @!method post
     # @!method put
     # @param path [String] the absolute path to request (translated into :path header)
@@ -113,19 +121,11 @@ module Plum
     # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
-
-    # @!method post_async
-    # @!method put_async
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param body [String] the request body
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `#request_async`
     %w(POST PUT).each { |method|
-      define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
+      define_method(:"#{method.downcase}!") do |path, body, options = {}, &block|
         resume _request_helper(method, path, body, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, body, options = {}, &block|
+      define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
         _request_helper(method, path, body, options, &block)
       end
     }

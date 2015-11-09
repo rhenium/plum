@@ -5,7 +5,7 @@ class ClientTest < Minitest::Test
   def test_request_sync
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res1 = client.put("/", "aaa", headers: { "header" => "ccc" })
+    res1 = client.put!("/", "aaa", headers: { "header" => "ccc" })
     assert_equal("PUTcccaaa", res1.body)
     client.close
   ensure
@@ -23,7 +23,8 @@ class ClientTest < Minitest::Test
       }
       assert_nil(res1.headers)
 
-      res2 = client.get_async("/", headers: { "header" => "ccc" })
+      res2 = client.get("/", headers: { "header" => "ccc" })
+      assert_nil(res2.headers)
     }
     assert(res2.headers)
     assert_equal("GETccc", res2.body)
@@ -47,7 +48,7 @@ class ClientTest < Minitest::Test
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
       assert_raises(LocalConnectionError) {
-        client.get("/connection_error")
+        client.get!("/connection_error")
       }
     }
   ensure
@@ -57,7 +58,7 @@ class ClientTest < Minitest::Test
   def test_raise_error_async_seq_resume
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res = client.get_async("/error_in_data")
+    res = client.get("/error_in_data")
     assert_raises(LocalConnectionError) {
       client.resume(res)
     }
@@ -72,7 +73,7 @@ class ClientTest < Minitest::Test
     assert_raises(LocalConnectionError) {
       Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
         client = c
-        client.get_async("/connection_error") { |res| flunk "success??" }
+        client.get("/connection_error") { |res| flunk "success??" }
       } # resume
     }
   ensure
