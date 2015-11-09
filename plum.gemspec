@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["rhenium"]
   spec.email         = ["k@rhe.jp"]
 
-  spec.summary       = %q{A minimal implementation of HTTP/2 server.}
+  spec.summary       = %q{An HTTP/2 Library for Ruby}
   spec.description   = spec.summary
   spec.homepage      = "https://github.com/rhenium/plum"
   spec.license       = "MIT"
@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rack"
   spec.add_development_dependency "rake"
   spec.add_development_dependency "yard"
-  spec.add_development_dependency "minitest", "~> 5.7.0"
+  spec.add_development_dependency "minitest", "~> 5.8.0"
   spec.add_development_dependency "simplecov"
   spec.add_development_dependency "codeclimate-test-reporter"
   spec.add_development_dependency "guard"
