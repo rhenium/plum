@@ -45,7 +45,7 @@ module Plum
       if block_given?
         begin
           ret = yield(self)
-          wait
+          resume
           return ret
         ensure
           close
@@ -57,19 +57,13 @@ module Plum
     # Resume communication with the server, until the specified (or all running) requests are complete.
     # @param response [Response] if specified, waits only for the response
     # @return [Response] if parameter response is specified
-    def wait(response = nil)
+    def resume(response = nil)
       if response
         @session.succ until response.failed? || response.finished?
         response
       else
         @session.succ until @session.empty?
       end
-    end
-
-    # Resume communication with the server until the response headers are sent.
-    # @param response [Response] the incomplete response.
-    def wait_headers(response)
-      @session.succ while !response.failed? && !response.headers
     end
 
     # Closes the connection immediately.
@@ -84,18 +78,9 @@ module Plum
     # @param body [String] the request body
     # @param options [Hash<Symbol, Object>] request options
     # @param block [Proc] if passed, it will be called when received response headers.
-    def request_async(headers, body, options = {}, &block)
+    def request(headers, body, options = {}, &block)
       raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
       @session.request(headers, body, options, &block)
-    end
-
-    # Creates a new HTTP request and waits for the response
-    # @param headers [Hash<String, String>] the request headers
-    # @param body [String] the request body
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if passed, it will be called when received response headers.
-    def request(headers, body, options = {}, &block)
-      wait request_async(headers, body, options, &block)
     end
 
     # @!method get
@@ -103,6 +88,7 @@ module Plum
     # @!method delete
     # @param path [String] the absolute path to request (translated into :path header)
     # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
 
     # @!method get_async
@@ -114,7 +100,7 @@ module Plum
     # Shorthand method for `#request_async`
     %w(GET HEAD DELETE).each { |method|
       define_method(:"#{method.downcase}") do |path, options = {}, &block|
-        wait _request_helper(method, path, nil, options, &block)
+        resume _request_helper(method, path, nil, options, &block)
       end
       define_method(:"#{method.downcase}_async") do |path, options = {}, &block|
         _request_helper(method, path, nil, options, &block)
@@ -125,6 +111,7 @@ module Plum
     # @param path [String] the absolute path to request (translated into :path header)
     # @param body [String] the request body
     # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
 
     # @!method post_async
@@ -136,7 +123,7 @@ module Plum
     # Shorthand method for `#request_async`
     %w(POST PUT).each { |method|
       define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
-        wait _request_helper(method, path, body, options, &block)
+        resume _request_helper(method, path, body, options, &block)
       end
       define_method(:"#{method.downcase}_async") do |path, body, options = {}, &block|
         _request_helper(method, path, body, options, &block)
@@ -201,7 +188,7 @@ module Plum
                ":path" => path,
                "user-agent" => @config[:user_agent] }
       base.merge!(options[:headers]) if options[:headers]
-      request_async(base, body, options, &block)
+      request(base, body, options, &block)
     end
   end
 end

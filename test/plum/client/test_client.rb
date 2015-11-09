@@ -2,16 +2,14 @@ require "test_helper"
 
 using Plum::BinaryString
 class ClientTest < Minitest::Test
-  def test_request
+  def test_request_sync
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res1 = client.request({ ":path" => "/", ":method" => "POST", ":scheme" => "https", "header" => "ccc" }, "abc")
-    assert_equal("POSTcccabc", res1.body)
-    res2 = client.put("/", "aaa", headers: { "header" => "ccc" })
-    assert_equal("PUTcccaaa", res2.body)
+    res1 = client.put("/", "aaa", headers: { "header" => "ccc" })
+    assert_equal("PUTcccaaa", res1.body)
     client.close
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_request_async
@@ -20,7 +18,7 @@ class ClientTest < Minitest::Test
     server_thread = start_tls_server
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
-      res1 = client.request_async({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1|
+      res1 = client.request({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1|
         assert(res1.headers)
       }
       assert_nil(res1.headers)
@@ -30,7 +28,7 @@ class ClientTest < Minitest::Test
     assert(res2.headers)
     assert_equal("GETccc", res2.body)
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_verify
@@ -40,7 +38,7 @@ class ClientTest < Minitest::Test
       client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_PEER)
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_raise_error_sync
@@ -53,19 +51,19 @@ class ClientTest < Minitest::Test
       }
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
-  def test_raise_error_async_seq_wait
+  def test_raise_error_async_seq_resume
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
     res = client.get_async("/error_in_data")
     assert_raises(LocalConnectionError) {
-      client.wait(res)
+      client.resume(res)
     }
     client.close
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_raise_error_async_block
@@ -75,10 +73,10 @@ class ClientTest < Minitest::Test
       Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
         client = c
         client.get_async("/connection_error") { |res| flunk "success??" }
-      } # wait
+      } # resume
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   private
