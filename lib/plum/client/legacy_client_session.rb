@@ -15,7 +15,7 @@ module Plum
     end
 
     def succ
-      @parser << @socket.readpartial(1024)
+      @parser << @socket.readpartial(16384)
     rescue => e # including HTTP::Parser::Error
       fail(e)
     end

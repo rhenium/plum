@@ -2,7 +2,6 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      tls: true,
       scheme: "https",
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
       ssl_context: nil,
@@ -31,7 +30,7 @@ module Plum
         @socket = host
       else
         @host = host
-        @port = port || (config[:tls] ? 443 : 80)
+        @port = port || (config[:scheme] == "https" ? 443 : 80)
       end
       @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
       @started = false
@@ -131,35 +130,40 @@ module Plum
     }
 
     private
+    # @return [Boolean] http2 nego?
+    def _connect
+      @socket = TCPSocket.open(@host, @port)
+
+      if @config[:scheme] == "https"
+        ctx = @config[:ssl_context] || new_ssl_ctx
+        @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
+        @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
+        @socket.sync_close = true
+        @socket.connect
+        @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+
+        @socket.respond_to?(:alpn_protocol) && @socket.alpn_protocol == "h2" ||
+          @socket.respond_to?(:npn_protocol) && @socket.npn_protocol == "h2"
+      end
+    end
+
     def _start
       @started = true
 
-      http2 = @config[:http2]
-      unless @socket
-        @socket = TCPSocket.open(host, port)
-        if config[:tls]
-          ctx = @config[:ssl_context] || new_ssl_ctx
-          @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
-          @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
-          @socket.sync_close = true
-          @socket.connect
-          @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+      klass = @config[:http2] ? ClientSession : LegacyClientSession
+      nego = @socket || _connect
 
-          if @socket.respond_to?(:alpn_protocol)
-            http2 = @socket.alpn_protocol == "h2"
-          elsif @socket.respond_to?(:npn_protocol) # TODO: remove
-            http2 = @socket.npn_protocol == "h2"
-          else
-            http2 = false
-          end
+      if @config[:http2]
+        if @config[:scheme] == "https"
+          klass = nego ? ClientSession : LegacyClientSession
+        else
+          klass = UpgradeClientSession
         end
+      else
+        klass = LegacyClientSession
       end
 
-      if http2
-        @session = ClientSession.new(@socket, @config)
-      else
-        @session = LegacyClientSession.new(@socket, @config)
-      end
+      @session = klass.new(@socket, @config)
     end
 
     def new_ssl_ctx

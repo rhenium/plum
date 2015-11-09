@@ -58,19 +58,9 @@ module Plum
     end
     alias << receive
 
-    private
-    def consume_buffer
-      while frame = Frame.parse!(@buffer)
-        callback(:frame, frame)
-        receive_frame(frame)
-      end
-    end
-
-    def send_immediately(frame)
-      callback(:send_frame, frame)
-      @writer.call(frame.assemble)
-    end
-
+    # Returns a Stream object with the specified ID.
+    # @param stream_id [Integer] the stream id
+    # @return [Stream] the stream
     def stream(stream_id)
       raise ArgumentError, "stream_id can't be 0" if stream_id == 0
 
@@ -90,6 +80,19 @@ module Plum
       end
 
       stream
+    end
+
+    private
+    def consume_buffer
+      while frame = Frame.parse!(@buffer)
+        callback(:frame, frame)
+        receive_frame(frame)
+      end
+    end
+
+    def send_immediately(frame)
+      callback(:send_frame, frame)
+      @writer.call(frame.assemble)
     end
 
     def validate_received_frame(frame)

@@ -26,7 +26,7 @@ module Plum
       def run
         begin
           while !@sock.closed? && !@sock.eof?
-            @plum << @sock.readpartial(1024)
+            @plum << @sock.readpartial(16384)
           end
         rescue Errno::EPIPE, Errno::ECONNRESET => e
         rescue StandardError => e

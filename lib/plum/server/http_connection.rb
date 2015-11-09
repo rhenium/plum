@@ -59,10 +59,10 @@ module Plum
         process_first_request
       }
 
-      resp = "HTTP/1.1 101 Switching Protocols\r\n"
-             "Connection: Upgrade\r\n"
-             "Upgrade: h2c\r\n"
-             "Server: plum/#{Plum::VERSION}\r\n"
+      resp = "HTTP/1.1 101 Switching Protocols\r\n" +
+             "Connection: Upgrade\r\n" +
+             "Upgrade: h2c\r\n" +
+             "Server: plum/#{Plum::VERSION}\r\n" +
              "\r\n"
 
       @sock.write(resp)

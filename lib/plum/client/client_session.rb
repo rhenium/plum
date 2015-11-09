@@ -7,6 +7,8 @@ module Plum
       initial_window_size: 2 ** 30, # TODO
     }
 
+    attr_reader :plum
+
     def initialize(socket, config)
       @socket = socket
       @config = config
@@ -17,7 +19,7 @@ module Plum
     end
 
     def succ
-      @plum << @socket.readpartial(1024)
+      @plum << @socket.readpartial(16384)
     rescue => e
       fail(e)
     end

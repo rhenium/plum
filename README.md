@@ -65,7 +65,7 @@ client.close
 ##### Parallel request
 ```ruby
 res1 = res2 = nil
-Plum::Client.start("rhe.jp", http2_settings: { max_frame_size: 32768 }) { |client|
+Plum::Client.start("rhe.jp", 443, http2_settings: { max_frame_size: 32768 }) { |client|
   res1 = client.get("/")
   res2 = client.post("/post", "data")
   # res1.status == nil ; because it's async request
@@ -76,7 +76,7 @@ p res1.status # => "200"
 
 ##### Download a large file
 ```ruby
-Plum::Client.start("http2.rhe.jp", hostname: "assets.rhe.jp") { |client|
+Plum::Client.start("http2.rhe.jp", 443, hostname: "assets.rhe.jp") { |client|
   client.get("/large") do |res| # called when received response headers
     p res.status # => "200"
     File.open("/tmp/large.file", "wb") { |file|
