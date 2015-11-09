@@ -33,7 +33,7 @@ App = -> env {
   [
     200,
     { "Content-Type" => "text/plain" },
-    [" request: #{env["REQUEST_METHOD"]} #{env["PATH_INFO"]}"]
+    ["request: #{env["REQUEST_METHOD"]} #{env["PATH_INFO"]}"]
   ]
 }
 
@@ -50,6 +50,26 @@ NOTE: If `--cert` and `--key` are omitted, a temporary dummy certificate will be
 
 ### As a HTTP/2 (HTTP/1.x) client library
 If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instead.
+
+```
+   +-----------------+
+   |:http2 option    | false
+   |(default: true)  |-------> HTTP/1.x
+   +-----------------+
+            v true
+   +-----------------+
+   |:scheme option   | "http"
+   |(default:"https")|-------> Try Upgrade from HTTP/1.1
+   +-----------------+
+            v "https"
+   +-----------------+
+   | ALPN(/NPN)      | failed
+   | negotiation     |-------> HTTP/1.x
+   +-----------------+
+            | "h2"
+            v
+          HTTP/2
+```
 
 ##### Sequential request
 ```ruby
