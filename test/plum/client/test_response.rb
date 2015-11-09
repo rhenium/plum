@@ -60,4 +60,15 @@ class ResponseTest < Minitest::Test
     resp._chunk("c")
     assert_equal(["a", "b", "c"], res)
   end
+
+  def test_on_finish
+    resp = Response.new
+    ran = false
+    resp.on_finish { ran = true }
+    resp._finish
+    assert(ran)
+    ran = false
+    resp.on_finish { ran = true }
+    assert(ran)
+  end
 end

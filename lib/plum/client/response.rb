@@ -42,10 +42,21 @@ module Plum
     # @yield [chunk] A chunk of the response body.
     def on_chunk(&block)
       raise "Body already read" if @on_chunk
+      raise ArgumentError, "block must be given" unless block_given?
       @on_chunk = block
       unless @body.empty?
         @body.each(&block)
         @body.clear
+      end
+    end
+
+    # Set callback that will be called when the response finished.
+    def on_finish(&block)
+      raise ArgumentError, "block must be given" unless block_given?
+      if finished?
+        block.call
+      else
+        @on_finish = block
       end
     end
 
@@ -78,6 +89,7 @@ module Plum
     # @api private
     def _finish
       @finished = true
+      @on_finish.call if @on_finish
     end
 
     # @api private
