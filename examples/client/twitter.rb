@@ -2,7 +2,7 @@
 # client/twitter.rb
 # Twitter の User stream に（現在はサーバーが非対応のため）HTTP/1.1 を使用して接続する。
 # 「にゃーん」を含むツイートを受信したら、REST API で HTTP/2 を使用して返信する。
-$LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
+$LOAD_PATH.unshift File.expand_path("../../../lib", __FILE__)
 require "plum"
 require "json"
 require "cgi"
@@ -39,10 +39,10 @@ Plum::Client.start("userstream.twitter.com", 443) { |streaming|
         if /にゃーん/ =~ json["text"]
           args = { "status" => "@#{json["user"]["screen_name"]} にゃーん",
                    "in_reply_to_status_id" => json["id"].to_s }
-          rest.post("/1.1/statuses/update.json",
-                    args.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join("&"),
-                    headers: { "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
-                               "content-type" => "application/x-www-form-urlencoded" })
+          rest.post!("/1.1/statuses/update.json",
+                     args.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join("&"),
+                     headers: { "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
+                                "content-type" => "application/x-www-form-urlencoded" })
         end
       end
     }
