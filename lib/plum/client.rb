@@ -9,6 +9,7 @@ module Plum
       ssl_context: nil,
       http2_settings: {},
       user_agent: "plum/#{Plum::VERSION}",
+      auto_decode: true,
     }.freeze
 
     attr_reader :host, :port, :config
@@ -79,7 +80,7 @@ module Plum
     # @param block [Proc] if passed, it will be called when received response headers.
     def request(headers, body, options = {}, &block)
       raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
-      @session.request(headers, body, options, &block)
+      @session.request(headers, body, @config.merge(options), &block)
     end
 
     # @!method get!

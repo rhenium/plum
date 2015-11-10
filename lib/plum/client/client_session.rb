@@ -42,7 +42,7 @@ module Plum
                   ":scheme" => @config[:scheme]
       }.merge(headers)
 
-      response = Response.new
+      response = Response.new(**options)
       @responses << response
       stream = @plum.open_stream
       stream.send_headers(headers, end_stream: !body)
