@@ -3,33 +3,28 @@ using Plum::BinaryString
 
 module Plum
   module FrameUtils
-    # Splits the DATA frame into multiple frames if the payload size exceeds max size.
+    # Splits this frame into multiple frames not to exceed MAX_FRAME_SIZE.
     # @param max [Integer] The maximum size of a frame payload.
-    # @return [Array<Frame>] The splitted frames.
-    def split_data(max)
-      return [self] if self.length <= max
-      raise "Frame type must be DATA" unless self.type == :data
-
-      fragments = self.payload.each_byteslice(max).to_a
-      frames = fragments.map {|fragment| Frame.new(type: :data, flags: [], stream_id: self.stream_id, payload: fragment) }
-      frames.first.flags = self.flags - [:end_stream]
-      frames.last.flags = self.flags & [:end_stream]
-      frames
-    end
-
-    # Splits the HEADERS or PUSH_PROMISE frame into multiple frames if the payload size exceeds max size.
-    # @param max [Integer] The maximum size of a frame payload.
-    # @return [Array<Frame>] The splitted frames.
-    def split_headers(max)
-      return [self] if self.length <= max
-      raise "Frame type must be HEADERS or PUSH_PROMISE" unless [:headers, :push_promise].include?(self.type)
-
-      fragments = self.payload.each_byteslice(max).to_a
-      frames = fragments.map {|fragment| Frame.new(type: :continuation, flags: [], stream_id: self.stream_id, payload: fragment) }
-      frames.first.type_value = self.type_value
-      frames.first.flags = self.flags - [:end_headers]
-      frames.last.flags = self.flags & [:end_headers]
-      frames
+    # @yield [Frame] The splitted frames.
+    def split(max)
+      return yield self if @length <= max
+      first, *mid, last = @payload.chunk(max)
+      case type
+      when :data
+        yield Frame.new(type_value: 0, stream_id: @stream_id, payload: first, flags_value: @flags_value & ~1)
+        mid.each { |slice|
+          yield Frame.new(type_value: 0, stream_id: @stream_id, payload: slice, flags_value: 0)
+        }
+        yield Frame.new(type_value: 0, stream_id: @stream_id, payload: last, flags_value: @flags_value & 1)
+      when :headers, :push_promise
+        yield Frame.new(type_value: @type_value, stream_id: @stream_id, payload: first, flags_value: @flags_value & ~4)
+        mid.each { |slice|
+          yield Frame.new(type: :continuation, stream_id: @stream_id, payload: slice, flags_value: 0)
+        }
+        yield Frame.new(type: :continuation, stream_id: @stream_id, payload: last, flags_value: @flags_value & 4)
+      else
+        raise NotImplementedError.new("frame split of frame with type #{type} is not supported")
+      end
     end
 
     # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540 6.5.2).

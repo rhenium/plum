@@ -61,4 +61,10 @@ class BinaryStringTest < Minitest::Test
     ret = string.each_byteslice(3)
     assert_equal(["123", "456", "78"], ret.to_a)
   end
+
+  def test_chunk
+    string = "12345678"
+    ret = string.chunk(3)
+    assert_equal(["123", "456", "78"], ret)
+  end
 end

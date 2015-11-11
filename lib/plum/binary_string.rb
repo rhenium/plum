@@ -70,6 +70,20 @@ module Plum
           # I want to write `enum_for(__method__, n)`!
         end
       end
+
+      # Splits this String into chunks.
+      # @param n [Integer] max chunk bytesize
+      # @return [Array<String>] the slices
+      def chunk(n)
+        res = []
+        pos = 0
+        lim = bytesize
+        while pos < lim
+          res << byteslice(pos, n)
+          pos += n
+        end
+        res
+      end
     end
   end
 end

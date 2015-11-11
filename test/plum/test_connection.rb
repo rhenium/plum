@@ -100,4 +100,15 @@ class ConnectionTest < Minitest::Test
       }
     }
   end
+
+  def test_send_immediately_split
+    io = StringIO.new
+    con = Connection.new(io.method(:write))
+    fs = parse_frames(io) {
+      con.__send__(:send_immediately, Frame.new(type: :data, stream_id: 1, payload: "a"*16385))
+    }
+    assert_equal(2, fs.size)
+    assert_equal(16384, fs.first.length)
+    assert_equal(1, fs.last.length)
+  end
 end

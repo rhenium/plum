@@ -9,10 +9,8 @@ module Plum
     def promise(headers)
       stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
       encoded = @connection.hpack_encoder.encode(headers)
-      original = Frame.push_promise(id, stream.id, encoded, :end_headers)
-      original.split_headers(@connection.remote_settings[:max_frame_size]).each do |frame|
-        send frame
-      end
+      frame = Frame.push_promise(id, stream.id, encoded, :end_headers)
+      send frame
       stream
     end
 
@@ -22,10 +20,8 @@ module Plum
     def send_headers(headers, end_stream:)
       max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
-      original_frame = Frame.headers(id, encoded, :end_headers, (end_stream && :end_stream || nil))
-      original_frame.split_headers(max).each do |frame|
-        send frame
-      end
+      frame = Frame.headers(id, encoded, :end_headers, (end_stream && :end_stream || nil))
+      send frame
       @state = :half_closed_local if end_stream
     end
 
@@ -35,14 +31,13 @@ module Plum
     def send_data(data, end_stream: true)
       max = @connection.remote_settings[:max_frame_size]
       if data.is_a?(IO)
-        while !data.eof? && fragment = data.readpartial(max)
+        until data.eof?
+          fragment = data.readpartial(max)
           send Frame.data(id, fragment, (end_stream && data.eof? && :end_stream))
         end
       else
-        original = Frame.data(id, data, (end_stream && :end_stream))
-        original.split_data(max).each do |frame|
-          send frame
-        end
+        frame = Frame.data(id, data, (end_stream && :end_stream))
+        send frame
       end
       @state = :half_closed_local if end_stream
     end

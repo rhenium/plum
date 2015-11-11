@@ -92,7 +92,14 @@ module Plum
 
     def send_immediately(frame)
       callback(:send_frame, frame)
-      @writer.call(frame.assemble)
+
+      if frame.length <= @remote_settings[:max_frame_size]
+        @writer.call(frame.assemble)
+      else
+        frame.split(@remote_settings[:max_frame_size]) { |splitted|
+          @writer.call(splitted.assemble)
+        }
+      end
     end
 
     def validate_received_frame(frame)
