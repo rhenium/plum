@@ -24,8 +24,8 @@ class UpgradeClientSessionTest < Minitest::Test
     sock.rio.string << Frame.settings().assemble
     sock.rio.string << Frame.settings(:ack).assemble
     res = session.request({ ":method" => "GET", ":path" => "/aa" }, "aa", {})
-    sock.rio.string << Frame.headers(3, HPACK::Encoder.new(3).encode(":status" => "200", "content-length" => "3"), :end_headers).assemble
-    sock.rio.string << Frame.data(3, "aaa", :end_stream).assemble
+    sock.rio.string << Frame.headers(3, HPACK::Encoder.new(3).encode(":status" => "200", "content-length" => "3"), end_headers: true).assemble
+    sock.rio.string << Frame.data(3, "aaa", end_stream: true).assemble
     session.succ until res.finished?
     assert(res.finished?)
     assert_equal("aaa", res.body)

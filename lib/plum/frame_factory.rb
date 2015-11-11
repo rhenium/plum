@@ -54,37 +54,45 @@ module Plum
     # Creates a DATA frame.
     # @param stream_id [Integer] The stream ID.
     # @param payload [String] Payload.
-    # @param flags [Array<Symbol>] Flags.
-    def data(stream_id, payload, *flags)
+    # @param end_stream [Boolean] add END_STREAM flag
+    def data(stream_id, payload, end_stream: false)
       payload = payload.b if payload && payload.encoding != Encoding::BINARY
-      Frame.new(type: :data, stream_id: stream_id, flags: flags, payload: payload)
+      fval = 0
+      fval += 1 if end_stream
+      Frame.new(type_value: 0, stream_id: stream_id, flags_value: fval, payload: payload)
     end
 
     # Creates a HEADERS frame.
     # @param stream_id [Integer] The stream ID.
     # @param encoded [String] Headers.
-    # @param flags [Array<Symbol>] Flags.
-    def headers(stream_id, encoded, *flags)
-      Frame.new(type: :headers, stream_id: stream_id, flags: flags, payload: encoded)
+    # @param end_stream [Boolean] add END_STREAM flag
+    # @param end_headers [Boolean] add END_HEADERS flag
+    def headers(stream_id, encoded, end_stream: false, end_headers: false)
+      fval = 0
+      fval += 1 if end_stream
+      fval += 4 if end_headers
+      Frame.new(type_value: 1, stream_id: stream_id, flags_value: fval, payload: encoded)
     end
 
     # Creates a PUSH_PROMISE frame.
     # @param stream_id [Integer] The stream ID.
     # @param new_id [Integer] The stream ID to create.
     # @param encoded [String] Request headers.
-    # @param flags [Array<Symbol>] Flags.
-    def push_promise(stream_id, new_id, encoded, *flags)
+    # @param end_headers [Boolean] add END_HEADERS flag
+    def push_promise(stream_id, new_id, encoded, end_headers: false)
       payload = String.new.push_uint32(new_id)
                           .push(encoded)
-      Frame.new(type: :push_promise, stream_id: stream_id, flags: flags, payload: payload)
+      fval = 0
+      fval += 4 if end_headers
+      Frame.new(type: :push_promise, stream_id: stream_id, flags_value: fval, payload: payload)
     end
 
     # Creates a CONTINUATION frame.
     # @param stream_id [Integer] The stream ID.
     # @param payload [String] Payload.
-    # @param flags [Array<Symbol>] Flags.
-    def continuation(stream_id, payload, *flags)
-      Frame.new(type: :continuation, stream_id: stream_id, flags: flags, payload: payload)
+    # @param end_headers [Boolean] add END_HEADERS flag
+    def continuation(stream_id, payload, end_headers: false)
+      Frame.new(type: :continuation, stream_id: stream_id, flags_value: (end_headers && 4 || 0), payload: payload)
     end
   end
 end

@@ -28,7 +28,7 @@ class StreamTest < Minitest::Test
       }
 
       assert_stream_error(:frame_size_error) {
-        con << Frame.headers(1, "", :end_headers).assemble
+        con << Frame.headers(1, "", end_headers: true).assemble
       }
 
       last = sent_frames.last
@@ -43,7 +43,7 @@ class StreamTest < Minitest::Test
       stream = nil
       con.on(:headers) { |s| stream = s }
 
-      con << Frame.headers(1, "", :end_headers).assemble
+      con << Frame.headers(1, "", end_headers: true).assemble
       assert_raises(LocalStreamError) {
         con << Frame.rst_stream(1, :frame_size_error).assemble
       }

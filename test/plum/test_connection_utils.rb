@@ -16,7 +16,7 @@ class ServerConnectionUtilsTest < Minitest::Test
 
   def test_server_goaway
     open_server_connection {|con|
-      con << Frame.headers(3, "", :end_stream, :end_headers).assemble
+      con << Frame.headers(3, "", end_stream: true, end_headers: true).assemble
       con.goaway(:stream_closed)
 
       last = sent_frames.last

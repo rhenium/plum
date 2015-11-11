@@ -77,8 +77,8 @@ module Plum
                                   ":authority" => @_headers["host"] })
                          .reject {|n, v| ["connection", "http2-settings", "upgrade", "host"].include?(n) }
 
-      stream.receive_frame Frame.headers(1, encoder.encode(headers), :end_headers)
-      stream.receive_frame Frame.data(1, @_body, :end_stream)
+      stream.receive_frame Frame.headers(1, encoder.encode(headers), end_headers: true)
+      stream.receive_frame Frame.data(1, @_body, end_stream: true)
     end
   end
 end
