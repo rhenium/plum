@@ -145,6 +145,7 @@ module Plum
           "rack.hijack?"      => false,
           "SCRIPT_NAME"       => "",
           "REMOTE_ADDR"       => @remote_addr,
+          "HTTP_VERSION"      => "HTTP/2.0", # Rack::CommonLogger uses
         }
 
         h.each { |k, v|
