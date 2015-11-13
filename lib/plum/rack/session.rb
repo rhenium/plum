@@ -124,9 +124,9 @@ module Plum
         send_body(stream, r_body)
 
         push_sts.each { |st, preq|
-          penv = new_env(preq, "")
+          penv = new_env(preq, "".b)
           p_status, p_h, p_body = @app.call(penv)
-          p_headers = extract_headers(p_status, p_h)
+          p_headers, _ = extract_headers(p_status, p_h)
           st.send_headers(p_headers, end_stream: false)
           send_body(st, p_body)
         }
