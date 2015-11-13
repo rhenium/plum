@@ -60,8 +60,8 @@ module Plum
             config[:listeners] << { listener: TLSListener,
                                     hostname: @options[:host] || "0.0.0.0",
                                     port: @options[:port] || 8080,
-                                    certificate: @options[:cert] && File.read(@options[:cert]),
-                                    certificate_key: @options[:cert] && File.read(@options[:key]) }
+                                    certificate: @options[:cert],
+                                    certificate_key: @options[:cert] && @options[:key] }
           end
         end
 

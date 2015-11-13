@@ -31,9 +31,11 @@ module Plum
 
     class TLSListener < BaseListener
       def initialize(lc)
-        cert, key = lc[:certificate], lc[:certificate_key]
-        unless cert && key
-          puts "WARNING: using dummy certificate"
+        if lc[:certificate] && lc[:certificate_key]
+          cert = File.read(lc[:certificate])
+          key = File.read(lc[:certificate_key])
+        else
+          STDERR.puts "WARNING: using dummy certificate"
           cert, key = dummy_key
         end
 
