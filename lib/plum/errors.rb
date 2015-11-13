@@ -30,6 +30,10 @@ module Plum
     def http2_error_code
       ERROR_CODES[@http2_error_type]
     end
+
+    def to_s
+      "#{@http2_error_type.to_s.upcase}: #{super}"
+    end
   end
 
   class RemoteHTTPError < HTTPError; end
