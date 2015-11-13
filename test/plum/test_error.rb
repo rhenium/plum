@@ -7,7 +7,6 @@ class ErrorTest < Minitest::Test
       assert_equal(0x08, e.http2_error_code)
     }
 
-    test.call ConnectionError
-    test.call StreamError
+    test.call HTTPError
   end
 end

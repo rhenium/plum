@@ -1,4 +1,6 @@
 # -*- frozen-string-literal: true -*-
+require "plum/rack"
+
 module Rack
   module Handler
     class Plum

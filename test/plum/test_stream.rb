@@ -19,14 +19,34 @@ class StreamTest < Minitest::Test
     }
   end
 
-  def test_stream_close
-    open_new_stream(state: :half_closed_local) {|stream|
-      stream.close(:frame_size_error)
+  def test_stream_remote_error
+    open_server_connection { |con|
+      stream = nil
+      con.on(:headers) { |s|
+        stream = s
+        raise RemoteStreamError.new(:frame_size_error)
+      }
+
+      assert_stream_error(:frame_size_error) {
+        con << Frame.headers(1, "", end_headers: true).assemble
+      }
 
       last = sent_frames.last
       assert_equal(:rst_stream, last.type)
-      assert_equal(StreamError.new(:frame_size_error).http2_error_code, last.payload.uint32)
+      assert_equal(HTTPError::ERROR_CODES[:frame_size_error], last.payload.uint32)
       assert_equal(:closed, stream.state)
+    }
+  end
+
+  def test_stream_local_error
+    open_server_connection { |con|
+      stream = nil
+      con.on(:headers) { |s| stream = s }
+
+      con << Frame.headers(1, "", end_headers: true).assemble
+      assert_raises(LocalStreamError) {
+        con << Frame.rst_stream(1, :frame_size_error).assemble
+      }
     }
   end
 end

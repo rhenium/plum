@@ -47,20 +47,20 @@ module Plum
       when :push_promise
         receive_push_promise(frame)
       when :ping, :goaway, :settings
-        raise ConnectionError.new(:protocol_error) # stream_id MUST be 0x00
+        raise RemoteConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       else
         # MUST ignore unknown frame
       end
-    rescue StreamError => e
+    rescue RemoteStreamError => e
       callback(:stream_error, e)
-      close(e.http2_error_type)
+      send_immediately Frame.rst_stream(id, e.http2_error_type)
+      close
     end
 
     # Closes this stream. Sends RST_STREAM frame to the peer.
-    # @param error_type [Symbol] The error type to be contained in the RST_STREAM frame.
-    def close(error_type = :no_error)
+    def close
       @state = :closed
-      send_immediately Frame.rst_stream(id, error_type)
+      callback(:close)
     end
 
     # @api private
@@ -70,7 +70,7 @@ module Plum
 
     # @api private
     def update_dependency(weight: nil, parent: nil, exclusive: nil)
-      raise StreamError.new(:protocol_error, "A stream cannot depend on itself.") if parent == self
+      raise RemoteStreamError.new(:protocol_error, "A stream cannot depend on itself.") if parent == self
 
       if weight
         @weight = weight
@@ -102,9 +102,9 @@ module Plum
     def validate_received_frame(frame)
       if frame.length > @connection.local_settings[:max_frame_size]
         if [:headers, :push_promise, :continuation].include?(frame.type)
-          raise ConnectionError.new(:frame_size_error)
+          raise RemoteConnectionError.new(:frame_size_error)
         else
-          raise StreamError.new(:frame_size_error)
+          raise RemoteStreamError.new(:frame_size_error)
         end
       end
     end
@@ -116,13 +116,13 @@ module Plum
 
     def receive_data(frame)
       if @state != :open && @state != :half_closed_local
-        raise StreamError.new(:stream_closed)
+        raise RemoteStreamError.new(:stream_closed)
       end
 
       if frame.padded?
         padding_length = frame.payload.uint8
         if padding_length >= frame.length
-          raise ConnectionError.new(:protocol_error, "padding is too long")
+          raise RemoteConnectionError.new(:protocol_error, "padding is too long")
         end
         callback(:data, frame.payload.byteslice(1, frame.length - padding_length - 1))
       else
@@ -149,7 +149,7 @@ module Plum
       end
 
       if padding_length > payload.bytesize
-        raise ConnectionError.new(:protocol_error, "padding is too long")
+        raise RemoteConnectionError.new(:protocol_error, "padding is too long")
       end
 
       frames.each do |frame|
@@ -159,7 +159,7 @@ module Plum
       begin
         decoded_headers = @connection.hpack_decoder.decode(payload)
       rescue => e
-        raise ConnectionError.new(:compression_error, e)
+        raise RemoteConnectionError.new(:compression_error, e)
       end
 
       callback(:headers, decoded_headers)
@@ -169,15 +169,15 @@ module Plum
 
     def receive_headers(frame)
       if @state == :reserved_local
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       elsif @state == :half_closed_remote
-        raise StreamError.new(:stream_closed)
+        raise RemoteStreamError.new(:stream_closed)
       elsif @state == :closed
-        raise ConnectionError.new(:stream_closed)
+        raise RemoteConnectionError.new(:stream_closed)
       elsif @state == :closed_implicitly
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       elsif @state == :idle && self.id.even?
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       end
 
       @state = :open
@@ -195,10 +195,10 @@ module Plum
 
       if promised_stream.state == :closed_implicitly
         # 5.1.1 An endpoint that receives an unexpected stream identifier MUST respond with a connection error of type PROTOCOL_ERROR.
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       elsif promised_id.odd?
         # 5.1.1 Streams initiated by the server MUST use even-numbered stream identifiers.
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       end
     end
 
@@ -214,7 +214,7 @@ module Plum
 
     def receive_priority(frame)
       if frame.length != 5
-        raise StreamError.new(:frame_size_error)
+        raise RemoteStreamError.new(:frame_size_error)
       end
       receive_priority_payload(frame.payload)
     end
@@ -230,13 +230,18 @@ module Plum
 
     def receive_rst_stream(frame)
       if frame.length != 4
-        raise ConnectionError.new(:frame_size_error)
+        raise RemoteConnectionError.new(:frame_size_error)
       elsif @state == :idle
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       end
-
-      callback(:rst_stream, frame)
       @state = :closed # MUST NOT send RST_STREAM
+
+      error_code = frame.payload.uint32
+      if error_code > 0
+        raise LocalStreamError.new(HTTPError::ERROR_CODES.key(error_code))
+      else
+        callback(:rst_stream, frame)
+      end
     end
 
     # override EventEmitter

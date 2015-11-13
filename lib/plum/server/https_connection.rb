@@ -10,7 +10,7 @@ module Plum
       if @sock.respond_to?(:cipher) # OpenSSL::SSL::SSLSocket-like
         if CIPHER_BLACKLIST.include?(@sock.cipher.first) # [cipher-suite, ssl-version, keylen, alglen]
           on(:negotiated) {
-            raise ConnectionError.new(:inadequate_security)
+            raise RemoteConnectionError.new(:inadequate_security)
           }
         end
       end

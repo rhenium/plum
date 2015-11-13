@@ -2,16 +2,14 @@ require "test_helper"
 
 using Plum::BinaryString
 class ClientTest < Minitest::Test
-  def test_request
+  def test_request_sync
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res1 = client.request({ ":path" => "/", ":method" => "POST", ":scheme" => "https", "header" => "ccc" }, "abc")
-    assert_equal("POSTcccabc", res1.body)
-    res2 = client.put("/", "aaa", { ":scheme" => "https", "header" => "ccc" })
-    assert_equal("PUTcccaaa", res2.body)
+    res1 = client.put!("/", "aaa", headers: { "header" => "ccc" })
+    assert_equal("PUTcccaaa", res1.body)
     client.close
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_request_async
@@ -20,17 +18,18 @@ class ClientTest < Minitest::Test
     server_thread = start_tls_server
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
-      res1 = client.request_async({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }) { |res1|
+      res1 = client.request({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1|
         assert(res1.headers)
       }
       assert_nil(res1.headers)
 
-      res2 = client.get_async("/", "header" => "ccc")
+      res2 = client.get("/", headers: { "header" => "ccc" })
+      assert_nil(res2.headers)
     }
     assert(res2.headers)
     assert_equal("GETccc", res2.body)
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_verify
@@ -40,7 +39,7 @@ class ClientTest < Minitest::Test
       client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_PEER)
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_raise_error_sync
@@ -49,23 +48,23 @@ class ClientTest < Minitest::Test
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
       assert_raises(LocalConnectionError) {
-        client.get("/connection_error")
+        client.get!("/connection_error")
       }
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
-  def test_raise_error_async_seq_wait
+  def test_raise_error_async_seq_resume
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res = client.get_async("/error_in_data")
+    res = client.get("/error_in_data")
     assert_raises(LocalConnectionError) {
-      client.wait(res)
+      client.resume(res)
     }
     client.close
   ensure
-    server_thread.join
+    server_thread.join if server_thread
   end
 
   def test_raise_error_async_block
@@ -74,11 +73,29 @@ class ClientTest < Minitest::Test
     assert_raises(LocalConnectionError) {
       Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
         client = c
-        client.get_async("/connection_error") { |res| flunk "success??" }
-      } # wait
+        client.get("/connection_error") { |res| flunk "success??" }
+      } # resume
     }
   ensure
-    server_thread.join
+    server_thread.join if server_thread
+  end
+
+  def test_session_socket_http2_https
+    sock = StringSocket.new
+    client = Client.start(sock, nil, http2: true, scheme: "https")
+    assert(client.session.class == ClientSession)
+  end
+
+  def test_session_socket_http2_http
+    sock = StringSocket.new("HTTP/1.1 100\r\n\r\n")
+    client = Client.start(sock, nil, http2: true, scheme: "http")
+    assert(client.session.class == UpgradeClientSession)
+  end
+
+  def test_session_socket_http1
+    sock = StringSocket.new
+    client = Client.start(sock, nil, http2: false)
+    assert(client.session.class == LegacyClientSession)
   end
 
   private
@@ -93,7 +110,7 @@ class ClientTest < Minitest::Test
     server_thread = Thread.new {
       plum = nil
       begin
-        Timeout.timeout(3) {
+        Timeout.timeout(1) {
           sock = ssl_server.accept
           plum = HTTPSServerConnection.new(sock)
 
@@ -112,7 +129,8 @@ class ClientTest < Minitest::Test
                 stream.send_data("a", end_stream: false)
                 raise ExampleError, "example error"
               else
-                stream.respond({ ":status" => 200 }, headers.to_h[":method"] + headers.to_h["header"].to_s + data.to_s)
+                stream.send_headers({ ":status" => 200 }, end_stream: false)
+                stream.send_data(headers.to_h[":method"] + headers.to_h["header"].to_s + data.to_s, end_stream: true)
               end } }
 
           yield plum if block_given?

@@ -135,17 +135,17 @@ class FlowControlTest < Minitest::Test
 
     prepare.call {|con, stream|
       con.window_update(500) # extend only connection
-      con << Frame.headers(stream.id, "", :end_headers).assemble
+      con << Frame.headers(stream.id, "", end_headers: true).assemble
       assert_stream_error(:flow_control_error) {
-        con << Frame.data(stream.id, "\x00" * 30, :end_stream).assemble
+        con << Frame.data(stream.id, "\x00" * 30, end_stream: true).assemble
       }
     }
 
     prepare.call {|con, stream|
       stream.window_update(500) # extend only stream
-      con << Frame.headers(stream.id, "", :end_headers).assemble
+      con << Frame.headers(stream.id, "", end_headers: true).assemble
       assert_connection_error(:flow_control_error) {
-        con << Frame.data(stream.id, "\x00" * 30, :end_stream).assemble
+        con << Frame.data(stream.id, "\x00" * 30, end_stream: true).assemble
       }
     }
   end
@@ -155,8 +155,8 @@ class FlowControlTest < Minitest::Test
       con = stream.connection
       con.settings(initial_window_size: 24)
       stream.window_update(1)
-      con << Frame.headers(stream.id, "", :end_headers).assemble
-      con << Frame.data(stream.id, "\x00" * 20, :end_stream).assemble
+      con << Frame.headers(stream.id, "", end_headers: true).assemble
+      con << Frame.data(stream.id, "\x00" * 20, end_stream: true).assemble
       assert_equal(4, con.recv_remaining_window)
       assert_equal(5, stream.recv_remaining_window)
       con.settings(initial_window_size: 60)

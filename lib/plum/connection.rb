@@ -51,26 +51,16 @@ module Plum
       return if new_data.empty?
       @buffer << new_data
       consume_buffer
-    rescue ConnectionError => e
+    rescue RemoteConnectionError => e
       callback(:connection_error, e)
       goaway(e.http2_error_type)
       close
     end
     alias << receive
 
-    private
-    def consume_buffer
-      while frame = Frame.parse!(@buffer)
-        callback(:frame, frame)
-        receive_frame(frame)
-      end
-    end
-
-    def send_immediately(frame)
-      callback(:send_frame, frame)
-      @writer.call(frame.assemble)
-    end
-
+    # Returns a Stream object with the specified ID.
+    # @param stream_id [Integer] the stream id
+    # @return [Stream] the stream
     def stream(stream_id)
       raise ArgumentError, "stream_id can't be 0" if stream_id == 0
 
@@ -92,14 +82,34 @@ module Plum
       stream
     end
 
+    private
+    def consume_buffer
+      while frame = Frame.parse!(@buffer)
+        callback(:frame, frame)
+        receive_frame(frame)
+      end
+    end
+
+    def send_immediately(frame)
+      callback(:send_frame, frame)
+
+      if frame.length <= @remote_settings[:max_frame_size]
+        @writer.call(frame.assemble)
+      else
+        frame.split(@remote_settings[:max_frame_size]) { |splitted|
+          @writer.call(splitted.assemble)
+        }
+      end
+    end
+
     def validate_received_frame(frame)
       if @state == :waiting_settings && frame.type != :settings
-        raise ConnectionError.new(:protocol_error)
+        raise RemoteConnectionError.new(:protocol_error)
       end
 
       if @state == :waiting_continuation
         if frame.type != :continuation || frame.stream_id != @continuation_id
-          raise ConnectionError.new(:protocol_error)
+          raise RemoteConnectionError.new(:protocol_error)
         end
         if frame.end_headers?
           @state = :open
@@ -127,7 +137,7 @@ module Plum
 
     def receive_control_frame(frame)
       if frame.length > @local_settings[:max_frame_size]
-        raise ConnectionError.new(:frame_size_error)
+        raise RemoteConnectionError.new(:frame_size_error)
       end
 
       case frame.type
@@ -140,7 +150,7 @@ module Plum
       when :goaway
         receive_goaway(frame)
       when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
-        raise Plum::ConnectionError.new(:protocol_error)
+        raise Plum::RemoteConnectionError.new(:protocol_error)
       else
         # MUST ignore unknown frame type.
       end
@@ -148,11 +158,11 @@ module Plum
 
     def receive_settings(frame, send_ack: true)
       if frame.ack?
-        raise ConnectionError.new(:frame_size_error) if frame.length != 0
+        raise RemoteConnectionError.new(:frame_size_error) if frame.length != 0
         callback(:settings_ack)
         return
       else
-        raise ConnectionError.new(:frame_size_error) if frame.length % 6 != 0
+        raise RemoteConnectionError.new(:frame_size_error) if frame.length % 6 != 0
       end
 
       old_remote_settings = @remote_settings.dup
@@ -175,7 +185,7 @@ module Plum
     end
 
     def receive_ping(frame)
-      raise Plum::ConnectionError.new(:frame_size_error) if frame.length != 8
+      raise Plum::RemoteConnectionError.new(:frame_size_error) if frame.length != 8
 
       if frame.ack?
         callback(:ping_ack)

@@ -2,13 +2,18 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      tls: true,
+      http2: true,
       scheme: "https",
+      hostname: nil,
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
+      ssl_context: nil,
+      http2_settings: {},
+      user_agent: "plum/#{Plum::VERSION}",
+      auto_decode: true,
     }.freeze
 
     attr_reader :host, :port, :config
-    attr_reader :socket
+    attr_reader :socket, :session
 
     # Creates a new HTTP client and starts communication.
     # A shorthand for `Plum::Client.new(args).start(&block)`
@@ -26,11 +31,9 @@ module Plum
         @socket = host
       else
         @host = host
-        @port = port || (config[:tls] ? 443 : 80)
+        @port = port || (config[:scheme] == "https" ? 443 : 80)
       end
-      @config = DEFAULT_CONFIG.merge(config)
-      @response_handlers = {}
-      @responses = {}
+      @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
       @started = false
     end
 
@@ -42,7 +45,7 @@ module Plum
       if block_given?
         begin
           ret = yield(self)
-          wait
+          resume
           return ret
         ensure
           close
@@ -51,25 +54,21 @@ module Plum
       self
     end
 
-    # Waits for the asynchronous response(s) to finish.
+    # Resume communication with the server, until the specified (or all running) requests are complete.
     # @param response [Response] if specified, waits only for the response
-    def wait(response = nil)
+    # @return [Response] if parameter response is specified
+    def resume(response = nil)
       if response
-        _succ while !response.failed? && !response.finished?
+        @session.succ until response.failed? || response.finished?
+        response
       else
-        _succ while !@responses.empty?
+        @session.succ until @session.empty?
       end
     end
 
-    # Waits for the response headers.
-    # @param response [Response] the incomplete response.
-    def wait_headers(response)
-      _succ while !response.failed? && !response.headers
-    end
-
-    # Closes the connection.
+    # Closes the connection immediately.
     def close
-      @plum.close if @plum
+      @session.close if @session
     ensure
       @socket.close if @socket
     end
@@ -77,169 +76,124 @@ module Plum
     # Creates a new HTTP request.
     # @param headers [Hash<String, String>] the request headers
     # @param body [String] the request body
-    # @param block [Proc] if specified, calls the block when finished
-    def request_async(headers, body = nil, &block)
-      stream = @plum.open_stream
-      response = Response.new
-      @responses[stream] = response
-
-      if body
-        stream.send_headers(headers, end_stream: false)
-        stream.send_data(body, end_stream: true)
-      else
-        stream.send_headers(headers, end_stream: true)
-      end
-
-      if block_given?
-        @response_handlers[stream] = block
-      end
-
-      response
-    end
-
-    # Creates a new HTTP request and waits for the response
-    # @param headers [Hash<String, String>] the request headers
-    # @param body [String] the request body
-    def request(headers, body = nil)
+    # @param options [Hash<Symbol, Object>] request options
+    # @param block [Proc] if passed, it will be called when received response headers.
+    def request(headers, body, options = {}, &block)
       raise ArgumentError, ":method and :path headers are required" unless headers[":method"] && headers[":path"]
-
-      base_headers = { ":method" => nil,
-                       ":path" => nil,
-                       ":authority" => (@config[:hostname] || @host),
-                       ":scheme" => (@config[:scheme] || "https") }
-
-      response = request_async(base_headers.merge(headers), body)
-      wait(response)
-      response
+      @session.request(headers, body, @config.merge(options), &block)
     end
+
+    # @!method get!
+    # @!method head!
+    # @!method delete!
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `Client#resume(Client#request(*args))`
 
     # @!method get
     # @!method head
     # @!method delete
     # @param path [String] the absolute path to request (translated into :path header)
-    # @param headers [Hash] the request headers
-    # Shorthand method for `#request`
-
-    # @!method get_async
-    # @!method head_async
-    # @!method delete_async
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `#request_async`
+    # Shorthand method for `#request`
     %w(GET HEAD DELETE).each { |method|
-      define_method(:"#{method.downcase}") do |path, headers = {}|
-        request({ ":method" => method, ":path" => path }.merge(headers))
+      define_method(:"#{method.downcase}!") do |path, options = {}, &block|
+        resume _request_helper(method, path, nil, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, headers = {}, &block|
-        request_async({ ":method" => method, ":path" => path }.merge(headers), nil, &block)
+      define_method(:"#{method.downcase}") do |path, options = {}, &block|
+        _request_helper(method, path, nil, options, &block)
       end
     }
+    # @!method post!
+    # @!method put!
+    # @param path [String] the absolute path to request (translated into :path header)
+    # @param body [String] the request body
+    # @param options [Hash<Symbol, Object>] the request options
+    # @param block [Proc] if specified, calls the block when finished
+    # Shorthand method for `Client#resume(Client#request(*args))`
+
     # @!method post
     # @!method put
     # @param path [String] the absolute path to request (translated into :path header)
     # @param body [String] the request body
-    # @param headers [Hash] the request headers
-    # Shorthand method for `#request`
-
-    # @!method post_async
-    # @!method put_async
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param body [String] the request body
-    # @param headers [Hash] the request headers
+    # @param options [Hash<Symbol, Object>] the request options
     # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `#request_async`
+    # Shorthand method for `#request`
     %w(POST PUT).each { |method|
-      define_method(:"#{method.downcase}") do |path, body = nil, headers = {}|
-        request({ ":method" => method, ":path" => path }.merge(headers), body)
+      define_method(:"#{method.downcase}!") do |path, body, options = {}, &block|
+        resume _request_helper(method, path, body, options, &block)
       end
-      define_method(:"#{method.downcase}_async") do |path, body = nil, headers = {}, &block|
-        request_async({ ":method" => method, ":path" => path }.merge(headers), body, &block)
+      define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
+        _request_helper(method, path, body, options, &block)
       end
     }
 
     private
+    # @return [Boolean] http2 nego?
+    def _connect
+      @socket = TCPSocket.open(@host, @port)
+
+      if @config[:scheme] == "https"
+        ctx = @config[:ssl_context] || new_ssl_ctx
+        @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
+        @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
+        @socket.sync_close = true
+        @socket.connect
+        @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+
+        @socket.respond_to?(:alpn_protocol) && @socket.alpn_protocol == "h2" ||
+          @socket.respond_to?(:npn_protocol) && @socket.npn_protocol == "h2"
+      end
+    end
+
     def _start
       @started = true
-      unless @socket
-        sock = TCPSocket.open(host, port)
-        if config[:tls]
-          ctx = @config[:ssl_context] || new_ssl_ctx
-          sock = OpenSSL::SSL::SSLSocket.new(sock, ctx)
-          sock.sync_close = true
-          sock.connect
-        end
 
-        @socket = sock
+      klass = @config[:http2] ? ClientSession : LegacyClientSession
+      nego = @socket || _connect
+
+      if @config[:http2]
+        if @config[:scheme] == "https"
+          klass = nego ? ClientSession : LegacyClientSession
+        else
+          klass = UpgradeClientSession
+        end
+      else
+        klass = LegacyClientSession
       end
 
-      @plum = setup_plum(@socket)
-    end
-
-    def setup_plum(sock)
-      local_settings = {
-        enable_push: 0,
-        initial_window_size: (1 << 30) - 1,
-      }
-      plum = ClientConnection.new(sock.method(:write), local_settings)
-      plum.on(:protocol_error) { |ex|
-        _fail(ex)
-        raise ex
-      }
-      plum.on(:close) { _fail(RuntimeError.new(:closed)) }
-      plum.on(:stream_error) { |stream, ex|
-        if res = @responses.delete(stream)
-          res._fail(ex) unless res.finished?
-        end
-        raise ex
-      }
-      plum.on(:headers) { |stream, headers|
-        response = @responses[stream]
-        response._headers(headers)
-        if handler = @response_handlers.delete(stream)
-          handler.call(response)
-        end
-      }
-      plum.on(:data) { |stream, chunk|
-        response = @responses[stream]
-        response._chunk(chunk)
-      }
-      plum.on(:end_stream) { |stream|
-        response = @responses.delete(stream)
-        response._finish
-      }
-      plum
-    end
-
-    def _succ
-      @plum << @socket.readpartial(1024)
-    end
-
-    def _fail(ex)
-      while sr = @responses.shift
-        stream, res = sr
-        res._fail(ex) unless res.finished?
-      end
-    ensure
-      close
+      @session = klass.new(@socket, @config)
     end
 
     def new_ssl_ctx
       ctx = OpenSSL::SSL::SSLContext.new
       ctx.ssl_version = :TLSv1_2
       ctx.verify_mode = @config[:verify_mode]
-      if ctx.respond_to?(:hostname=)
-        ctx.hostname = @config[:hostname] || @host
-      end
-      if ctx.respond_to?(:alpn_protocols)
-        ctx.alpn_protocols = ["h2", "http/1.1"]
-      end
-      if ctx.respond_to?(:npn_select_cb)
-        ctx.alpn_select_cb = -> protocols {
-          protocols.include?("h2") ? "h2" : protocols.first
-        }
+      cert_store = OpenSSL::X509::Store.new
+      cert_store.set_default_paths
+      ctx.cert_store = cert_store
+      if @config[:http2]
+        ctx.ciphers = "ALL:!" + HTTPSServerConnection::CIPHER_BLACKLIST.join(":!")
+        if ctx.respond_to?(:alpn_protocols)
+          ctx.alpn_protocols = ["h2", "http/1.1"]
+        end
+        if ctx.respond_to?(:npn_select_cb) # TODO: RFC 7540 does not define protocol negotiation with NPN
+          ctx.npn_select_cb = -> protocols {
+            protocols.include?("h2") ? "h2" : protocols.first
+         }
+        end
       end
       ctx
+    end
+
+    def _request_helper(method, path, body, options, &block)
+      base = { ":method" => method,
+               ":path" => path,
+               "user-agent" => @config[:user_agent] }
+      base.merge!(options[:headers]) if options[:headers]
+      request(base, body, options, &block)
     end
   end
 end

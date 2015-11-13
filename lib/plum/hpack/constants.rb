@@ -67,6 +67,8 @@ module Plum
       ["www-authenticate", ""],
     ].freeze
 
+    STATIC_TABLE_SIZE = STATIC_TABLE.size
+
     HUFFMAN_TABLE = [
       "1111111111000",
       "11111111111111111011000",

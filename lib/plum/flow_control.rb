@@ -65,7 +65,7 @@ module Plum
       if frame.type == :data
         @recv_remaining_window -= frame.length
         if @recv_remaining_window < 0
-          local_error = (Connection === self) ? ConnectionError : StreamError
+          local_error = (Connection === self) ? RemoteConnectionError : RemoteStreamError
           raise local_error.new(:flow_control_error)
         end
       end
@@ -82,7 +82,7 @@ module Plum
 
     def receive_window_update(frame)
       if frame.length != 4
-        raise Plum::ConnectionError.new(:frame_size_error)
+        raise Plum::RemoteConnectionError.new(:frame_size_error)
       end
 
       r_wsi = frame.payload.uint32
@@ -90,7 +90,7 @@ module Plum
       wsi = r_wsi # & ~(1 << 31)
 
       if wsi == 0
-        local_error = (Connection === self) ? ConnectionError : StreamError
+        local_error = (Connection === self) ? RemoteConnectionError : RemoteStreamError
         raise local_error.new(:protocol_error)
       end
 

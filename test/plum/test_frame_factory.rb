@@ -55,7 +55,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_continuation
-    frame = Frame.continuation(123, "abc", :end_headers)
+    frame = Frame.continuation(123, "abc", end_headers: true)
     assert_frame(frame,
                  type: :continuation,
                  stream_id: 123,
@@ -74,7 +74,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_headers
-    frame = Frame.headers(123, "abc", :end_stream)
+    frame = Frame.headers(123, "abc", end_stream: true)
     assert_frame(frame,
                  type: :headers,
                  stream_id: 123,
@@ -83,7 +83,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_push_promise
-    frame = Frame.push_promise(345, 2, "abc", :end_headers)
+    frame = Frame.push_promise(345, 2, "abc", end_headers: true)
     assert_frame(frame,
                  type: :push_promise,
                  stream_id: 345,

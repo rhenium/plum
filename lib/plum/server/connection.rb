@@ -29,7 +29,7 @@ module Plum
 
     def negotiate!
       unless CLIENT_CONNECTION_PREFACE.start_with?(@buffer.byteslice(0, 24))
-        raise ConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
+        raise RemoteConnectionError.new(:protocol_error) # (MAY) send GOAWAY. sending.
       end
 
       if @buffer.bytesize >= 24

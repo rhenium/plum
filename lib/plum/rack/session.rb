@@ -50,6 +50,7 @@ module Plum
 
         @plum.on(:data) { |stream, d|
           reqs[stream][:data] << d # TODO: store to file?
+          check_window(stream)
         }
 
         @plum.on(:end_stream) { |stream|
@@ -61,6 +62,12 @@ module Plum
             handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
           end
         }
+      end
+
+      def check_window(stream)
+        ws = @plum.local_settings[:initial_window_size]
+        stream.window_update(ws) if stream.recv_remaining_window < (ws / 2)
+        @plum.window_update(ws) if @plum.recv_remaining_window < (ws / 2)
       end
 
       def send_body(stream, body)

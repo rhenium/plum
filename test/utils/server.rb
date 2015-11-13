@@ -39,8 +39,7 @@ module ServerUtils
     frames
   end
 
-  def capture_frames(con = nil, &blk)
-    io = (con || @_con).sock
+  def parse_frames(io, &blk)
     pos = io.string.bytesize
     blk.call
     resp = io.string.byteslice(pos, io.string.bytesize - pos).force_encoding(Encoding::BINARY)
@@ -51,8 +50,8 @@ module ServerUtils
     frames
   end
 
-  def capture_frame(con = nil, &blk)
-    frames = capture_frames(con, &blk)
+  def parse_frame(io, &blk)
+    frames = capture_frames(io, &blk)
     assert_equal(1, frames.size, "Supplied block sent no frames or more than 1 frame")
     frames.first
   end

@@ -4,6 +4,7 @@ using Plum::BinaryString
 class ResponseTest < Minitest::Test
   def test_finished
     resp = Response.new
+    resp._headers({})
     assert_equal(false, resp.finished?)
     resp._finish
     assert_equal(true, resp.finished?)
@@ -11,8 +12,7 @@ class ResponseTest < Minitest::Test
 
   def test_fail
     resp = Response.new
-    resp._chunk("a")
-    resp._fail(RuntimeError.new)
+    resp._fail
     assert(true, resp.failed?)
   end
 
@@ -35,19 +35,45 @@ class ResponseTest < Minitest::Test
 
   def test_body
     resp = Response.new
+    resp._headers({})
     resp._chunk("a")
     resp._chunk("b")
     resp._finish
     assert_equal("ab", resp.body)
   end
 
+  def test_body_not_finished
+    resp = Response.new
+    resp._headers({})
+    resp._chunk("a")
+    resp._chunk("b")
+    assert_raises { # TODO
+      resp.body
+    }
+  end
+
   def test_on_chunk
     resp = Response.new
+    resp._headers({})
     res = []
     resp._chunk("a")
     resp._chunk("b")
     resp._finish
     resp.on_chunk { |chunk| res << chunk }
     assert_equal(["a", "b"], res)
+    resp._chunk("c")
+    assert_equal(["a", "b", "c"], res)
+  end
+
+  def test_on_finish
+    resp = Response.new
+    resp._headers({})
+    ran = false
+    resp.on_finish { ran = true }
+    resp._finish
+    assert(ran)
+    ran = false
+    resp.on_finish { ran = true }
+    assert(ran)
   end
 end

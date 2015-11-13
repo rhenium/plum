@@ -1,0 +1,27 @@
+machine:
+  environment:
+    CODECLIMATE_REPO_TOKEN: f5092ab344fac7f2de9d7332e00597642a4d24e3d560f7d7f329172a2e5a2def
+dependencies:
+  pre:
+    - echo openssl_url=https://www.openssl.org/source >> $rvm_path/user/db
+    - echo openssl_version=1.0.2d >> $rvm_path/user/db
+    - rvm pkg install openssl
+    - >
+      case $CIRCLE_NODE_INDEX in
+        0)
+          rvm install 2.2.3-alpn --with-openssl-dir=$rvm_path/usr --patch https://gist.githubusercontent.com/rhenium/b1711edcc903e8887a51/raw/2309e469f5a3ba15917d804ac61b19e62b3d8faf/ruby-openssl-alpn-no-tests-and-docs.patch
+          rvm use 2.2.3-alpn --default
+          ;;
+        1)
+          rvm install ruby-head --with-openssl-dir=$rvm_path/usr
+          rvm use ruby-head --default
+          ;;
+      esac
+  override:
+    - gem install bundler
+    - bundle install
+test:
+  override:
+    - $rvm_path/usr/bin/openssl version
+    - ruby -v
+    - bundle exec rake test
