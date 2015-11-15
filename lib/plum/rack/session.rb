@@ -72,16 +72,12 @@ module Plum
 
       def send_body(stream, body)
         begin
-          if body.is_a?(IO)
+          if body.respond_to?(:to_str)
             stream.send_data(body, end_stream: true)
-          elsif body.respond_to?(:size)
-            last = body.size - 1
-            i = 0
-            body.each { |part|
-              stream.send_data(part, end_stream: last == i)
-              i += 1
-            }
-            stream.send_data(nil, end_stream: true) if i == 0
+          elsif body.respond_to?(:readpartial) && body.respond_to?(:eof?)
+            until body.eof?
+              stream.send_data(body.readpartial(65536), end_stream: body.eof?)
+            end
           else
             body.each { |part| stream.send_data(part, end_stream: false) }
             stream.send_data(nil, end_stream: true)
@@ -100,7 +96,7 @@ module Plum
             method, path = push.split(" ", 2)
             {
               ":authority" => authority,
-              ":method" => method.to_s.upcase,
+              ":method" => method.upcase,
               ":scheme" => scheme,
               ":path" => path
             }
@@ -115,20 +111,23 @@ module Plum
         r_status, r_rawheaders, r_body = @app.call(env)
         r_headers, r_extheaders = extract_headers(r_status, r_rawheaders)
 
-        stream.send_headers(r_headers, end_stream: false)
+        no_body = r_body.respond_to?(:empty?) && r_body.empty?
+
+        stream.send_headers(r_headers, end_stream: no_body)
 
         push_sts = extract_push(headers, r_extheaders).map { |preq|
           [stream.promise(preq), preq]
         }
 
-        send_body(stream, r_body)
+        send_body(stream, r_body) unless no_body
 
         push_sts.each { |st, preq|
           penv = new_env(preq, "".b)
           p_status, p_h, p_body = @app.call(penv)
           p_headers, _ = extract_headers(p_status, p_h)
-          st.send_headers(p_headers, end_stream: false)
-          send_body(st, p_body)
+          pno_body = p_body.respond_to?(:empty?) && p_body.empty?
+          st.send_headers(p_headers, end_stream: pno_body)
+          send_body(st, p_body) unless pno_body
         }
 
         @request_thread.delete(stream)

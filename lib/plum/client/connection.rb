@@ -12,7 +12,7 @@ module Plum
 
     # Create a new stream for HTTP request.
     def open_stream
-      next_id = @max_stream_id + (@max_stream_id.even? ? 1 : 2)
+      next_id = @max_stream_ids[1] + 2
       stream(next_id)
     end
   end

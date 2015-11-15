@@ -33,7 +33,7 @@ module Plum
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
       initialize_flow_control(send: @remote_settings[:initial_window_size],
                               recv: @local_settings[:initial_window_size])
-      @max_stream_id = 0
+      @max_stream_ids = [0, -1] # [even, odd]
     end
 
     # Emits :close event. Doesn't actually close socket.
@@ -61,16 +61,16 @@ module Plum
     # Returns a Stream object with the specified ID.
     # @param stream_id [Integer] the stream id
     # @return [Stream] the stream
-    def stream(stream_id)
+    def stream(stream_id, update_max_id = true)
       raise ArgumentError, "stream_id can't be 0" if stream_id == 0
 
       stream = @streams[stream_id]
       if stream
-        if stream.state == :idle && stream.id < @max_stream_id
+        if stream.state == :idle && stream_id < @max_stream_ids[stream_id % 2]
           stream.set_state(:closed_implicitly)
         end
-      elsif stream_id > @max_stream_id
-        @max_stream_id = stream_id
+      elsif stream_id > @max_stream_ids[stream_id % 2]
+        @max_stream_ids[stream_id % 2] = stream_id if update_max_id
         stream = Stream.new(self, stream_id, state: :idle)
         callback(:stream, stream)
         @streams[stream_id] = stream
@@ -131,7 +131,7 @@ module Plum
       if frame.stream_id == 0
         receive_control_frame(frame)
       else
-        stream(frame.stream_id).receive_frame(frame)
+        stream(frame.stream_id, frame.type == :headers).receive_frame(frame)
       end
     end
 

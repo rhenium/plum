@@ -20,7 +20,7 @@ module Plum
     # Sends GOAWAY frame to the peer and closes the connection.
     # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
     def goaway(error_type = :no_error)
-      last_id = @max_stream_id
+      last_id = @max_stream_ids.max
       send_immediately Frame.goaway(last_id, error_type)
     end
 

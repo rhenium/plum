@@ -20,7 +20,7 @@ module ServerUtils
       con = open_server_connection
     end
 
-    @_stream = con.instance_eval { stream(((@max_stream_id+1)/2)*2+1) }
+    @_stream = con.instance_eval { stream(@max_stream_ids[1] + 2) }
     @_stream.set_state(state)
     @_stream.update_dependency(**kwargs)
     if block_given?
