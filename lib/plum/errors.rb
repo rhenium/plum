@@ -44,12 +44,11 @@ module Plum
   class LocalStreamError < LocalHTTPError; end
 
   class LegacyHTTPError < Error
-    attr_reader :headers, :data, :parser
+    attr_reader :buf
 
-    def initialize(headers, data, parser)
-      @headers = headers
-      @data = data
-      @parser = parser
+    def initialize(message, buf = nil)
+      super(message)
+      @buf = buf
     end
   end
 

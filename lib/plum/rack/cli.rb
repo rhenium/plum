@@ -46,6 +46,12 @@ module Plum
         config[:server_push] = @options[:server_push] unless @options[:server_push].nil?
         config[:threaded] = @options[:threaded] unless @options[:threaded].nil?
 
+        if @options[:fallback_legacy]
+          h, p = @options[:fallback_legacy].split(":")
+          config[:fallback_legacy_host] = h
+          config[:fallback_legacy_port] = p.to_i
+        end
+
         if @options[:socket]
           config[:listeners] << { listener: UNIXListener,
                                   path: @options[:socket] }
@@ -116,6 +122,10 @@ module Plum
 
           o.on "--threaded", "Call the Rack application in threads (experimental)" do
             @options[:threaded] = true
+          end
+
+          o.on "--fallback-legacy HOST:PORT", "Fallbacks if the client doesn't support HTTP/2" do |arg|
+            @options[:fallback_legacy] = arg
           end
 
           o.on "-v", "--version", "Show version" do

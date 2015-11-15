@@ -43,6 +43,12 @@ module Plum
         def threaded(bool)
           @config[:threaded] = !!bool
         end
+
+        def fallback_legacy(str)
+          h, p = str.split(":")
+          @config[:fallback_legacy_host] = h
+          @config[:fallback_legacy_port] = p.to_i
+        end
       end
     end
   end

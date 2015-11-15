@@ -42,8 +42,11 @@ module Plum
         ctx = OpenSSL::SSL::SSLContext.new
         ctx.ssl_version = :TLSv1_2
         ctx.alpn_select_cb = -> protocols {
-          raise "Client does not support HTTP/2: #{protocols}" unless protocols.include?("h2")
-          "h2"
+          if protocols.include?("h2")
+            "h2"
+          else
+            protocols.first
+          end
         }
         ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
         ctx.cert = OpenSSL::X509::Certificate.new(cert)
@@ -58,6 +61,7 @@ module Plum
       end
 
       def plum(sock)
+        raise ::Plum::LegacyHTTPError.new("client doesn't offered h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
         ::Plum::HTTPSServerConnection.new(sock)
       end
 

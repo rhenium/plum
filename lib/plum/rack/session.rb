@@ -38,10 +38,20 @@ module Plum
 
       private
       def setup_plum
+        @plum.on(:frame) { |f| puts "recv:#{f.inspect}" }
+        @plum.on(:send_frame) { |f|
+          puts "send:#{f.inspect}" unless f.type == :data
+        }
         @plum.on(:connection_error) { |ex| @logger.error(ex) }
 
         # @plum.on(:stream) { |stream| @logger.debug("new stream: #{stream}") }
-        @plum.on(:stream_error) { |stream, ex| @logger.error(ex) }
+        @plum.on(:stream_error) { |stream, ex|
+          if [:cancel, :refused_stream].include?(ex.http2_error_type)
+            @logger.debug("stream was cancelled: #{stream}")
+          else
+            @logger.error(ex)
+          end
+        }
 
         reqs = {}
         @plum.on(:headers) { |stream, h|

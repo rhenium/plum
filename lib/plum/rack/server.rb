@@ -47,30 +47,58 @@ module Plum
         sock = svr.accept
         Thread.new {
           begin
-            sock = sock.accept if sock.respond_to?(:accept)
-            plum = svr.plum(sock)
+            begin
+              sock = sock.accept if sock.respond_to?(:accept)
+              plum = svr.plum(sock)
 
-            con = Session.new(app: @app,
-                              plum: plum,
-                              sock: sock,
-                              logger: @logger,
-                              config: @config,
-                              remote_addr: sock.peeraddr.last)
-            con.run
-          rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
-            sock.close if sock
+              con = Session.new(app: @app,
+                                plum: plum,
+                                sock: sock,
+                                logger: @logger,
+                                config: @config,
+                                remote_addr: sock.peeraddr.last)
+              con.run
+            rescue ::Plum::LegacyHTTPError => e
+              @logger.info "legacy HTTP client: #{e}"
+              handle_legacy(e, sock)
+            end
+          rescue Errno::ECONNRESET, Errno::EPROTO, Errno::EINVAL, EOFError => e # closed
           rescue StandardError => e
             log_exception(e)
+          ensure
             sock.close if sock
           end
         }
       rescue Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINVAL => e # closed
+        sock.close if sock
       rescue StandardError => e
         log_exception(e)
+        sock.close if sock
       end
 
       def log_exception(e)
         @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
+      end
+
+      def handle_legacy(e, sock)
+        if @config[:fallback_legacy_host]
+          @logger.info "legacy HTTP: fallbacking to: #{@config[:fallback_legacy_host]}:#{@config[:fallback_legacy_port]}"
+          upstream = TCPSocket.open(@config[:fallback_legacy_host], @config[:fallback_legacy_port])
+          upstream.write(e.buf) if e.buf
+          loop do
+            ret = IO.select([sock, upstream])
+            ret[0].each { |s|
+              a = s.readpartial(65536)
+              if s == upstream
+                sock.write(a)
+              else
+                upstream.write(a)
+              end
+            }
+          end
+        end
+      ensure
+        upstream.close if upstream
       end
     end
   end
