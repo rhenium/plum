@@ -45,7 +45,7 @@ module Plum
         ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
         *ctx.extra_chain_cert, ctx.cert = parse_chained_cert(cert)
         ctx.key = OpenSSL::PKey::RSA.new(key)
-        ctx.servername_cb = -> (sock, hostname) {
+        ctx.servername_cb = proc { |sock, hostname|
           if lc[:sni] && (host = lc[:sni][hostname])
             new_ctx = ctx.dup
             *new_ctx.extra_chain_cert, new_ctx.cert = parse_chained_cert(File.read(host[:certificate]))
