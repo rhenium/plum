@@ -3,20 +3,11 @@ using Plum::BinaryString
 
 module Plum
   class HTTPServerConnection < ServerConnection
-    attr_reader :sock
-
-    def initialize(sock, local_settings = {})
+    def initialize(writer, local_settings = {})
       require "http/parser"
-      @sock = sock
       @negobuf = String.new
       @_http_parser = setup_parser
-      super(@sock.method(:write), local_settings)
-    end
-
-    # Closes the socket.
-    def close
-      super
-      @sock.close
+      super(writer, local_settings)
     end
 
     private
@@ -68,7 +59,7 @@ module Plum
              "Server: plum/#{Plum::VERSION}\r\n" +
              "\r\n"
 
-      @sock.write(resp)
+      @writer.call(resp)
     end
 
     def process_first_request(parser, headers, body)

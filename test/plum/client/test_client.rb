@@ -112,7 +112,7 @@ class ClientTest < Minitest::Test
       begin
         Timeout.timeout(1) {
           sock = ssl_server.accept
-          plum = HTTPSServerConnection.new(sock)
+          plum = ServerConnection.new(sock.method(:write))
 
           plum.on(:stream) { |stream|
             headers = data = nil

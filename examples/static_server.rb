@@ -43,7 +43,7 @@ loop do
     next
   end
 
-  plum = Plum::HTTPSServerConnection.new(sock)
+  plum = Plum::ServerConnection.new(sock.method(:write))
 
   plum.on(:frame) do |frame|
     log(id, frame.stream_id, "recv: #{frame.inspect}")

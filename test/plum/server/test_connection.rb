@@ -4,21 +4,21 @@ using Plum::BinaryString
 
 class HTTPSConnectionNegotiationTest < Minitest::Test
   def test_server_must_raise_cprotocol_error_invalid_magic_short
-    con = HTTPSServerConnection.new(StringIO.new)
+    con = ServerConnection.new(StringIO.new.method(:write))
     assert_connection_error(:protocol_error) {
       con << "HELLO"
     }
   end
 
   def test_server_must_raise_cprotocol_error_invalid_magic_long
-    con = HTTPSServerConnection.new(StringIO.new)
+    con = ServerConnection.new(StringIO.new.method(:write))
     assert_connection_error(:protocol_error) {
       con << ("HELLO" * 100) # over 24
     }
   end
 
   def test_server_must_raise_cprotocol_error_non_settings_after_magic
-    con = HTTPSServerConnection.new(StringIO.new)
+    con = ServerConnection.new(StringIO.new.method(:write))
     con << Connection::CLIENT_CONNECTION_PREFACE
     assert_connection_error(:protocol_error) {
       con << Frame.new(type: :window_update, stream_id: 0, payload: "".push_uint32(1)).assemble
@@ -27,7 +27,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
 
   def test_server_accept_fragmented_magic
     magic = Connection::CLIENT_CONNECTION_PREFACE
-    con = HTTPSServerConnection.new(StringIO.new)
+    con = ServerConnection.new(StringIO.new.method(:write))
     assert_no_error {
       con << magic[0...5]
       con << magic[5..-1]
@@ -49,7 +49,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
       begin
         Timeout.timeout(3) {
           sock = ssl_server.accept
-          plum = HTTPSServerConnection.new(sock)
+          plum = SSLSocketServerConnection.new(sock)
           assert_connection_error(:inadequate_security) {
             run = true
             while !sock.closed? && !sock.eof?

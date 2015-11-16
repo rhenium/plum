@@ -28,9 +28,6 @@ module Plum
         while !@sock.closed? && !@sock.eof?
           @plum << @sock.readpartial(1024)
         end
-      rescue Errno::EPIPE, Errno::ECONNRESET => e
-      rescue StandardError => e
-        @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
       ensure
         @request_thread.each { |stream, thread| thread.kill }
         stop

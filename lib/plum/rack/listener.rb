@@ -25,7 +25,7 @@ module Plum
       end
 
       def plum(sock)
-        ::Plum::HTTPServerConnection.new(sock)
+        ::Plum::HTTPServerConnection.new(sock.method(:write))
       end
     end
 
@@ -62,7 +62,7 @@ module Plum
 
       def plum(sock)
         raise ::Plum::LegacyHTTPError.new("client doesn't offered h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
-        ::Plum::HTTPSServerConnection.new(sock)
+        ::Plum::ServerConnection.new(sock.method(:write))
       end
 
       private
@@ -122,7 +122,7 @@ module Plum
       end
 
       def plum(sock)
-        ::Plum::HTTPSServerConnection.new(sock)
+        ::Plum::ServerConnection.new(sock.method(:write))
       end
     end
   end

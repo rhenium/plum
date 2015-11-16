@@ -175,7 +175,7 @@ module Plum
       cert_store.set_default_paths
       ctx.cert_store = cert_store
       if @config[:http2]
-        ctx.ciphers = "ALL:!" + HTTPSServerConnection::CIPHER_BLACKLIST.join(":!")
+        ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
         if ctx.respond_to?(:alpn_protocols)
           ctx.alpn_protocols = ["h2", "http/1.1"]
         end

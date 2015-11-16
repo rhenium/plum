@@ -5,7 +5,8 @@ using Plum::BinaryString
 class HTTPConnectionNegotiationTest < Minitest::Test
   ## with Prior Knowledge (same as over TLS)
   def test_server_must_raise_cprotocol_error_non_settings_after_magic
-    con = HTTPServerConnection.new(StringIO.new)
+    io = StringIO.new
+    con = HTTPServerConnection.new(io.method(:write))
     con << Connection::CLIENT_CONNECTION_PREFACE
     assert_connection_error(:protocol_error) {
       con << Frame.new(type: :window_update, stream_id: 0, payload: "".push_uint32(1)).assemble
@@ -14,7 +15,8 @@ class HTTPConnectionNegotiationTest < Minitest::Test
 
   def test_server_accept_fragmented_magic
     magic = Connection::CLIENT_CONNECTION_PREFACE
-    con = HTTPServerConnection.new(StringIO.new)
+    io = StringIO.new
+    con = HTTPServerConnection.new(io.method(:write))
     assert_no_error {
       con << magic[0...5]
       con << magic[5..-1]
@@ -25,7 +27,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
   ## with HTTP/1.1 Upgrade
   def test_server_accept_upgrade
     io = StringIO.new
-    con = HTTPServerConnection.new(io)
+    con = HTTPServerConnection.new(io.method(:write))
     heads = nil
     con.on(:headers) {|_, _h| heads = _h.to_h }
     req = "GET / HTTP/1.1\r\n" <<
@@ -47,7 +49,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
 
   def test_server_deny_non_upgrade
     io = StringIO.new
-    con = HTTPServerConnection.new(io)
+    con = HTTPServerConnection.new(io.method(:write))
     req = "GET / HTTP/1.1\r\n" <<
           "Host: rhe.jp\r\n" <<
           "User-Agent: nya\r\n" <<

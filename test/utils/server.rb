@@ -2,8 +2,8 @@ require "timeout"
 
 module ServerUtils
   def open_server_connection(scheme = :https)
-    io = StringIO.new
-    @_con = (scheme == :https ? HTTPSServerConnection : HTTPServerConnection).new(io)
+    @_io = StringIO.new
+    @_con = (scheme == :https ? ServerConnection : HTTPServerConnection).new(@_io.method(:write))
     @_con << Connection::CLIENT_CONNECTION_PREFACE
     @_con << Frame.new(type: :settings, stream_id: 0).assemble
     if block_given?
@@ -30,8 +30,8 @@ module ServerUtils
     end
   end
 
-  def sent_frames(con = nil)
-    resp = (con || @_con).sock.string.dup.force_encoding(Encoding::BINARY)
+  def sent_frames(io = nil)
+    resp = (io || @_io).string.dup.force_encoding(Encoding::BINARY)
     frames = []
     while f = Frame.parse!(resp)
       frames << f
