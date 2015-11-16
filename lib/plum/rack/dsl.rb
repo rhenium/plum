@@ -49,6 +49,14 @@ module Plum
           @config[:fallback_legacy_host] = h
           @config[:fallback_legacy_port] = p.to_i
         end
+
+        def user(username)
+          @config[:user] = username
+        end
+
+        def group(groupname)
+          @config[:group] = groupname
+        end
       end
     end
   end

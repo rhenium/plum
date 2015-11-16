@@ -17,6 +17,10 @@ module Plum
 
         @logger.info("Plum #{::Plum::VERSION}")
         @logger.info("Config: #{config}")
+
+        if @config[:user]
+          drop_privileges
+        end
       end
 
       def start
@@ -99,6 +103,24 @@ module Plum
         end
       ensure
         upstream.close if upstream
+      end
+
+      def drop_privileges
+        begin
+          user = @config[:user]
+          group = @config[:group] || user
+          @logger.info "Dropping process privilege to #{user}:#{group}"
+
+          cuid, cgid = Process.euid, Process.egid
+          tuid, tgid = Etc.getpwnam(user).uid, Etc.getgrnam(group).gid
+
+          Process.initgroups(user, tgid)
+          Process::GID.change_privilege(tgid)
+          Process::UID.change_privilege(tuid)
+        rescue Errno::EPERM => e
+          @ogger.fatal "Could not change privilege: #{e}"
+          exit 2
+        end
       end
     end
   end
