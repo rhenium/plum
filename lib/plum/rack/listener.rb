@@ -41,19 +41,27 @@ module Plum
 
         ctx = OpenSSL::SSL::SSLContext.new
         ctx.ssl_version = :TLSv1_2
-        ctx.alpn_select_cb = -> protocols {
-          if protocols.include?("h2")
-            "h2"
+        ctx.alpn_select_cb = -> (protocols) { protocols.include?("h2") ? "h2" : protocols.first }
+        ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
+        *ctx.extra_chain_cert, ctx.cert = parse_chained_cert(cert)
+        ctx.key = OpenSSL::PKey::RSA.new(key)
+        ctx.servername_cb = -> (sock, hostname) {
+          if lc[:sni] && (host = lc[:sni][hostname])
+            new_ctx = ctx.dup
+            *new_ctx.extra_chain_cert, new_ctx.cert = parse_chained_cert(File.read(host[:certificate]))
+            new_ctx.key = OpenSSL::PKey::RSA.new(File.read(host[:certificate_key]))
+            new_ctx
           else
-            protocols.first
+            ctx
           end
         }
-        ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
-        ctx.cert = OpenSSL::X509::Certificate.new(cert)
-        ctx.key = OpenSSL::PKey::RSA.new(key)
         tcp_server = ::TCPServer.new(lc[:hostname], lc[:port])
         @server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
         @server.start_immediately = false
+      end
+
+      def parse_chained_cert(str)
+        str.scan(/-----BEGIN CERTIFICATE.+?END CERTIFICATE-----/m).map { |s| OpenSSL::X509::Certificate.new(s) }
       end
 
       def to_io
@@ -90,7 +98,7 @@ module Plum
 
         cert.sign key, OpenSSL::Digest::SHA1.new
 
-        [cert, key]
+        [cert.to_s, key.to_s]
       end
     end
 
