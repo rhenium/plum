@@ -38,10 +38,6 @@ module Plum
 
       private
       def setup_plum
-        @plum.on(:frame) { |f| puts "recv:#{f.inspect}" }
-        @plum.on(:send_frame) { |f|
-          puts "send:#{f.inspect}" unless f.type == :data
-        }
         @plum.on(:connection_error) { |ex| @logger.error(ex) }
 
         # @plum.on(:stream) { |stream| @logger.debug("new stream: #{stream}") }

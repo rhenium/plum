@@ -40,13 +40,14 @@ class StreamTest < Minitest::Test
 
   def test_stream_local_error
     open_server_connection { |con|
-      stream = nil
-      con.on(:headers) { |s| stream = s }
+      stream = type = nil
+      con.on(:rst_stream) { |s, t| stream = s; type = t }
 
       con << Frame.headers(1, "", end_headers: true).assemble
-      assert_raises(LocalStreamError) {
-        con << Frame.rst_stream(1, :frame_size_error).assemble
-      }
+      con << Frame.rst_stream(1, :frame_size_error).assemble
+
+      assert_equal(1, stream.id)
+      assert_equal(:frame_size_error, type)
     }
   end
 end

@@ -35,7 +35,7 @@ module Plum
 
       def transform_options
         if @options[:config]
-          dsl = DSL::Config.new.instance_eval(File.read(@options[:config]))
+          dsl = DSL::Config.new.tap { |c| c.instance_eval(File.read(@options[:config])) }
           config = dsl.config
         else
           config = Config.new

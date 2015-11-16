@@ -237,11 +237,7 @@ module Plum
       @state = :closed # MUST NOT send RST_STREAM
 
       error_code = frame.payload.uint32
-      if error_code > 0
-        raise LocalStreamError.new(HTTPError::ERROR_CODES.key(error_code))
-      else
-        callback(:rst_stream, frame)
-      end
+      callback(:rst_stream, HTTPError::ERROR_CODES.key(error_code))
     end
 
     # override EventEmitter

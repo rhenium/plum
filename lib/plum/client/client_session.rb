@@ -64,6 +64,10 @@ module Plum
         response._fail
         raise ex
       }
+      stream.on(:local_stream_error) { |type|
+        response.fail
+        raise LocalStreamError.new(type)
+      }
       response
     end
 
