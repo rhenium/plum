@@ -63,7 +63,7 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
    +-----------------+
             v "https"
    +-----------------+
-   | ALPN(/NPN)      | failed
+   | ALPN            | failed
    | negotiation     |-------> HTTP/1.x
    +-----------------+
             | "h2"

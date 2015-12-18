@@ -143,8 +143,7 @@ module Plum
         @socket.connect
         @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
 
-        @socket.respond_to?(:alpn_protocol) && @socket.alpn_protocol == "h2" ||
-          @socket.respond_to?(:npn_protocol) && @socket.npn_protocol == "h2"
+        @socket.alpn_protocol == "h2"
       end
     end
 
@@ -176,14 +175,7 @@ module Plum
       ctx.cert_store = cert_store
       if @config[:http2]
         ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
-        if ctx.respond_to?(:alpn_protocols)
-          ctx.alpn_protocols = ["h2", "http/1.1"]
-        end
-        if ctx.respond_to?(:npn_select_cb) # TODO: RFC 7540 does not define protocol negotiation with NPN
-          ctx.npn_select_cb = -> protocols {
-            protocols.include?("h2") ? "h2" : protocols.first
-         }
-        end
+        ctx.alpn_protocols = ["h2", "http/1.1"]
       end
       ctx
     end
