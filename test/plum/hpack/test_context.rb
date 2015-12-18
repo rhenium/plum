@@ -38,6 +38,8 @@ class HPACKContextTest < Minitest::Test
     context = new_context
     i1 = context.search(":method", "POST")
     assert_equal(3, i1)
+    i2 = context.search_half(":method")
+    assert_equal(2, i2)
   end
 
   def test_search_dynamic
@@ -48,7 +50,7 @@ class HPACKContextTest < Minitest::Test
     assert_equal(63, i1)
     i2 = context.search("あああ", "AAA")
     assert_equal(nil, i2)
-    i3 = context.search("あああ", nil)
+    i3 = context.search_half("あああ")
     assert_equal(62, i3)
   end
 

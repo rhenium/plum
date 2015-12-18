@@ -83,7 +83,7 @@ module Plum
             end
           else
             body.each { |part| stream.send_data(part, end_stream: false) }
-            stream.send_data(nil, end_stream: true)
+            stream.send_data(end_stream: true)
           end
         ensure
           body.close if body.respond_to?(:close)

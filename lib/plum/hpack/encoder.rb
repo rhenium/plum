@@ -12,13 +12,13 @@ module Plum
         @huffman = huffman
       end
       def encode(headers)
-        out = String.new.force_encoding(Encoding::BINARY)
+        out = "".b
         headers.each do |name, value|
           name = name.to_s
           value = value.to_s
           if index = search(name, value)
             out << encode_indexed(index)
-          elsif index = search(name, nil)
+          elsif index = search_half(name)
             out << encode_half_indexed(index, value)
           else
             out << encode_literal(name, value)

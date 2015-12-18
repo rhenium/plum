@@ -46,7 +46,7 @@ module Plum
         *ctx.extra_chain_cert, ctx.cert = parse_chained_cert(cert)
         ctx.key = OpenSSL::PKey::RSA.new(key)
         ctx.servername_cb = proc { |sock, hostname|
-          if lc[:sni] && (host = lc[:sni][hostname])
+          if host = lc[:sni]&.[](hostname)
             new_ctx = ctx.dup
             *new_ctx.extra_chain_cert, new_ctx.cert = parse_chained_cert(File.read(host[:certificate]))
             new_ctx.key = OpenSSL::PKey::RSA.new(File.read(host[:certificate_key]))

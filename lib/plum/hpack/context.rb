@@ -36,18 +36,21 @@ module Plum
       end
 
       def search(name, value)
-        pr = proc { |n, v|
-          n == name && (!value || v == value)
-        }
-
-        si = STATIC_TABLE.index &pr
+        si = STATIC_TABLE.index { |n, v| n == name && v == value }
         return si + 1 if si
-        di = @dynamic_table.index &pr
+        di = @dynamic_table.index { |n, v| n == name && v == value }
+        return di + STATIC_TABLE_SIZE + 1 if di
+      end
+
+      def search_half(name)
+        si = STATIC_TABLE.index { |n, v| n == name }
+        return si + 1 if si
+        di = @dynamic_table.index { |n, v| n == name }
         return di + STATIC_TABLE_SIZE + 1 if di
       end
 
       def evict
-        while @limit && @size > @limit
+        while @size > @limit
           name, value = @dynamic_table.pop
           @size -= name.bytesize + value.bytesize + 32
         end

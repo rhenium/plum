@@ -28,7 +28,7 @@ module Plum
     # Sends DATA frame. If the data is larger than MAX_FRAME_SIZE, DATA frame will be splitted.
     # @param data [String, IO] The data to send.
     # @param end_stream [Boolean] Set END_STREAM flag or not.
-    def send_data(data, end_stream: true)
+    def send_data(data = "", end_stream: true)
       max = @connection.remote_settings[:max_frame_size]
       if data.is_a?(IO)
         until data.eof?

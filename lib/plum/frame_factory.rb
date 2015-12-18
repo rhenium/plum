@@ -17,7 +17,7 @@ module Plum
     # @param message [String] Additional debug data.
     # @see RFC 7540 Section 6.8
     def goaway(last_id, error_type, message = "")
-      payload = String.new.push_uint32((last_id || 0) | (0 << 31))
+      payload = String.new.push_uint32(last_id)
                           .push_uint32(HTTPError::ERROR_CODES[error_type])
                           .push(message)
       Frame.new(type: :goaway, stream_id: 0, payload: payload)
@@ -55,10 +55,9 @@ module Plum
     # @param stream_id [Integer] The stream ID.
     # @param payload [String] Payload.
     # @param end_stream [Boolean] add END_STREAM flag
-    def data(stream_id, payload, end_stream: false)
-      payload = payload.b if payload && payload.encoding != Encoding::BINARY
-      fval = 0
-      fval += 1 if end_stream
+    def data(stream_id, payload = "", end_stream: false)
+      payload = payload.b if payload&.encoding != Encoding::BINARY
+      fval = end_stream ? 1 : 0
       Frame.new(type_value: 0, stream_id: stream_id, flags_value: fval, payload: payload)
     end
 
@@ -68,8 +67,7 @@ module Plum
     # @param end_stream [Boolean] add END_STREAM flag
     # @param end_headers [Boolean] add END_HEADERS flag
     def headers(stream_id, encoded, end_stream: false, end_headers: false)
-      fval = 0
-      fval += 1 if end_stream
+      fval = end_stream ? 1 : 0
       fval += 4 if end_headers
       Frame.new(type_value: 1, stream_id: stream_id, flags_value: fval, payload: encoded)
     end
@@ -82,8 +80,7 @@ module Plum
     def push_promise(stream_id, new_id, encoded, end_headers: false)
       payload = String.new.push_uint32(new_id)
                           .push(encoded)
-      fval = 0
-      fval += 4 if end_headers
+      fval = end_headers ? 4 : 0
       Frame.new(type: :push_promise, stream_id: stream_id, flags_value: fval, payload: payload)
     end
 
@@ -92,7 +89,7 @@ module Plum
     # @param payload [String] Payload.
     # @param end_headers [Boolean] add END_HEADERS flag
     def continuation(stream_id, payload, end_headers: false)
-      Frame.new(type: :continuation, stream_id: stream_id, flags_value: (end_headers && 4 || 0), payload: payload)
+      Frame.new(type: :continuation, stream_id: stream_id, flags_value: (end_headers ? 4 : 0), payload: payload)
     end
   end
 end

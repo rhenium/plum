@@ -4,11 +4,11 @@ addons:
     repo_token: f5092ab344fac7f2de9d7332e00597642a4d24e3d560f7d7f329172a2e5a2def
 install:
   - echo openssl_url=https://www.openssl.org/source >> $rvm_path/user/db
-  - echo openssl_version=1.0.2d >> $rvm_path/user/db
+  - echo openssl_version=1.0.2e >> $rvm_path/user/db
   - rvm pkg install openssl
   - $rvm_path/usr/bin/openssl version
-  - rvm install 2.2.3-alpn --patch https://gist.githubusercontent.com/rhenium/b1711edcc903e8887a51/raw/2309e469f5a3ba15917d804ac61b19e62b3d8faf/ruby-openssl-alpn-no-tests-and-docs.patch --with-openssl-dir=$rvm_path/usr
-  - rvm use 2.2.3-alpn
+  - rvm install ruby-head --with-openssl-dir=$rvm_path/usr
+  - rvm use ruby-head
   - bundle install
 script:
   - bundle exec rake test
