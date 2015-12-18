@@ -91,47 +91,53 @@ module Plum
       end
 
       def extract_push(reqheaders, extheaders)
-        if @config[:server_push] && @plum.push_enabled? && pushs = extheaders["plum.serverpush"]
-          authority = reqheaders.find { |k, v| k == ":authority" }[1]
-          scheme = reqheaders.find { |k, v| k == ":scheme" }[1]
+        pushs = extheaders["plum.serverpush"]
+        return nil unless pushs
 
-          pushs.split(";").map { |push|
-            method, path = push.split(" ", 2)
-            {
-              ":authority" => authority,
-              ":method" => method.upcase,
-              ":scheme" => scheme,
-              ":path" => path
-            }
+        authority = reqheaders.find { |k, v| k == ":authority" }[1]
+        scheme = reqheaders.find { |k, v| k == ":scheme" }[1]
+
+        pushs.split(";").map { |push|
+          method, path = push.split(" ", 2)
+          {
+            ":authority" => authority,
+            ":method" => method.upcase,
+            ":scheme" => scheme,
+            ":path" => path
           }
-        else
-          []
-        end
+        }
       end
 
       def handle_request(stream, headers, data)
         env = new_env(headers, data)
         r_status, r_rawheaders, r_body = @app.call(env)
         r_headers, r_extheaders = extract_headers(r_status, r_rawheaders)
+        if @config[:server_push] && @plum.push_enabled?
+          push_preqs = extract_push(headers, r_extheaders)
+        end
 
         no_body = r_body.respond_to?(:empty?) && r_body.empty?
 
         stream.send_headers(r_headers, end_stream: no_body)
 
-        push_sts = extract_push(headers, r_extheaders).map { |preq|
-          [stream.promise(preq), preq]
-        }
+        if push_preqs
+          push_preqs.map! { |preq|
+            [stream.promise(preq), preq]
+          }
+        end
 
         send_body(stream, r_body) unless no_body
 
-        push_sts.each { |st, preq|
-          penv = new_env(preq, "".b)
-          p_status, p_h, p_body = @app.call(penv)
-          p_headers, _ = extract_headers(p_status, p_h)
-          pno_body = p_body.respond_to?(:empty?) && p_body.empty?
-          st.send_headers(p_headers, end_stream: pno_body)
-          send_body(st, p_body) unless pno_body
-        }
+        if push_preqs
+          push_preqs.each { |st, preq|
+            penv = new_env(preq, "".b)
+            p_status, p_h, p_body = @app.call(penv)
+            p_headers, _ = extract_headers(p_status, p_h)
+            pno_body = p_body.respond_to?(:empty?) && p_body.empty?
+            st.send_headers(p_headers, end_stream: pno_body)
+            send_body(st, p_body) unless pno_body
+          }
+        end
 
         @request_thread.delete(stream)
       end
