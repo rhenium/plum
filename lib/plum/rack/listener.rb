@@ -69,14 +69,14 @@ module Plum
       end
 
       def plum(sock)
-        raise ::Plum::LegacyHTTPError.new("client doesn't offered h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
+        raise ::Plum::LegacyHTTPError.new("client didn't offer h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
         ::Plum::ServerConnection.new(sock.method(:write))
       end
 
       private
       # returns: [cert, key]
       def dummy_key
-        puts "WARNING: Generating new dummy certificate..."
+        STDERR.puts "WARNING: Generating new dummy certificate..."
 
         key = OpenSSL::PKey::RSA.new(2048)
         cert = OpenSSL::X509::Certificate.new
@@ -93,10 +93,9 @@ module Plum
         cert.extensions = [
           ef.create_extension("basicConstraints", "CA:TRUE", true),
           ef.create_extension("subjectKeyIdentifier", "hash"),
+          ef.create_extension("authorityKeyIdentifier", "keyid:always,issuer:always")
         ]
-        cert.add_extension ef.create_extension("authorityKeyIdentifier", "keyid:always,issuer:always")
-
-        cert.sign key, OpenSSL::Digest::SHA1.new
+        cert.sign(key, OpenSSL::Digest::SHA256.new)
 
         [cert.to_s, key.to_s]
       end
