@@ -2,7 +2,7 @@ unless ENV["SKIP_COVERAGE"]
   begin
     require "simplecov"
     require "codeclimate-test-reporter"
-    SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter[
+    SimpleCov.formatters = [
       SimpleCov::Formatter::HTMLFormatter,
       CodeClimate::TestReporter::Formatter
     ]

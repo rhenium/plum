@@ -92,8 +92,6 @@ module Plum
         ef.issuer_certificate = cert
         cert.extensions = [
           ef.create_extension("basicConstraints", "CA:TRUE", true),
-          ef.create_extension("subjectKeyIdentifier", "hash"),
-          ef.create_extension("authorityKeyIdentifier", "keyid:always,issuer:always")
         ]
         cert.sign(key, OpenSSL::Digest::SHA256.new)
 
