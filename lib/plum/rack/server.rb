@@ -14,6 +14,9 @@ module Plum
         @listeners = config[:listeners].map { |lc|
           lc[:listener].new(lc)
         }
+        if @config[:threaded]
+          @threadpool = ThreadPool.new(@config[:threadpool_size])
+        end
 
         @logger.info("Plum #{::Plum::VERSION}")
         @logger.info("Config: #{config}")
@@ -60,7 +63,8 @@ module Plum
                                 sock: sock,
                                 logger: @logger,
                                 config: @config,
-                                remote_addr: sock.peeraddr.last)
+                                remote_addr: sock.peeraddr.last,
+                                threadpool: @threadpool)
               con.run
             rescue ::Plum::LegacyHTTPError => e
               @logger.info "legacy HTTP client: #{e}"

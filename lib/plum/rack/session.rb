@@ -8,14 +8,15 @@ module Plum
     class Session
       attr_reader :app, :plum
 
-      def initialize(app:, plum:, sock:, logger:, config:, remote_addr: "127.0.0.1")
+      def initialize(app:, plum:, sock:, logger:, config:, remote_addr:, threadpool:)
         @app = app
         @plum = plum
         @sock = sock
         @logger = logger
         @config = config
         @remote_addr = remote_addr
-        @request_thread = {} # used if threaded
+        @threadpool = threadpool
+        @request_tokens = Set.new
 
         setup_plum
       end
@@ -29,7 +30,7 @@ module Plum
           @plum << @sock.readpartial(1024)
         end
       ensure
-        @request_thread.each { |stream, thread| thread.kill }
+        @request_tokens.each { |token| @threadpool.cancel(token) } if @threadpool
         stop
       end
 
@@ -57,12 +58,22 @@ module Plum
         }
 
         @plum.on(:end_stream) { |stream|
-          if @config[:threaded]
-            @request_thread[stream] = Thread.new {
-              handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+          req = reqs.delete(stream)
+          err = proc { |err|
+            stream.send_headers({ ":status" => 500 }, end_stream: true)
+            @logger.error(err)
+          }
+          if @threadpool
+            headers = req[:headers]
+            @request_tokens << @threadpool.acquire(headers, err) {
+              handle_request(stream, headers, req[:data])
             }
           else
-            handle_request(stream, reqs[stream][:headers], reqs[stream][:data])
+            begin
+              handle_request(stream, req[:headers], req[:data])
+            rescue
+              err.call($!)
+            end
           end
         }
       end
@@ -139,7 +150,7 @@ module Plum
           }
         end
 
-        @request_thread.delete(stream)
+        @request_tokens.delete(headers) # headers is tag
       end
 
       def new_env(h, data)

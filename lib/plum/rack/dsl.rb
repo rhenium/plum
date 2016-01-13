@@ -44,6 +44,10 @@ module Plum
           @config[:threaded] = !!bool
         end
 
+        def threadpool_size(int)
+          @config[:threadpool_size] = int.to_i
+        end
+
         def fallback_legacy(str)
           h, p = str.split(":")
           @config[:fallback_legacy_host] = h
