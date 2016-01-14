@@ -10,6 +10,10 @@ module Plum
         raise "not implemented"
       end
 
+      def accept(svc)
+        raise "not implemented"
+      end
+
       def method_missing(name, *args)
         @server.__send__(name, *args)
       end
@@ -24,8 +28,24 @@ module Plum
         @server.to_io
       end
 
-      def plum(sock)
-        ::Plum::HTTPServerConnection.new(sock.method(:write))
+      def accept(svc)
+        sock = @server.accept
+        Thread.start {
+          begin
+            plum = ::Plum::HTTPServerConnection.new(sock.method(:write))
+            sess = Session.new(svc, sock, plum)
+            sess.run
+          rescue Errno::ECONNRESET, EOFError # closed
+          rescue ::Plum::LegacyHTTPError => e
+            @logger.info "legacy HTTP client: #{e}"
+            sess = LegacySession.new(svc, e, sock)
+            sess.run
+          rescue => e
+            svc.log_exception(e)
+          ensure
+            sock.close
+          end
+        }
       end
     end
 
@@ -57,7 +77,7 @@ module Plum
         }
         tcp_server = ::TCPServer.new(lc[:hostname], lc[:port])
         @server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
-        @server.start_immediately = false
+        @server.start_immediately = false # call socket#accept twice: [tcp, tls]
       end
 
       def parse_chained_cert(str)
@@ -68,9 +88,26 @@ module Plum
         @server.to_io
       end
 
-      def plum(sock)
-        raise ::Plum::LegacyHTTPError.new("client didn't offer h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
-        ::Plum::ServerConnection.new(sock.method(:write))
+      def accept(svc)
+        sock = @server.accept
+        Thread.start {
+          begin
+            sock = sock.accept
+            raise ::Plum::LegacyHTTPError.new("client didn't offer h2 with ALPN", nil) unless sock.alpn_protocol == "h2"
+            plum = ::Plum::ServerConnection.new(sock.method(:write))
+            sess = Session.new(svc, sock, plum)
+            sess.run
+          rescue Errno::ECONNRESET, EOFError # closed
+          rescue ::Plum::LegacyHTTPError => e
+            @logger.info "legacy HTTP client: #{e}"
+            sess = LegacySession.new(svc, e, sock)
+            sess.run
+          rescue => e
+            svc.log_exception(e)
+          ensure
+            sock.close if sock
+          end
+        }
       end
 
       private
@@ -126,8 +163,20 @@ module Plum
         @server.to_io
       end
 
-      def plum(sock)
-        ::Plum::ServerConnection.new(sock.method(:write))
+      def accept(svc)
+        sock = @server.accept
+        Thread.start {
+          begin
+            plum = ::Plum::ServerConnection.new(sock.method(:write))
+            sess = Session.new(svc, sock, plum)
+            sess.run
+          rescue Errno::ECONNRESET, EOFError # closed
+          rescue => e
+            svc.log_exception(e)
+          ensure
+            sock.close if sock
+          end
+        }
       end
     end
   end

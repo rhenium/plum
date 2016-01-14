@@ -45,6 +45,7 @@ module Plum
         config[:debug] = @options[:debug] unless @options[:debug].nil?
         config[:server_push] = @options[:server_push] unless @options[:server_push].nil?
         config[:threaded] = @options[:threaded] unless @options[:threaded].nil?
+        config[:threadpool_size] = @options[:threadpool_size] unless @options[:threadpool_size].nil?
 
         if @options[:fallback_legacy]
           h, p = @options[:fallback_legacy].split(":")
@@ -122,6 +123,10 @@ module Plum
 
           o.on "--threaded", "Call the Rack application in threads (experimental)" do
             @options[:threaded] = true
+          end
+
+          o.on "--threadpool-size SIZE", "Set the size of thread pool" do |arg|
+            @options[:threadpool_size] = arg.to_i
           end
 
           o.on "--fallback-legacy HOST:PORT", "Fallbacks if the client doesn't support HTTP/2" do |arg|
