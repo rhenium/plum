@@ -111,26 +111,6 @@ module Plum
       end
 
       private
-      def handle_legacy(svc, e, sock)
-        if svc.config[:fallback_legacy_host]
-          svc.logger.info "legacy HTTP: fallbacking to: #{svc.config[:fallback_legacy_host]}:#{svc.config[:fallback_legacy_port]}"
-          upstream = TCPSocket.open(svc.config[:fallback_legacy_host], svc.config[:fallback_legacy_port])
-          upstream.write(e.buf) if e.buf
-          loop do
-            ret = IO.select([sock, upstream])
-            ret[0].each { |s|
-              a = s.readpartial(65536)
-              if s == upstream
-                sock.write(a)
-              else
-                upstream.write(a)
-              end
-            }
-          end
-        end
-      ensure
-        upstream.close if upstream
-      end
       # returns: [cert, key]
       def dummy_key
         STDERR.puts "WARNING: Generating new dummy certificate..."
