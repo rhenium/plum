@@ -2,7 +2,7 @@
 module Plum
   module Rack
     class ThreadPool
-      def initialize(size = 20)
+      def initialize(size)
         @workers = Set.new
         @jobs = Queue.new
 

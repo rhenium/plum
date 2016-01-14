@@ -7,8 +7,7 @@ module Plum
         debug: false,
         log: nil, # $stdout
         server_push: true,
-        threaded: false,
-        threadpool_size: 20,
+        threadpool_size: 1,
       }.freeze
 
       def initialize(config = {})

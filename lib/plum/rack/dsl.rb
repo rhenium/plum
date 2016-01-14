@@ -40,10 +40,6 @@ module Plum
           @config[:server_push] = !!bool
         end
 
-        def threaded(bool)
-          @config[:threaded] = !!bool
-        end
-
         def threadpool_size(int)
           @config[:threadpool_size] = int.to_i
         end

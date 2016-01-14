@@ -1,7 +1,7 @@
 log "logs/plum.log"
 debug false
 server_push true
-threaded false # create a new thread per request
+threadpool_size 20 # use 20 threads to process requests (default: 1( = disable))
 fallback_legacy "127.0.0.1:8080" # forward if client doesn't support HTTP/2
 
 user "nobody"

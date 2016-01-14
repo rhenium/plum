@@ -44,7 +44,6 @@ module Plum
         ENV["RACK_ENV"] = @options[:env] if @options[:env]
         config[:debug] = @options[:debug] unless @options[:debug].nil?
         config[:server_push] = @options[:server_push] unless @options[:server_push].nil?
-        config[:threaded] = @options[:threaded] unless @options[:threaded].nil?
         config[:threadpool_size] = @options[:threadpool_size] unless @options[:threadpool_size].nil?
 
         if @options[:fallback_legacy]
@@ -121,11 +120,7 @@ module Plum
             @options[:key] = arg
           end
 
-          o.on "--threaded", "Call the Rack application in threads (experimental)" do
-            @options[:threaded] = true
-          end
-
-          o.on "--threadpool-size SIZE", "Set the size of thread pool" do |arg|
+          o.on "--threadpool-size SIZE", "Set the size of thread pool. Set 1 to disable" do |arg|
             @options[:threadpool_size] = arg.to_i
           end
 

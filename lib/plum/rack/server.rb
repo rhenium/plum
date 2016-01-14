@@ -10,7 +10,7 @@ module Plum
         @app = config[:debug] ? ::Rack::CommonLogger.new(app) : app
         @logger = Logger.new(config[:log] || $stdout).tap { |l| l.level = config[:debug] ? Logger::DEBUG : Logger::INFO }
         @listeners = config[:listeners].map { |lc| lc[:listener].new(lc) }
-        @threadpool = ThreadPool.new(@config[:threadpool_size]) if @config[:threaded]
+        @threadpool = ThreadPool.new(@config[:threadpool_size]) if @config[:threadpool_size] > 1
 
         @logger.info("Plum #{::Plum::VERSION}")
         @logger.info("Config: #{config}")
