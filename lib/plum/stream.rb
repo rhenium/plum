@@ -221,11 +221,11 @@ module Plum
 
     def receive_priority_payload(payload)
       esd = payload.uint32
-      e = esd >> 31
-      dependency_id = e & ~(1 << 31)
+      e = (esd >> 31) == 1
+      dependency_id = esd & ~(1 << 31)
       weight = payload.uint8(4)
 
-      update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e == 1)
+      update_dependency(weight: weight, parent: @connection.streams[dependency_id], exclusive: e)
     end
 
     def receive_rst_stream(frame)

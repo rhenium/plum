@@ -192,7 +192,7 @@ class StreamHandleFrameTest < Minitest::Test
   def test_stream_handle_priority_self_depend
     open_server_connection {|con|
       stream = open_new_stream(con)
-      payload = "".push_uint32((1 << 31) | stream.id).push_uint8(6)
+      payload = "".push_uint32((0 << 31) | stream.id).push_uint8(6)
       stream.receive_frame(Frame.new(type: :priority,
                                      stream_id: stream.id,
                                      payload: payload))
