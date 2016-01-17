@@ -51,11 +51,11 @@ module Plum
         # TODO: gracefully shutdown connections (wait threadpool?)
       end
 
-      private
       def log_exception(e)
         @logger.error("#{e.class}: #{e.message}\n#{e.backtrace.map { |b| "\t#{b}" }.join("\n")}")
       end
 
+      private
       def drop_privileges
         begin
           user = @config[:user]

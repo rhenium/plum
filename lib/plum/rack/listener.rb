@@ -35,11 +35,11 @@ module Plum
             plum = ::Plum::HTTPServerConnection.new(sock.method(:write))
             sess = Session.new(svc, sock, plum)
             sess.run
-          rescue Errno::ECONNRESET, EOFError # closed
           rescue ::Plum::LegacyHTTPError => e
-            @logger.info "legacy HTTP client: #{e}"
+            svc.logger.info "legacy HTTP client: #{e}"
             sess = LegacySession.new(svc, e, sock)
             sess.run
+          rescue Errno::ECONNRESET, EOFError # closed
           rescue => e
             svc.log_exception(e)
           ensure
@@ -97,11 +97,11 @@ module Plum
             plum = ::Plum::ServerConnection.new(sock.method(:write))
             sess = Session.new(svc, sock, plum)
             sess.run
-          rescue Errno::ECONNRESET, EOFError # closed
           rescue ::Plum::LegacyHTTPError => e
-            @logger.info "legacy HTTP client: #{e}"
+            svc.logger.info "legacy HTTP client: #{e}"
             sess = LegacySession.new(svc, e, sock)
             sess.run
+          rescue Errno::ECONNRESET, EOFError # closed
           rescue => e
             svc.log_exception(e)
           ensure

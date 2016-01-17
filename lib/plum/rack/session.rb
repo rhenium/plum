@@ -19,6 +19,8 @@ module Plum
         @threadpool = svc.threadpool
 
         setup_plum
+      rescue Errno::ENOTCONN
+        # TCP connection reset while doing TLS handshake
       end
 
       def stop

@@ -13,7 +13,7 @@ module Plum
 
       def run
         if @config[:fallback_legacy_host]
-          @logger.info "legacy HTTP: fallbacking to: #{@config[:fallback_legacy_host]}:#{@config[:fallback_legacy_port]}"
+          @svc.logger.info "legacy HTTP: fallbacking to: #{@config[:fallback_legacy_host]}:#{@config[:fallback_legacy_port]}"
           upstream = TCPSocket.open(@config[:fallback_legacy_host], @config[:fallback_legacy_port])
           upstream.write(@e.buf) if @e.buf
           loop do
