@@ -135,8 +135,12 @@ class ClientTest < Minitest::Test
 
           yield plum if block_given?
 
-          while !sock.closed? && !sock.eof?
-            plum << sock.readpartial(1024)
+          begin
+            while !sock.closed? && !sock.eof?
+              plum << sock.readpartial(1024)
+            end
+          rescue Errno::ECONNABORTED
+            # Ignore, this happens only when running on mingw64(?)
           end
         }
       rescue OpenSSL::SSL::SSLError
