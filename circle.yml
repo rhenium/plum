@@ -4,7 +4,7 @@ machine:
 dependencies:
   pre:
     - echo openssl_url=https://www.openssl.org/source >> $rvm_path/user/db
-    - echo openssl_version=1.0.2e >> $rvm_path/user/db
+    - echo openssl_version=1.0.2f >> $rvm_path/user/db
     - rvm pkg install openssl
     - >
       case $CIRCLE_NODE_INDEX in
