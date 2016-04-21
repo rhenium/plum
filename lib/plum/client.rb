@@ -30,6 +30,7 @@ module Plum
       if host.is_a?(IO)
         @socket = host
       else
+        @socket = nil
         @host = host
         @port = port || (config[:scheme] == "https" ? 443 : 80)
       end

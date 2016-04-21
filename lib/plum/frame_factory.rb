@@ -27,7 +27,8 @@ module Plum
     # @param ack [Symbol] Pass :ack to create an ACK frame.
     # @param args [Hash<Symbol, Integer>] The settings values to send.
     def settings(ack = nil, **args)
-      payload = args.inject(String.new) {|payload, (key, value)|
+      payload = String.new
+      args.each { |key, value|
         id = Frame::SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type")
         payload.push_uint16(id)
         payload.push_uint32(value)

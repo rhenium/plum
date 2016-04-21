@@ -12,6 +12,7 @@ module Plum
       @failed = false
       @body = []
       @auto_decode = auto_decode
+      @on_chunk = @on_finish = nil
     end
 
     # Returns the HTTP status code.

@@ -18,7 +18,6 @@ module Plum
     # @param headers [Enumerable<String, String>] The response headers.
     # @param end_stream [Boolean] Set END_STREAM flag or not.
     def send_headers(headers, end_stream:)
-      max = @connection.remote_settings[:max_frame_size]
       encoded = @connection.hpack_encoder.encode(headers)
       frame = Frame.headers(id, encoded, end_headers: true, end_stream: end_stream)
       send frame

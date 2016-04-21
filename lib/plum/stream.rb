@@ -76,10 +76,7 @@ module Plum
         @weight = weight
       end
 
-      if parent
-        @parent = parent
-        @parent.children << self
-      end
+      (@parent = parent)&.children&.add(self)
 
       if exclusive != nil
         @exclusive = exclusive

@@ -201,7 +201,8 @@ module Plum
       goaway
       close
 
-      last_id = frame.payload.uint32(0)
+      # TODO: how handle it?
+      # last_id = frame.payload.uint32(0)
       error_code = frame.payload.uint32(4)
       message = frame.payload.byteslice(8, frame.length - 8)
       if error_code > 0
