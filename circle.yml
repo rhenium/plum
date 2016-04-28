@@ -9,8 +9,8 @@ dependencies:
     - >
       case $CIRCLE_NODE_INDEX in
         0)
-          rvm install ruby-2.3.0 --with-openssl-dir=$rvm_path/usr
-          rvm use ruby-2.3.0 --default
+          rvm install ruby-2.3.1 --with-openssl-dir=$rvm_path/usr
+          rvm use ruby-2.3.1 --default
           ;;
         0)
           rvm install ruby-head --with-openssl-dir=$rvm_path/usr
