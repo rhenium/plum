@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 module Plum
   module BinaryString
     refine String do

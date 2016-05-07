@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 using Plum::BinaryString
 module Plum
   class ServerConnection < Connection

@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 module Plum
   class Response
     # The response headers
