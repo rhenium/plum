@@ -26,7 +26,7 @@ module Plum
 
     def close
       @closed = true
-      @response._fail if @response
+      @response.send(:fail) if @response
     end
 
     def request(headers, body, options, &headers_cb)
@@ -95,17 +95,18 @@ module Plum
     def setup_parser
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc {
+        # FIXME: duplicate header name?
         resp_headers = parser.headers.map { |key, value| [key.downcase, value] }.to_h
-        @response._headers({ ":status" => parser.status_code.to_s }.merge(resp_headers))
+        @response.send(:set_headers, { ":status" => parser.status_code.to_s }.merge(resp_headers))
         @headers_callback.call(@response) if @headers_callback
       }
 
       parser.on_body = proc { |chunk|
-        @response._chunk(chunk)
+        @response.send(:add_chunk, chunk)
       }
 
       parser.on_message_complete = proc { |env|
-        @response._finish
+        @response.send(:finish)
         @response = nil
         @headers_callback = nil
         close unless parser.keep_alive?

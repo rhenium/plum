@@ -70,15 +70,14 @@ module Plum
       @body.join
     end
 
-    # @api private
-    def _headers(raw_headers)
-      # response headers should not have duplicates
-      @headers = raw_headers.to_h.freeze
+    private
+    # internal: set headers and setup decoder
+    def set_headers(headers)
+      @headers = headers.freeze
       @decoder = setup_decoder
     end
 
-    # @api private
-    def _chunk(encoded)
+    def add_chunk(encoded)
       chunk = @decoder.decode(encoded)
       if @on_chunk
         @on_chunk.call(chunk)
@@ -87,19 +86,16 @@ module Plum
       end
     end
 
-    # @api private
-    def _finish
+    def finish
       @finished = true
       @decoder.finish
       @on_finish.call if @on_finish
     end
 
-    # @api private
-    def _fail
-      @failed = true
+    def fail(ex = nil)
+      @failed = ex || true # FIXME
     end
 
-    private
     def setup_decoder
       if @auto_decode
         klass = Decoders::DECODERS[@headers["content-encoding"]]
