@@ -37,7 +37,7 @@ class ClientTest < Minitest::Test
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
     res = client.get("/error_in_data")
     assert_raises(LocalConnectionError) {
-      client.resume(res)
+      client.resume
     }
     client.close
   ensure

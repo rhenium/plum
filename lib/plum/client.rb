@@ -54,16 +54,9 @@ module Plum
       self
     end
 
-    # Resume communication with the server, until the specified (or all running) requests are complete.
-    # @param response [Response] if specified, waits only for the response
-    # @return [Response] if parameter response is specified
-    def resume(response = nil)
-      if response
-        @session.succ until response.failed? || response.finished?
-        response
-      else
-        @session.succ until @session.empty?
-      end
+    # Resume communication with the server until all running requests are complete.
+    def resume
+      @session.succ until @session.empty?
     end
 
     # Closes the connection immediately.
