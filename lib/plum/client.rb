@@ -138,10 +138,12 @@ module Plum
       if @config[:https]
         ctx = @config[:ssl_context] || new_ssl_ctx
         @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
-        @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
+        @socket.hostname = @config[:hostname]
         @socket.sync_close = true
         @socket.connect
-        @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+        if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+          @socket.post_connection_check(@config[:hostname])
+        end
 
         @socket.alpn_protocol == "h2"
       end
