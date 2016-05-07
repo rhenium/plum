@@ -2,7 +2,7 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      scheme: "https",
+      https: true,
       hostname: nil,
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
       ssl_context: nil,
@@ -31,7 +31,7 @@ module Plum
       else
         @socket = nil
         @host = host
-        @port = port || (config[:scheme] == "https" ? 443 : 80)
+        @port = port || (config[:https] ? 443 : 80)
       end
       @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
       @started = false
@@ -135,7 +135,7 @@ module Plum
     def _connect
       @socket = TCPSocket.open(@host, @port)
 
-      if @config[:scheme] == "https"
+      if @config[:https]
         ctx = @config[:ssl_context] || new_ssl_ctx
         @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
         @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
@@ -151,7 +151,7 @@ module Plum
       @started = true
       nego = @socket || _connect
 
-      if @config[:scheme] == "https"
+      if @config[:https]
         klass = nego ? ClientSession : LegacyClientSession
       else
         klass = UpgradeClientSession

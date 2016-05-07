@@ -39,7 +39,7 @@ module Plum
       headers = { ":method" => nil,
                   ":path" => nil,
                   ":authority" => @config[:hostname],
-                  ":scheme" => @config[:scheme]
+                  ":scheme" => @config[:https] ? "https" : "http",
       }.merge(headers)
 
       response = Response.new(**options)
