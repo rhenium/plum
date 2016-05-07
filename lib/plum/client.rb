@@ -2,7 +2,6 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      http2: true,
       scheme: "https",
       hostname: nil,
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
@@ -150,18 +149,12 @@ module Plum
 
     def _start
       @started = true
-
-      klass = @config[:http2] ? ClientSession : LegacyClientSession
       nego = @socket || _connect
 
-      if @config[:http2]
-        if @config[:scheme] == "https"
-          klass = nego ? ClientSession : LegacyClientSession
-        else
-          klass = UpgradeClientSession
-        end
+      if @config[:scheme] == "https"
+        klass = nego ? ClientSession : LegacyClientSession
       else
-        klass = LegacyClientSession
+        klass = UpgradeClientSession
       end
 
       @session = klass.new(@socket, @config)
@@ -174,10 +167,8 @@ module Plum
       cert_store = OpenSSL::X509::Store.new
       cert_store.set_default_paths
       ctx.cert_store = cert_store
-      if @config[:http2]
-        ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
-        ctx.alpn_protocols = ["h2", "http/1.1"]
-      end
+      ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
+      ctx.alpn_protocols = ["h2", "http/1.1"]
       ctx
     end
 

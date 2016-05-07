@@ -82,20 +82,14 @@ class ClientTest < Minitest::Test
 
   def test_session_socket_http2_https
     sock = StringSocket.new
-    client = Client.start(sock, nil, http2: true, scheme: "https")
+    client = Client.start(sock, nil, scheme: "https")
     assert(client.session.class == ClientSession)
   end
 
   def test_session_socket_http2_http
     sock = StringSocket.new("HTTP/1.1 100\r\n\r\n")
-    client = Client.start(sock, nil, http2: true, scheme: "http")
+    client = Client.start(sock, nil, scheme: "http")
     assert(client.session.class == UpgradeClientSession)
-  end
-
-  def test_session_socket_http1
-    sock = StringSocket.new
-    client = Client.start(sock, nil, http2: false)
-    assert(client.session.class == LegacyClientSession)
   end
 
   private
