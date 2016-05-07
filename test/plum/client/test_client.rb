@@ -2,16 +2,6 @@ require "test_helper"
 
 using Plum::BinaryString
 class ClientTest < Minitest::Test
-  def test_request_sync
-    server_thread = start_tls_server
-    client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res1 = client.put!("/", "aaa", headers: { "header" => "ccc" })
-    assert_equal("PUTcccaaa", res1.body)
-    client.close
-  ensure
-    server_thread.join if server_thread
-  end
-
   def test_request_async
     res2 = nil
     client = nil
@@ -37,19 +27,6 @@ class ClientTest < Minitest::Test
     server_thread = start_tls_server
     assert_raises(OpenSSL::SSL::SSLError) {
       client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_PEER)
-    }
-  ensure
-    server_thread.join if server_thread
-  end
-
-  def test_raise_error_sync
-    client = nil
-    server_thread = start_tls_server
-    Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
-      client = c
-      assert_raises(LocalConnectionError) {
-        client.get!("/connection_error")
-      }
     }
   ensure
     server_thread.join if server_thread

@@ -83,14 +83,6 @@ module Plum
       @session.request(headers, body, @config.merge(options), &block)
     end
 
-    # @!method get!
-    # @!method head!
-    # @!method delete!
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `Client#resume(Client#request(*args))`
-
     # @!method get
     # @!method head
     # @!method delete
@@ -99,20 +91,10 @@ module Plum
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
     %w(GET HEAD DELETE).each { |method|
-      define_method(:"#{method.downcase}!") do |path, options = {}, &block|
-        resume _request_helper(method, path, nil, options, &block)
-      end
       define_method(:"#{method.downcase}") do |path, options = {}, &block|
         _request_helper(method, path, nil, options, &block)
       end
     }
-    # @!method post!
-    # @!method put!
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param body [String] the request body
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `Client#resume(Client#request(*args))`
 
     # @!method post
     # @!method put
@@ -122,9 +104,6 @@ module Plum
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
     %w(POST PUT).each { |method|
-      define_method(:"#{method.downcase}!") do |path, body, options = {}, &block|
-        resume _request_helper(method, path, body, options, &block)
-      end
       define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
         _request_helper(method, path, body, options, &block)
       end
