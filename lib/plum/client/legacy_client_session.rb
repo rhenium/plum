@@ -11,7 +11,6 @@ module Plum
       @parser = setup_parser
       @requests = []
       @response = nil
-      @headers_callback = nil
     end
 
     def succ
@@ -40,8 +39,8 @@ module Plum
         end
       end
 
-      response = Response.new(**options)
-      @requests << [response, headers, body, chunked, headers_cb]
+      response = Response.new(**options, &headers_cb)
+      @requests << [response, headers, body, chunked]
       consume_queue
       response
     end
@@ -55,9 +54,8 @@ module Plum
     def consume_queue
       return if @response || @requests.empty?
 
-      response, headers, body, chunked, cb = @requests.shift
+      response, headers, body, chunked = @requests.shift
       @response = response
-      @headers_callback = cb
 
       @socket << construct_request(headers)
 
@@ -98,7 +96,6 @@ module Plum
         # FIXME: duplicate header name?
         resp_headers = parser.headers.map { |key, value| [key.downcase, value] }.to_h
         @response.send(:set_headers, { ":status" => parser.status_code.to_s }.merge(resp_headers))
-        @headers_callback.call(@response) if @headers_callback
       }
 
       parser.on_body = proc { |chunk|
@@ -108,7 +105,6 @@ module Plum
       parser.on_message_complete = proc { |env|
         @response.send(:finish)
         @response = nil
-        @headers_callback = nil
         close unless parser.keep_alive?
         consume_queue
       }

@@ -6,19 +6,21 @@ module Plum
     attr_reader :headers
 
     # @api private
-    def initialize(auto_decode: true, **options)
+    def initialize(auto_decode: true, **options, &on_headers)
+      @headers = nil
       @body = Queue.new
       @finished = false
       @failed = false
       @body = []
       @auto_decode = auto_decode
+      @on_headers = on_headers
       @on_chunk = @on_finish = nil
     end
 
     # Returns the HTTP status code.
     # @return [String] the HTTP status code
     def status
-      @headers && @headers[":status"]
+      @headers&.fetch(":status")
     end
 
     # Returns the header value that correspond to the header name.
@@ -40,7 +42,15 @@ module Plum
       @failed
     end
 
-    # Set callback tha called when received a chunk of response body.
+    # Set callback that will be called when the response headers arrive
+    # @yield [self]
+    def on_headers(&block)
+      raise ArgumentError, "block must be given" unless block_given?
+      @on_headers = block
+      yield self if @headers
+    end
+
+    # Set callback that will be called when received a chunk of response body.
     # @yield [chunk] A chunk of the response body.
     def on_chunk(&block)
       raise "Body already read" if @on_chunk
@@ -74,6 +84,7 @@ module Plum
     # internal: set headers and setup decoder
     def set_headers(headers)
       @headers = headers.freeze
+      @on_headers.call(self) if @on_headers
       @decoder = setup_decoder
     end
 

@@ -52,6 +52,23 @@ class ResponseTest < Minitest::Test
     }
   end
 
+  def test_on_headers_initialize
+    called = false
+    resp = Response.new { |r| called = true }
+    assert(!called)
+    resp.send(:set_headers, { ":status" => 201 })
+    assert(called)
+  end
+
+  def test_on_headers_explicit
+    called = false
+    resp = Response.new
+    resp.on_headers { |r| called = true }
+    assert(!called)
+    resp.send(:set_headers, { ":status" => 201 })
+    assert(called)
+  end
+
   def test_on_chunk
     resp = Response.new
     resp.send(:set_headers, {})

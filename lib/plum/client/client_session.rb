@@ -42,7 +42,7 @@ module Plum
                   ":scheme" => @config[:https] ? "https" : "http",
       }.merge(headers)
 
-      response = Response.new(**options)
+      response = Response.new(**options, &headers_cb)
       @responses << response
       stream = @plum.open_stream
       stream.send_headers(headers, end_stream: !body)
@@ -50,7 +50,6 @@ module Plum
 
       stream.on(:headers) { |resp_headers_raw|
         response.send(:set_headers, resp_headers_raw.to_h)
-        headers_cb.call(response) if headers_cb
       }
       stream.on(:data) { |chunk|
         response.send(:add_chunk, chunk)
