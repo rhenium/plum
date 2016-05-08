@@ -16,7 +16,7 @@ class ServerConnectionUtilsTest < Minitest::Test
 
   def test_server_goaway
     open_server_connection { |con|
-      con << Frame.headers(3, "", end_stream: true, end_headers: true).assemble
+      con << Frame::Headers.new(3, "", end_stream: true, end_headers: true).assemble
       con.goaway(:stream_closed)
 
       last = sent_frames.last
@@ -29,9 +29,9 @@ class ServerConnectionUtilsTest < Minitest::Test
 
   def test_push_enabled
     open_server_connection { |con|
-      con << Frame.settings(enable_push: 0).assemble
+      con << Frame::Settings.new(enable_push: 0).assemble
       assert_equal(false, con.push_enabled?)
-      con << Frame.settings(enable_push: 1).assemble
+      con << Frame::Settings.new(enable_push: 1).assemble
       assert_equal(true, con.push_enabled?)
     }
   end

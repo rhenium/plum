@@ -85,7 +85,7 @@ module Plum
     # Sends local settings to the peer.
     # @param new_settings [Hash<Symbol, Integer>]
     def settings(**new_settings)
-      send_immediately Frame.settings(**new_settings)
+      send_immediately Frame::Settings.new(**new_settings)
 
       old_settings = @local_settings.dup
       @local_settings.merge!(new_settings)
@@ -98,14 +98,14 @@ module Plum
     # @param data [String] Must be 8 octets.
     # @raise [ArgumentError] If the data is not 8 octets.
     def ping(data = "plum\x00\x00\x00\x00")
-      send_immediately Frame.ping(data)
+      send_immediately Frame::Ping.new(data)
     end
 
     # Sends GOAWAY frame to the peer and closes the connection.
     # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
     def goaway(error_type = :no_error, message = "")
       last_id = @max_stream_ids.max
-      send_immediately Frame.goaway(last_id, error_type, message)
+      send_immediately Frame::Goaway.new(last_id, error_type, message)
     end
 
     # Returns whether peer enables server push or not
@@ -202,7 +202,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send_immediately Frame.settings(:ack) if send_ack
+      send_immediately Frame::Settings.new(:ack) if send_ack
 
       if @state == :waiting_settings
         @state = :open
@@ -223,7 +223,7 @@ module Plum
       else
         opaque_data = frame.payload
         callback(:ping, opaque_data)
-        send_immediately Frame.ping(:ack, opaque_data)
+        send_immediately Frame::Ping.new(:ack, opaque_data)
       end
     end
 

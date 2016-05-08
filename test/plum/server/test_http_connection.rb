@@ -9,7 +9,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
     con = HTTPServerConnection.new(io.method(:write))
     con << Connection::CLIENT_CONNECTION_PREFACE
     assert_connection_error(:protocol_error) {
-      con << Frame.new(type: :window_update, stream_id: 0, payload: "".push_uint32(1)).assemble
+      con << Frame::WindowUpdate.new(0, 1).assemble
     }
   end
 
@@ -20,7 +20,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
     assert_no_error {
       con << magic[0...5]
       con << magic[5..-1]
-      con << Frame.new(type: :settings, stream_id: 0).assemble
+      con << Frame::Settings.new.assemble
     }
   end
 
@@ -41,7 +41,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
     assert(io.string.include?("HTTP/1.1 101 "), "Response is not HTTP/1.1 101: #{io.string}")
     assert_no_error {
       con << Connection::CLIENT_CONNECTION_PREFACE
-      con << Frame.new(type: :settings, stream_id: 0).assemble
+      con << Frame::Settings.new.assemble
     }
     assert_equal(:half_closed_remote, con.streams[1].state)
     assert_equal({ ":method" => "GET", ":path" => "/", ":authority" => "rhe.jp", "user-agent" => "nya"}, heads)
