@@ -21,8 +21,8 @@ loop do
     sock = tcp_server.accept
     id = sock.fileno
     puts "#{id}: accept!"
-  rescue => e
-    STDERR.puts e
+  rescue
+    STDERR.puts $!
     next
   end
 

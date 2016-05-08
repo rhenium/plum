@@ -39,8 +39,8 @@ loop do
     sock = ssl_server.accept
     id = sock.io.fileno
     puts "#{id}: accept! #{sock.cipher.inspect}"
-  rescue => e
-    STDERR.puts e
+  rescue
+    STDERR.puts $!
     next
   end
 

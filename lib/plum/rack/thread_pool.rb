@@ -24,8 +24,8 @@ module Plum
             job, err = @jobs.pop
             begin
               job.call
-            rescue => e
-              err << e if err
+            rescue
+              err << $! if err
             end
           end
         }

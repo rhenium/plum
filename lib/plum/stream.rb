@@ -156,8 +156,8 @@ module Plum
 
       begin
         decoded_headers = @connection.hpack_decoder.decode(payload)
-      rescue => e
-        raise RemoteConnectionError.new(:compression_error, e)
+      rescue
+        raise RemoteConnectionError.new(:compression_error, $!)
       end
 
       callback(:headers, decoded_headers)
