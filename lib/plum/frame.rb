@@ -52,6 +52,11 @@ module Plum
     # @!visibility private
     FRAME_FLAGS_MAP = FRAME_FLAGS.values.inject(:merge).freeze
 
+    # type_value = 0x00 - 0x09 are known, but these classes aren't defined yet...
+    # Frame.register_subclass adds them.
+    SUB_CLASSES = []
+    private_constant :SUB_CLASSES
+
     # RFC7540: 4.1 Frame format
     # +-----------------------------------------------+
     # |                 Length (24)                   |
@@ -151,34 +156,33 @@ module Plum
       "#<%s:0x%04x length=%d, flags=%p, stream_id=0x%04x, payload=%p>" % [self.class, __id__, length, flags, stream_id, payload]
     end
 
-    # Parses a frame from given buffer. It changes given buffer.
-    # @param buffer [String] The buffer stored the data received from peer. Encoding must be Encoding::BINARY.
-    # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
-    def self.parse!(buffer)
-      return nil if buffer.bytesize < 9 # header: 9 bytes
-      length = buffer.uint24
-      return nil if buffer.bytesize < 9 + length
+    class << self
+      # Parses a frame from given buffer. It changes given buffer.
+      # @param buffer [String] The buffer stored the data received from peer. Encoding must be Encoding::BINARY.
+      # @return [Frame, nil] The parsed frame or nil if the buffer is imcomplete.
+      def parse!(buffer)
+        return nil if buffer.bytesize < 9 # header: 9 bytes
+        length = buffer.uint24
+        return nil if buffer.bytesize < 9 + length
 
-      cur = buffer.byteshift(9 + length)
-      type_value, flags_value, r_sid = cur.byteslice(3, 6).unpack("CCN")
-      # r = r_sid >> 31 # currently not used
-      stream_id = r_sid # & ~(1 << 31)
+        cur = buffer.byteshift(9 + length)
+        type_value, flags_value, r_sid = cur.byteslice(3, 6).unpack("CCN")
+        # r = r_sid >> 31 # currently not used
+        stream_id = r_sid # & ~(1 << 31)
 
-      frame = (SUB_CLASSES[type_value] || Frame::Unknown).allocate
-      frame.send(:initialize_base,
-                 type_value: type_value,
-                 flags_value: flags_value,
-                 stream_id: stream_id,
-                 payload: cur.byteslice(9, length))
-      frame.freeze
-    end
+        frame = (SUB_CLASSES[type_value] || Frame::Unknown).allocate
+        frame.send(:initialize_base,
+                   type_value: type_value,
+                   flags_value: flags_value,
+                   stream_id: stream_id,
+                   payload: cur.byteslice(9, length))
+        frame.freeze
+      end
 
-    # @private
-    # type_value = 0x00 - 0x09 are known, but these classes aren't defined yet...
-    SUB_CLASSES = []
-    private_constant :SUB_CLASSES
-    def self.register_subclass(type_value)
-      SUB_CLASSES[type_value] = self
+      # Sub classes must call this.
+      protected def register_subclass(type_value)
+        SUB_CLASSES[type_value] = self
+      end
     end
   end
 end
