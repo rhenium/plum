@@ -21,7 +21,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     con = ServerConnection.new(StringIO.new.method(:write))
     con << Connection::CLIENT_CONNECTION_PREFACE
     assert_connection_error(:protocol_error) {
-      con << Frame.new(type: :window_update, stream_id: 0, payload: "".push_uint32(1)).assemble
+      con << Frame::WindowUpdate.new(0, 1).assemble
     }
   end
 
@@ -31,7 +31,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     assert_no_error {
       con << magic[0...5]
       con << magic[5..-1]
-      con << Frame.new(type: :settings, stream_id: 0).assemble
+      con << Frame::Settings.new.assemble
     }
   end
 
@@ -57,10 +57,9 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
             end
           }
         }
+      rescue Errno::EPIPE
       rescue Timeout::Error
         flunk "server timeout"
-      rescue => e
-        flunk e
       ensure
         tcp_server.close
       end
@@ -75,16 +74,14 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
         ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
         ssl.connect
         ssl.write Connection::CLIENT_CONNECTION_PREFACE
-        ssl.write Frame.settings.assemble
-        sleep
-      rescue => e
-        flunk e
+        ssl.write Frame::Settings.new.assemble
+      rescue Errno::EPIPE
       ensure
         sock.close
       end
     }
     server_thread.join
-    client_thread.kill
+    client_thread.join
 
     flunk "test not run" unless run
   end

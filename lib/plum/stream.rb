@@ -53,7 +53,7 @@ module Plum
       end
     rescue RemoteStreamError => e
       callback(:stream_error, e)
-      send_immediately Frame.rst_stream(id, e.http2_error_type)
+      send_immediately Frame::RstStream.new(id, e.http2_error_type)
       close
     end
 
@@ -97,7 +97,7 @@ module Plum
     def promise(headers)
       stream = @connection.reserve_stream(weight: self.weight + 1, parent: self)
       encoded = @connection.hpack_encoder.encode(headers)
-      frame = Frame.push_promise(id, stream.id, encoded, end_headers: true)
+      frame = Frame::PushPromise.new(id, stream.id, encoded, end_headers: true)
       send frame
       stream
     end
@@ -107,7 +107,7 @@ module Plum
     # @param end_stream [Boolean] Set END_STREAM flag or not.
     def send_headers(headers, end_stream:)
       encoded = @connection.hpack_encoder.encode(headers)
-      frame = Frame.headers(id, encoded, end_headers: true, end_stream: end_stream)
+      frame = Frame::Headers.new(id, encoded, end_headers: true, end_stream: end_stream)
       send frame
       @state = :half_closed_local if end_stream
     end
@@ -120,10 +120,10 @@ module Plum
       if data.is_a?(IO)
         until data.eof?
           fragment = data.readpartial(max)
-          send Frame.data(id, fragment, end_stream: end_stream && data.eof?)
+          send Frame::Data.new(id, fragment, end_stream: end_stream && data.eof?)
         end
       else
-        send Frame.data(id, data, end_stream: end_stream)
+        send Frame::Data.new(id, data, end_stream: end_stream)
       end
       @state = :half_closed_local if end_stream
     end

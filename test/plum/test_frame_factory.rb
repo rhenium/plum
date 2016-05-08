@@ -3,7 +3,7 @@ require "test_helper"
 using Plum::BinaryString
 class FrameFactoryTest < Minitest::Test
   def test_rst_stream
-    frame = Frame.rst_stream(123, :stream_closed)
+    frame = Frame::RstStream.new(123, :stream_closed)
     assert_frame(frame,
                  type: :rst_stream,
                  stream_id: 123)
@@ -11,7 +11,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_goaway
-    frame = Frame.goaway(0x55, :stream_closed, "debug")
+    frame = Frame::Goaway.new(0x55, :stream_closed, "debug")
     assert_frame(frame,
                  type: :goaway,
                  stream_id: 0,
@@ -19,7 +19,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_settings
-    frame = Frame.settings(header_table_size: 0x1010)
+    frame = Frame::Settings.new(header_table_size: 0x1010)
     assert_frame(frame,
                  type: :settings,
                  stream_id: 0,
@@ -28,7 +28,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_settings_ack
-    frame = Frame.settings(:ack)
+    frame = Frame::Settings.new(:ack)
     assert_frame(frame,
                  type: :settings,
                  stream_id: 0,
@@ -37,7 +37,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_ping
-    frame = Frame.ping("12345678")
+    frame = Frame::Ping.new("12345678")
     assert_frame(frame,
                  type: :ping,
                  stream_id: 0,
@@ -46,7 +46,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_ping_ack
-    frame = Frame.ping(:ack, "12345678")
+    frame = Frame::Ping.new(:ack, "12345678")
     assert_frame(frame,
                  type: :ping,
                  stream_id: 0,
@@ -55,7 +55,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_continuation
-    frame = Frame.continuation(123, "abc", end_headers: true)
+    frame = Frame::Continuation.new(123, "abc", end_headers: true)
     assert_frame(frame,
                  type: :continuation,
                  stream_id: 123,
@@ -64,7 +64,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_data
-    frame = Frame.data(123, "abc".force_encoding("UTF-8"))
+    frame = Frame::Data.new(123, "abc".force_encoding("UTF-8"))
     assert_frame(frame,
                  type: :data,
                  stream_id: 123,
@@ -74,7 +74,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_headers
-    frame = Frame.headers(123, "abc", end_stream: true)
+    frame = Frame::Headers.new(123, "abc", end_stream: true)
     assert_frame(frame,
                  type: :headers,
                  stream_id: 123,
@@ -83,7 +83,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_push_promise
-    frame = Frame.push_promise(345, 2, "abc", end_headers: true)
+    frame = Frame::PushPromise.new(345, 2, "abc", end_headers: true)
     assert_frame(frame,
                  type: :push_promise,
                  stream_id: 345,

@@ -34,17 +34,17 @@ class FrameTest < Minitest::Test
 
   # Frame#assemble
   def test_assemble
-    frame = Plum::Frame.new(type: :push_promise, flags: [:end_headers, :padded], stream_id: 0x678, payload: "payl")
+    frame = Plum::Frame.craft(type: :push_promise, flags: [:end_headers, :padded], stream_id: 0x678, payload: "payl")
     bin = "\x00\x00\x04" << "\x05" << "\x0c" << "\x00\x00\x06\x78" << "payl"
     assert_equal(bin, frame.assemble)
   end
 
-  # Frame#generate
-  def test_new
-    frame = Plum::Frame.new(type: :data,
-                            stream_id: 12345,
-                            flags: [:end_stream, :padded],
-                            payload: "ぺいろーど".encode(Encoding::UTF_8))
+  # Frame.craft
+  def test_new_raw
+    frame = Plum::Frame.craft(type: :data,
+                              stream_id: 12345,
+                              flags: [:end_stream, :padded],
+                              payload: "ぺいろーど".encode(Encoding::UTF_8))
     assert_equal("ぺいろーど", frame.payload)
     assert_equal("ぺいろーど".bytesize, frame.length)
     assert_equal(:data, frame.type) # DATA
@@ -53,10 +53,10 @@ class FrameTest < Minitest::Test
   end
 
   def test_inspect
-    frame = Plum::Frame.new(type: :data,
-                            stream_id: 12345,
-                            flags: [:end_stream, :padded],
-                            payload: "ぺいろーど")
+    frame = Plum::Frame.craft(type: :data,
+                              stream_id: 12345,
+                              flags: [:end_stream, :padded],
+                              payload: "ぺいろーど")
     frame.inspect
   end
 end

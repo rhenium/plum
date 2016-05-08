@@ -5,7 +5,7 @@ module ServerUtils
     @_io = StringIO.new
     @_con = (scheme == :https ? ServerConnection : HTTPServerConnection).new(@_io.method(:write))
     @_con << Connection::CLIENT_CONNECTION_PREFACE
-    @_con << Frame.new(type: :settings, stream_id: 0).assemble
+    @_con << Frame::Settings.new.assemble
     if block_given?
       yield @_con
     else
