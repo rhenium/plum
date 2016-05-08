@@ -26,9 +26,11 @@ ctx.alpn_select_cb = -> protocols {
   raise "Client does not support HTTP/2: #{protocols}" unless protocols.include?("h2")
   "h2"
 }
-ctx.tmp_ecdh_callback = -> (sock, ise, keyl) {
-  OpenSSL::PKey::EC.new("prime256v1")
-}
+if ctx.respond_to?(:tmp_ecdh_callback) && !ctx.respond_to?(:set_ecdh_curves)
+  ctx.tmp_ecdh_callback = -> (sock, ise, keyl) {
+    OpenSSL::PKey::EC.new("prime256v1")
+  }
+end
 ctx.cert = OpenSSL::X509::Certificate.new File.read(".crt.local")
 ctx.key = OpenSSL::PKey::RSA.new File.read(".key.local")
 tcp_server = TCPServer.new("0.0.0.0", 40443)
