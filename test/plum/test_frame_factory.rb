@@ -28,7 +28,7 @@ class FrameFactoryTest < Minitest::Test
   end
 
   def test_settings_ack
-    frame = Frame::Settings.new(:ack)
+    frame = Frame::Settings.ack
     assert_frame(frame,
                  type: :settings,
                  stream_id: 0,

@@ -4,7 +4,7 @@ module ServerUtils
   def open_client_connection(scheme = :https)
     io = StringIO.new
     @_ccon = ClientConnection.new(io.method(:write))
-    @_ccon << Frame::Settings.new(:ack).assemble
+    @_ccon << Frame::Settings.ack.assemble
     @_ccon << Frame::Settings.new.assemble
     if block_given?
       yield @_ccon

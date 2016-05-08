@@ -198,7 +198,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send_immediately Frame::Settings.new(:ack) if send_ack
+      send_immediately Frame::Settings.ack if send_ack
 
       if @state == :waiting_settings
         @state = :open
