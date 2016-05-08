@@ -6,7 +6,6 @@ module Plum
   class Connection
     include EventEmitter
     include FlowControl
-    include ConnectionUtils
 
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
@@ -81,6 +80,37 @@ module Plum
       end
 
       stream
+    end
+
+    # Sends local settings to the peer.
+    # @param new_settings [Hash<Symbol, Integer>]
+    def settings(**new_settings)
+      send_immediately Frame.settings(**new_settings)
+
+      old_settings = @local_settings.dup
+      @local_settings.merge!(new_settings)
+
+      @hpack_decoder.limit = @local_settings[:header_table_size]
+      update_recv_initial_window_size(@local_settings[:initial_window_size] - old_settings[:initial_window_size])
+    end
+
+    # Sends a PING frame to the peer.
+    # @param data [String] Must be 8 octets.
+    # @raise [ArgumentError] If the data is not 8 octets.
+    def ping(data = "plum\x00\x00\x00\x00")
+      send_immediately Frame.ping(data)
+    end
+
+    # Sends GOAWAY frame to the peer and closes the connection.
+    # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
+    def goaway(error_type = :no_error, message = "")
+      last_id = @max_stream_ids.max
+      send_immediately Frame.goaway(last_id, error_type, message)
+    end
+
+    # Returns whether peer enables server push or not
+    def push_enabled?
+      @remote_settings[:enable_push] == 1
     end
 
     private
