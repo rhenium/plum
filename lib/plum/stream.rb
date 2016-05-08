@@ -31,22 +31,15 @@ module Plum
       validate_received_frame(frame)
       consume_recv_window(frame)
 
-      case frame.type
-      when :data
-        receive_data(frame)
-      when :headers
-        receive_headers(frame)
-      when :priority
-        receive_priority(frame)
-      when :rst_stream
-        receive_rst_stream(frame)
-      when :window_update
-        receive_window_update(frame)
-      when :continuation
-        receive_continuation(frame)
-      when :push_promise
-        receive_push_promise(frame)
-      when :ping, :goaway, :settings
+      case frame
+      when Frame::Data then         receive_data(frame)
+      when Frame::Headers then      receive_headers(frame)
+      when Frame::Priority then     receive_priority(frame)
+      when Frame::RstStream then    receive_rst_stream(frame)
+      when Frame::WindowUpdate then receive_window_update(frame)
+      when Frame::Continuation then receive_continuation(frame)
+      when Frame::PushPromise then  receive_push_promise(frame)
+      when Frame::Ping, Frame::Goaway, Frame::Settings
         raise RemoteConnectionError.new(:protocol_error) # stream_id MUST be 0x00
       else
         # MUST ignore unknown frame
@@ -135,7 +128,8 @@ module Plum
 
     def validate_received_frame(frame)
       if frame.length > @connection.local_settings[:max_frame_size]
-        if [:headers, :push_promise, :continuation].include?(frame.type)
+        case frame
+        when Frame::Headers, Frame::PushPromise, Frame::Continuation
           raise RemoteConnectionError.new(:frame_size_error)
         else
           raise RemoteStreamError.new(:frame_size_error)

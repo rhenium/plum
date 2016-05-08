@@ -134,12 +134,12 @@ module Plum
     end
 
     def validate_received_frame(frame)
-      if @state == :waiting_settings && frame.type != :settings
+      if @state == :waiting_settings && !(Frame::Settings === frame)
         raise RemoteConnectionError.new(:protocol_error)
       end
 
       if @state == :waiting_continuation
-        if frame.type != :continuation || frame.stream_id != @continuation_id
+        if !(Frame::Continuation === frame) || frame.stream_id != @continuation_id
           raise RemoteConnectionError.new(:protocol_error)
         end
         if frame.end_headers?
@@ -147,7 +147,7 @@ module Plum
         end
       end
 
-      if frame.type == :headers || frame.type == :push_promise
+      if Frame::Headers === frame || Frame::PushPromise === frame
         if !frame.end_headers?
           @state = :waiting_continuation
           @continuation_id = frame.stream_id
@@ -162,7 +162,7 @@ module Plum
       if frame.stream_id == 0
         receive_control_frame(frame)
       else
-        stream(frame.stream_id, frame.type == :headers).receive_frame(frame)
+        stream(frame.stream_id, Frame::Headers === frame).receive_frame(frame)
       end
     end
 
@@ -171,16 +171,12 @@ module Plum
         raise RemoteConnectionError.new(:frame_size_error)
       end
 
-      case frame.type
-      when :settings
-        receive_settings(frame)
-      when :window_update
-        receive_window_update(frame)
-      when :ping
-        receive_ping(frame)
-      when :goaway
-        receive_goaway(frame)
-      when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
+      case frame
+      when Frame::Settings then     receive_settings(frame)
+      when Frame::WindowUpdate then receive_window_update(frame)
+      when Frame::Ping then         receive_ping(frame)
+      when Frame::Goaway then       receive_goaway(frame)
+      when Frame::Data, Frame::Headers, Frame::Priority, Frame::RstStream, Frame::PushPromise, Frame::Continuation
         raise Plum::RemoteConnectionError.new(:protocol_error)
       else
         # MUST ignore unknown frame type.
