@@ -53,12 +53,5 @@ module Plum
     end
   end
 
-  class DecoderError < Error
-    attr_reader :inner_error
-
-    def initialize(message, inner_error = nil)
-      super(message)
-      @inner_error = inner_error
-    end
-  end
+  class DecoderError < Error; end
 end
