@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 module Plum
   # HTTP/2 client session.
   class ClientSession

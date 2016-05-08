@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require "plum"
 require "openssl"

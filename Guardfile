@@ -1,4 +1,5 @@
-# -*- frozen-string-literal: true -*-
+# frozen-string-literal: true
+
 guard :minitest, env: { "SKIP_COVERAGE" => true } do
   # with Minitest::Unit
   watch(%r{^test/(.*)\/?test_(.*)\.rb$})
