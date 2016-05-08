@@ -24,7 +24,7 @@ Plum::Client.start("userstream.twitter.com", 443) { |streaming|
       exit
     end
 
-    buf = String.new
+    buf = "".b
     res.on_chunk { |chunk| # when received DATA frame
       next if chunk.empty?
       buf << chunk

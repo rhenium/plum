@@ -6,7 +6,6 @@ module Plum
   class Connection
     include EventEmitter
     include FlowControl
-    include ConnectionUtils
 
     CLIENT_CONNECTION_PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
@@ -28,7 +27,7 @@ module Plum
       @writer = writer
       @local_settings = Hash.new { |hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new { |hash, key| DEFAULT_SETTINGS[key] }
-      @buffer = String.new
+      @buffer = "".b
       @streams = {}
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])
@@ -83,6 +82,37 @@ module Plum
       stream
     end
 
+    # Sends local settings to the peer.
+    # @param new_settings [Hash<Symbol, Integer>]
+    def settings(**new_settings)
+      send_immediately Frame::Settings.new(**new_settings)
+
+      old_settings = @local_settings.dup
+      @local_settings.merge!(new_settings)
+
+      @hpack_decoder.limit = @local_settings[:header_table_size]
+      update_recv_initial_window_size(@local_settings[:initial_window_size] - old_settings[:initial_window_size])
+    end
+
+    # Sends a PING frame to the peer.
+    # @param data [String] Must be 8 octets.
+    # @raise [ArgumentError] If the data is not 8 octets.
+    def ping(data = "plum\x00\x00\x00\x00")
+      send_immediately Frame::Ping.new(data)
+    end
+
+    # Sends GOAWAY frame to the peer and closes the connection.
+    # @param error_type [Symbol] The error type to be contained in the GOAWAY frame.
+    def goaway(error_type = :no_error, message = "")
+      last_id = @max_stream_ids.max
+      send_immediately Frame::Goaway.new(last_id, error_type, message)
+    end
+
+    # Returns whether peer enables server push or not
+    def push_enabled?
+      @remote_settings[:enable_push] == 1
+    end
+
     private
     def consume_buffer
       while frame = Frame.parse!(@buffer)
@@ -104,12 +134,12 @@ module Plum
     end
 
     def validate_received_frame(frame)
-      if @state == :waiting_settings && frame.type != :settings
+      if @state == :waiting_settings && !(Frame::Settings === frame)
         raise RemoteConnectionError.new(:protocol_error)
       end
 
       if @state == :waiting_continuation
-        if frame.type != :continuation || frame.stream_id != @continuation_id
+        if !(Frame::Continuation === frame) || frame.stream_id != @continuation_id
           raise RemoteConnectionError.new(:protocol_error)
         end
         if frame.end_headers?
@@ -117,7 +147,7 @@ module Plum
         end
       end
 
-      if frame.type == :headers || frame.type == :push_promise
+      if Frame::Headers === frame || Frame::PushPromise === frame
         if !frame.end_headers?
           @state = :waiting_continuation
           @continuation_id = frame.stream_id
@@ -132,7 +162,7 @@ module Plum
       if frame.stream_id == 0
         receive_control_frame(frame)
       else
-        stream(frame.stream_id, frame.type == :headers).receive_frame(frame)
+        stream(frame.stream_id, Frame::Headers === frame).receive_frame(frame)
       end
     end
 
@@ -141,16 +171,12 @@ module Plum
         raise RemoteConnectionError.new(:frame_size_error)
       end
 
-      case frame.type
-      when :settings
-        receive_settings(frame)
-      when :window_update
-        receive_window_update(frame)
-      when :ping
-        receive_ping(frame)
-      when :goaway
-        receive_goaway(frame)
-      when :data, :headers, :priority, :rst_stream, :push_promise, :continuation
+      case frame
+      when Frame::Settings then     receive_settings(frame)
+      when Frame::WindowUpdate then receive_window_update(frame)
+      when Frame::Ping then         receive_ping(frame)
+      when Frame::Goaway then       receive_goaway(frame)
+      when Frame::Data, Frame::Headers, Frame::Priority, Frame::RstStream, Frame::PushPromise, Frame::Continuation
         raise Plum::RemoteConnectionError.new(:protocol_error)
       else
         # MUST ignore unknown frame type.
@@ -172,7 +198,7 @@ module Plum
 
       callback(:remote_settings, @remote_settings, old_remote_settings)
 
-      send_immediately Frame.settings(:ack) if send_ack
+      send_immediately Frame::Settings.ack if send_ack
 
       if @state == :waiting_settings
         @state = :open
@@ -193,7 +219,7 @@ module Plum
       else
         opaque_data = frame.payload
         callback(:ping, opaque_data)
-        send_immediately Frame.ping(:ack, opaque_data)
+        send_immediately Frame::Ping.new(:ack, opaque_data)
       end
     end
 

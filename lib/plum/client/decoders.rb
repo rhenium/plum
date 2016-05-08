@@ -46,6 +46,6 @@ module Plum
       end
     end
 
-    DECODERS = { "gzip" => GZip, "deflate" => Deflate }.freeze
+    DECODERS = { "gzip" => GZip, "deflate" => Deflate }
   end
 end

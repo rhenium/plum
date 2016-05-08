@@ -31,8 +31,8 @@ if ctx.respond_to?(:tmp_ecdh_callback) && !ctx.respond_to?(:set_ecdh_curves)
     OpenSSL::PKey::EC.new("prime256v1")
   }
 end
-ctx.cert = OpenSSL::X509::Certificate.new File.read(".crt.local")
-ctx.key = OpenSSL::PKey::RSA.new File.read(".key.local")
+ctx.cert = OpenSSL::X509::Certificate.new File.read(File.expand_path("../../test/server.crt", __FILE__))
+ctx.key = OpenSSL::PKey::RSA.new File.read(File.expand_path("../../test/server.key", __FILE__))
 tcp_server = TCPServer.new("0.0.0.0", 40443)
 ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
@@ -75,7 +75,7 @@ loop do
 
     stream.on(:open) do
       headers = nil
-      data = String.new
+      data = "".b
     end
 
     stream.on(:headers) do |headers_|

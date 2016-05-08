@@ -6,7 +6,7 @@ module Plum
   class HTTPServerConnection < ServerConnection
     def initialize(writer, local_settings = {})
       require "http/parser"
-      @negobuf = String.new
+      @negobuf = "".b
       @_http_parser = setup_parser
       super(writer, local_settings)
     end
@@ -22,7 +22,7 @@ module Plum
 
     def setup_parser
       headers = nil
-      body = String.new
+      body = "".b
 
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc { |_headers|
@@ -49,7 +49,7 @@ module Plum
 
     def switch_protocol(settings, parser, headers, data)
       self.on(:negotiated) {
-        _frame = Frame.new(type: :settings, stream_id: 0, payload: Base64.urlsafe_decode64(settings))
+        _frame = Frame.craft(type: :settings, stream_id: 0, payload: Base64.urlsafe_decode64(settings))
         receive_settings(_frame, send_ack: false) # HTTP2-Settings
         process_first_request(parser, headers, data)
       }
@@ -71,8 +71,8 @@ module Plum
                                  ":authority" => headers["host"] })
                         .reject { |n, v| ["connection", "http2-settings", "upgrade", "host"].include?(n) }
 
-      stream.receive_frame Frame.headers(1, encoder.encode(nheaders), end_headers: true)
-      stream.receive_frame Frame.data(1, body, end_stream: true)
+      stream.receive_frame Frame::Headers.new(1, encoder.encode(nheaders), end_headers: true)
+      stream.receive_frame Frame::Data.new(1, body, end_stream: true)
     end
   end
 end

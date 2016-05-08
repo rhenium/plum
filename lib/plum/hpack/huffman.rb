@@ -9,7 +9,7 @@ module Plum
 
       # Static-Huffman-encodes the specified String.
       def encode(bytestr)
-        out = String.new
+        out = "".b
         bytestr.each_byte do |b|
           out << HUFFMAN_TABLE[b]
         end
@@ -21,7 +21,7 @@ module Plum
       def decode(encoded)
         bits = encoded.unpack("B*")[0]
         out = []
-        buf = String.new
+        buf = "".b
         bits.each_char do |cb|
           buf << cb
           if c = HUFFMAN_TABLE_INVERSED[buf]

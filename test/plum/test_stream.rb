@@ -6,7 +6,7 @@ class StreamTest < Minitest::Test
   def test_stream_illegal_frame_type
     open_new_stream { |stream|
       assert_connection_error(:protocol_error) {
-        stream.receive_frame(Frame.new(type: :goaway, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+        stream.receive_frame(Frame::Goaway.new(0, :no_error))
       }
     }
   end
@@ -14,7 +14,7 @@ class StreamTest < Minitest::Test
   def test_stream_unknown_frame_type
     open_new_stream { |stream|
       assert_no_error {
-        stream.receive_frame(Frame.new(type_value: 0x0f, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
+        stream.receive_frame(Frame::Unknown.new(0x0f, flags_value: 0, stream_id: stream.id, payload: "\x00\x00\x00\x00"))
       }
     }
   end
@@ -28,7 +28,7 @@ class StreamTest < Minitest::Test
       }
 
       assert_stream_error(:frame_size_error) {
-        con << Frame.headers(1, "", end_headers: true).assemble
+        con << Frame::Headers.new(1, "", end_headers: true).assemble
       }
 
       last = sent_frames.last
@@ -43,8 +43,8 @@ class StreamTest < Minitest::Test
       stream = type = nil
       con.on(:rst_stream) { |s, t| stream = s; type = t }
 
-      con << Frame.headers(1, "", end_headers: true).assemble
-      con << Frame.rst_stream(1, :frame_size_error).assemble
+      con << Frame::Headers.new(1, "", end_headers: true).assemble
+      con << Frame::RstStream.new(1, :frame_size_error).assemble
 
       assert_equal(1, stream.id)
       assert_equal(:frame_size_error, type)

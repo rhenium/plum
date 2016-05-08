@@ -9,7 +9,7 @@ module Plum
     # Sends frame respecting inner-stream flow control.
     # @param frame [Frame] The frame to be sent.
     def send(frame)
-      if frame.type == :data
+      if Frame::Data === frame
         @send_buffer << frame
         if @send_remaining_window < frame.length
           if Stream === self
@@ -29,9 +29,8 @@ module Plum
     # @param wsi [Integer] The amount to increase receiving window size. The legal range is 1 to 2^32-1.
     def window_update(wsi)
       @recv_remaining_window += wsi
-      payload = String.new.push_uint32(wsi)
       sid = (Stream === self) ? self.id : 0
-      send_immediately Frame.new(type: :window_update, stream_id: sid, payload: payload)
+      send_immediately Frame::WindowUpdate.new(sid, wsi)
     end
 
     protected
@@ -63,7 +62,7 @@ module Plum
     end
 
     def consume_recv_window(frame)
-      if frame.type == :data
+      if Frame::Data === frame
         @recv_remaining_window -= frame.length
         if @recv_remaining_window < 0
           local_error = (Connection === self) ? RemoteConnectionError : RemoteStreamError

@@ -55,7 +55,7 @@ module Plum
 
         reqs = {}
         @plum.on(:headers) { |stream, h|
-          reqs[stream] = { headers: h, data: String.new.force_encoding(Encoding::BINARY) }
+          reqs[stream] = { headers: h, data: "".b }
         }
 
         @plum.on(:data) { |stream, d|
