@@ -29,7 +29,7 @@ class HTTPConnectionNegotiationTest < Minitest::Test
     io = StringIO.new
     con = HTTPServerConnection.new(io.method(:write))
     heads = nil
-    con.on(:headers) {|_, _h| heads = _h.to_h }
+    con.on(:headers) { |_, _h| heads = _h.to_h }
     req = "GET / HTTP/1.1\r\n" <<
           "Host: rhe.jp\r\n" <<
           "User-Agent: nya\r\n" <<

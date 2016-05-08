@@ -4,7 +4,7 @@ using BinaryString
 
 class FlowControlTest < Minitest::Test
   def test_flow_control_window_update_server
-    open_server_connection {|con|
+    open_server_connection { |con|
       before_ws = con.recv_remaining_window
       con.window_update(500)
 
@@ -17,7 +17,7 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_window_update_stream
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       before_ws = stream.recv_remaining_window
       stream.window_update(500)
 
@@ -30,7 +30,7 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_window_update_zero
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       assert_stream_error(:protocol_error) {
         stream.receive_frame Frame.new(type: :window_update,
                                        stream_id: stream.id,
@@ -40,7 +40,7 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_window_update_frame_size
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       assert_connection_error(:frame_size_error) {
         stream.receive_frame Frame.new(type: :window_update,
                                        stream_id: stream.id,
@@ -50,7 +50,7 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_dont_send_data_exceeding_send_window
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       con = stream.connection
       con << Frame.new(type: :settings,
                        stream_id: 0,
@@ -60,7 +60,7 @@ class FlowControlTest < Minitest::Test
       con << Frame.new(type: :window_update,
                        stream_id: stream.id,
                        payload: "".push_uint32(100)).assemble
-      10.times {|i|
+      10.times { |i|
         stream.send Frame.new(type: :data,
                               stream_id: stream.id,
                               payload: "".push_uint32(i))
@@ -72,13 +72,13 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_dont_send_data_upto_updated_send_window
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       con = stream.connection
       con << Frame.new(type: :settings,
                        stream_id: 0,
                        payload: "".push_uint16(Frame::SETTINGS_TYPE[:initial_window_size])
                                   .push_uint32(4*2+1)).assemble
-      10.times {|i|
+      10.times { |i|
         stream.send Frame.new(type: :data,
                               stream_id: stream.id,
                               payload: "".push_uint32(i))
@@ -98,13 +98,13 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_update_send_initial_window_size
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       con = stream.connection
       con << Frame.new(type: :settings,
                        stream_id: 0,
                        payload: "".push_uint16(Frame::SETTINGS_TYPE[:initial_window_size])
                                   .push_uint32(4*2+1)).assemble
-      10.times {|i|
+      10.times { |i|
         stream.send Frame.new(type: :data,
                               stream_id: stream.id,
                               payload: "".push_uint32(i))
@@ -119,21 +119,21 @@ class FlowControlTest < Minitest::Test
                        payload: "".push_uint16(Frame::SETTINGS_TYPE[:initial_window_size])
                                   .push_uint32(4*4+1)).assemble
 
-      last = sent_frames.reverse.find {|f| f.type == :data }
+      last = sent_frames.reverse.find { |f| f.type == :data }
       assert_equal(3, last.payload.uint32)
     }
   end
 
   def test_flow_control_recv_window_exceeded
     prepare = ->(&blk) {
-      open_new_stream {|stream|
+      open_new_stream { |stream|
         con = stream.connection
         con.settings(initial_window_size: 24)
         blk.call(con, stream)
       }
     }
 
-    prepare.call {|con, stream|
+    prepare.call { |con, stream|
       con.window_update(500) # extend only connection
       con << Frame.headers(stream.id, "", end_headers: true).assemble
       assert_stream_error(:flow_control_error) {
@@ -141,7 +141,7 @@ class FlowControlTest < Minitest::Test
       }
     }
 
-    prepare.call {|con, stream|
+    prepare.call { |con, stream|
       stream.window_update(500) # extend only stream
       con << Frame.headers(stream.id, "", end_headers: true).assemble
       assert_connection_error(:flow_control_error) {
@@ -151,7 +151,7 @@ class FlowControlTest < Minitest::Test
   end
 
   def test_flow_control_update_recv_initial_window_size
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       con = stream.connection
       con.settings(initial_window_size: 24)
       stream.window_update(1)

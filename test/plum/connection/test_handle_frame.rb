@@ -5,7 +5,7 @@ using Plum::BinaryString
 class ServerConnectionHandleFrameTest < Minitest::Test
   ## SETTINGS
   def test_server_handle_settings
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_equal(4096, con.remote_settings[:header_table_size])
       con << Frame.new(type: :settings, stream_id: 0, payload: "\x00\x01\x00\x00\x10\x10").assemble
       assert_equal(0x1010, con.remote_settings[:header_table_size])
@@ -13,7 +13,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
   end
 
   def test_server_handle_settings
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_no_error {
         con << Frame.new(type: :settings, stream_id: 0, flags: [:ack], payload: "").assemble
       }
@@ -24,7 +24,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
   end
 
   def test_server_handle_settings_invalid
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_no_error {
         con << Frame.new(type: :settings, stream_id: 0, payload: "\xff\x01\x00\x00\x10\x10").assemble
       }
@@ -33,7 +33,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
 
   ## PING
   def test_server_handle_ping
-    open_server_connection {|con|
+    open_server_connection { |con|
       con << Frame.new(type: :ping, flags: [], stream_id: 0, payload: "AAAAAAAA").assemble
       last = sent_frames.last
       assert_equal(:ping, last.type)
@@ -43,7 +43,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
   end
 
   def test_server_handle_ping_error
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_connection_error(:frame_size_error) {
         con << Frame.new(type: :ping, stream_id: 0, payload: "A" * 7).assemble
       }
@@ -51,7 +51,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
   end
 
   def test_server_handle_ping_ack
-    open_server_connection {|con|
+    open_server_connection { |con|
       con << Frame.new(type: :ping, flags: [:ack], stream_id: 0, payload: "A" * 8).assemble
       last = sent_frames.last
       refute_equal(:ping, last.type) if last
@@ -60,7 +60,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
 
   ## GOAWAY
   def test_server_handle_goaway_reply
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_no_error {
         begin
           con << Frame.goaway(1, :stream_closed).assemble

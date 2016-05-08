@@ -8,7 +8,7 @@ require "cgi"
 def log(con, stream, s)
   prefix = "[%02x;%02x] " % [con, stream]
   if s.is_a?(Enumerable)
-    puts s.map {|a| prefix + a.to_s }.join("\n")
+    puts s.map { |a| prefix + a.to_s }.join("\n")
   else
     puts prefix + s.to_s
   end
@@ -59,7 +59,7 @@ loop do
     end
 
     stream.on(:headers) do |headers_|
-      log(id, stream.id, headers_.map {|name, value| "#{name}: #{value}" })
+      log(id, stream.id, headers_.map { |name, value| "#{name}: #{value}" })
       headers = headers_.to_h
     end
 

@@ -3,7 +3,7 @@ require "test_helper"
 using BinaryString
 class StreamUtilsTest < Minitest::Test
   def test_stream_promise
-    open_new_stream {|stream|
+    open_new_stream { |stream|
       push_stream = stream.promise([])
 
       assert(push_stream.id % 2 == 0)
