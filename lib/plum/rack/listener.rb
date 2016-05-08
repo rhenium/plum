@@ -63,7 +63,9 @@ module Plum
         ctx = OpenSSL::SSL::SSLContext.new
         ctx.ssl_version = :TLSv1_2
         ctx.alpn_select_cb = -> (protocols) { protocols.include?("h2") ? "h2" : protocols.first }
-        ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
+        if ctx.respond_to?(:tmp_ecdh_callback) && !ctx.respond_to?(:set_ecdh_curves)
+          ctx.tmp_ecdh_callback = -> (sock, ise, keyl) { OpenSSL::PKey::EC.new("prime256v1") }
+        end
         *ctx.extra_chain_cert, ctx.cert = parse_chained_cert(cert)
         ctx.key = OpenSSL::PKey::RSA.new(key)
         ctx.servername_cb = proc { |sock, hostname|
