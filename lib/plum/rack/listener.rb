@@ -127,11 +127,9 @@ module Plum
         cert.serial = rand((1 << 20) - 1)
         cert.version = 2
 
-        ef = OpenSSL::X509::ExtensionFactory.new
-        ef.subject_certificate = cert
-        ef.issuer_certificate = cert
+        ef = OpenSSL::X509::ExtensionFactory.new(cert, cert)
         cert.extensions = [
-          ef.create_extension("basicConstraints", "CA:TRUE", true),
+          ef.create_extension("subjectKeyIdentifier", "hash")
         ]
         cert.sign(key, OpenSSL::Digest::SHA256.new)
 
