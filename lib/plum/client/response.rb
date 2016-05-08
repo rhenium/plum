@@ -7,19 +7,21 @@ module Plum
     attr_reader :headers
 
     # @api private
-    def initialize(auto_decode: true, **options)
-      @body = Queue.new
+    def initialize(session, auto_decode: true, **options, &on_headers)
+      @session = session
+      @headers = nil
       @finished = false
       @failed = false
       @body = []
       @auto_decode = auto_decode
+      @on_headers = on_headers
       @on_chunk = @on_finish = nil
     end
 
     # Returns the HTTP status code.
     # @return [String] the HTTP status code
     def status
-      @headers && @headers[":status"]
+      @headers&.fetch(":status")
     end
 
     # Returns the header value that correspond to the header name.
@@ -41,7 +43,16 @@ module Plum
       @failed
     end
 
-    # Set callback tha called when received a chunk of response body.
+    # Set callback that will be called when the response headers arrive
+    # @yield [self]
+    def on_headers(&block)
+      raise ArgumentError, "block must be given" unless block_given?
+      @on_headers = block
+      yield self if @headers
+      self
+    end
+
+    # Set callback that will be called when received a chunk of response body.
     # @yield [chunk] A chunk of the response body.
     def on_chunk(&block)
       raise "Body already read" if @on_chunk
@@ -51,6 +62,7 @@ module Plum
         @body.each(&block)
         @body.clear
       end
+      self
     end
 
     # Set callback that will be called when the response finished.
@@ -61,6 +73,7 @@ module Plum
       else
         @on_finish = block
       end
+      self
     end
 
     # Returns the complete response body. Use #each_body instead if the body can be very large.
@@ -71,15 +84,20 @@ module Plum
       @body.join
     end
 
-    # @api private
-    def _headers(raw_headers)
-      # response headers should not have duplicates
-      @headers = raw_headers.to_h.freeze
+    def join
+      @session.succ until (@finished || @failed)
+      self
+    end
+
+    private
+    # internal: set headers and setup decoder
+    def set_headers(headers)
+      @headers = headers.freeze
+      @on_headers.call(self) if @on_headers
       @decoder = setup_decoder
     end
 
-    # @api private
-    def _chunk(encoded)
+    def add_chunk(encoded)
       chunk = @decoder.decode(encoded)
       if @on_chunk
         @on_chunk.call(chunk)
@@ -88,19 +106,16 @@ module Plum
       end
     end
 
-    # @api private
-    def _finish
+    def finish
       @finished = true
       @decoder.finish
       @on_finish.call if @on_finish
     end
 
-    # @api private
-    def _fail
-      @failed = true
+    def fail(ex = nil)
+      @failed = ex || true # FIXME
     end
 
-    private
     def setup_decoder
       if @auto_decode
         klass = Decoders::DECODERS[@headers["content-encoding"]]

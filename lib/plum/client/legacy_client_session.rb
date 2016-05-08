@@ -12,7 +12,6 @@ module Plum
       @parser = setup_parser
       @requests = []
       @response = nil
-      @headers_callback = nil
     end
 
     def succ
@@ -27,7 +26,7 @@ module Plum
 
     def close
       @closed = true
-      @response._fail if @response
+      @response.send(:fail) if @response
     end
 
     def request(headers, body, options, &headers_cb)
@@ -41,8 +40,8 @@ module Plum
         end
       end
 
-      response = Response.new(**options)
-      @requests << [response, headers, body, chunked, headers_cb]
+      response = Response.new(self, **options, &headers_cb)
+      @requests << [response, headers, body, chunked]
       consume_queue
       response
     end
@@ -56,9 +55,8 @@ module Plum
     def consume_queue
       return if @response || @requests.empty?
 
-      response, headers, body, chunked, cb = @requests.shift
+      response, headers, body, chunked = @requests.shift
       @response = response
-      @headers_callback = cb
 
       @socket << construct_request(headers)
 
@@ -96,19 +94,18 @@ module Plum
     def setup_parser
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc {
+        # FIXME: duplicate header name?
         resp_headers = parser.headers.map { |key, value| [key.downcase, value] }.to_h
-        @response._headers({ ":status" => parser.status_code.to_s }.merge(resp_headers))
-        @headers_callback.call(@response) if @headers_callback
+        @response.send(:set_headers, { ":status" => parser.status_code.to_s }.merge(resp_headers))
       }
 
       parser.on_body = proc { |chunk|
-        @response._chunk(chunk)
+        @response.send(:add_chunk, chunk)
       }
 
       parser.on_message_complete = proc { |env|
-        @response._finish
+        @response.send(:finish)
         @response = nil
-        @headers_callback = nil
         close unless parser.keep_alive?
         consume_queue
       }

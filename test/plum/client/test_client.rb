@@ -2,16 +2,6 @@ require "test_helper"
 
 using Plum::BinaryString
 class ClientTest < Minitest::Test
-  def test_request_sync
-    server_thread = start_tls_server
-    client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res1 = client.put!("/", "aaa", headers: { "header" => "ccc" })
-    assert_equal("PUTcccaaa", res1.body)
-    client.close
-  ensure
-    server_thread.join if server_thread
-  end
-
   def test_request_async
     res2 = nil
     client = nil
@@ -42,25 +32,12 @@ class ClientTest < Minitest::Test
     server_thread.join if server_thread
   end
 
-  def test_raise_error_sync
-    client = nil
-    server_thread = start_tls_server
-    Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
-      client = c
-      assert_raises(LocalConnectionError) {
-        client.get!("/connection_error")
-      }
-    }
-  ensure
-    server_thread.join if server_thread
-  end
-
   def test_raise_error_async_seq_resume
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
     res = client.get("/error_in_data")
     assert_raises(LocalConnectionError) {
-      client.resume(res)
+      client.resume
     }
     client.close
   ensure
@@ -82,20 +59,14 @@ class ClientTest < Minitest::Test
 
   def test_session_socket_http2_https
     sock = StringSocket.new
-    client = Client.start(sock, nil, http2: true, scheme: "https")
+    client = Client.start(sock, nil, https: true)
     assert(client.session.class == ClientSession)
   end
 
   def test_session_socket_http2_http
     sock = StringSocket.new("HTTP/1.1 100\r\n\r\n")
-    client = Client.start(sock, nil, http2: true, scheme: "http")
+    client = Client.start(sock, nil, https: false)
     assert(client.session.class == UpgradeClientSession)
-  end
-
-  def test_session_socket_http1
-    sock = StringSocket.new
-    client = Client.start(sock, nil, http2: false)
-    assert(client.session.class == LegacyClientSession)
   end
 
   private

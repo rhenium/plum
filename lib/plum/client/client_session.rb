@@ -31,7 +31,7 @@ module Plum
 
     def close
       @closed = true
-      @responses.each(&:_fail)
+      @responses.each { |res| res.send(:fail) }
       @responses.clear
       @plum.close
     end
@@ -40,34 +40,34 @@ module Plum
       headers = { ":method" => nil,
                   ":path" => nil,
                   ":authority" => @config[:hostname],
-                  ":scheme" => @config[:scheme]
+                  ":scheme" => @config[:https] ? "https" : "http",
       }.merge(headers)
 
-      response = Response.new(**options)
+      response = Response.new(self, **options, &headers_cb)
       @responses << response
       stream = @plum.open_stream
       stream.send_headers(headers, end_stream: !body)
       stream.send_data(body, end_stream: true) if body
 
       stream.on(:headers) { |resp_headers_raw|
-        response._headers(resp_headers_raw)
-        headers_cb.call(response) if headers_cb
+        response.send(:set_headers, resp_headers_raw.to_h)
       }
       stream.on(:data) { |chunk|
-        response._chunk(chunk)
+        response.send(:add_chunk, chunk)
         check_window(stream)
       }
       stream.on(:end_stream) {
-        response._finish
+        response.send(:finish)
         @responses.delete(response)
       }
       stream.on(:stream_error) { |ex|
-        response._fail
+        response.send(:fail, ex)
         raise ex
       }
       stream.on(:local_stream_error) { |type|
-        response.fail
-        raise LocalStreamError.new(type)
+        ex = LocalStreamError.new(type)
+        response.send(:fail, ex)
+        raise ex
       }
       response
     end

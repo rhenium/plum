@@ -3,8 +3,7 @@
 module Plum
   class Client
     DEFAULT_CONFIG = {
-      http2: true,
-      scheme: "https",
+      https: true,
       hostname: nil,
       verify_mode: OpenSSL::SSL::VERIFY_PEER,
       ssl_context: nil,
@@ -33,9 +32,9 @@ module Plum
       else
         @socket = nil
         @host = host
-        @port = port || (config[:scheme] == "https" ? 443 : 80)
+        @port = port || (config[:https] ? 443 : 80)
       end
-      @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
+      @config = DEFAULT_CONFIG.merge(hostname: host).merge!(config)
       @started = false
     end
 
@@ -56,16 +55,9 @@ module Plum
       self
     end
 
-    # Resume communication with the server, until the specified (or all running) requests are complete.
-    # @param response [Response] if specified, waits only for the response
-    # @return [Response] if parameter response is specified
-    def resume(response = nil)
-      if response
-        @session.succ until response.failed? || response.finished?
-        response
-      else
-        @session.succ until @session.empty?
-      end
+    # Resume communication with the server until all running requests are complete.
+    def resume
+      @session.succ until @session.empty?
     end
 
     # Closes the connection immediately.
@@ -85,14 +77,6 @@ module Plum
       @session.request(headers, body, @config.merge(options), &block)
     end
 
-    # @!method get!
-    # @!method head!
-    # @!method delete!
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `Client#resume(Client#request(*args))`
-
     # @!method get
     # @!method head
     # @!method delete
@@ -101,20 +85,10 @@ module Plum
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
     %w(GET HEAD DELETE).each { |method|
-      define_method(:"#{method.downcase}!") do |path, options = {}, &block|
-        resume _request_helper(method, path, nil, options, &block)
-      end
       define_method(:"#{method.downcase}") do |path, options = {}, &block|
         _request_helper(method, path, nil, options, &block)
       end
     }
-    # @!method post!
-    # @!method put!
-    # @param path [String] the absolute path to request (translated into :path header)
-    # @param body [String] the request body
-    # @param options [Hash<Symbol, Object>] the request options
-    # @param block [Proc] if specified, calls the block when finished
-    # Shorthand method for `Client#resume(Client#request(*args))`
 
     # @!method post
     # @!method put
@@ -124,9 +98,6 @@ module Plum
     # @param block [Proc] if specified, calls the block when finished
     # Shorthand method for `#request`
     %w(POST PUT).each { |method|
-      define_method(:"#{method.downcase}!") do |path, body, options = {}, &block|
-        resume _request_helper(method, path, body, options, &block)
-      end
       define_method(:"#{method.downcase}") do |path, body, options = {}, &block|
         _request_helper(method, path, body, options, &block)
       end
@@ -137,13 +108,15 @@ module Plum
     def _connect
       @socket = TCPSocket.open(@host, @port)
 
-      if @config[:scheme] == "https"
+      if @config[:https]
         ctx = @config[:ssl_context] || new_ssl_ctx
         @socket = OpenSSL::SSL::SSLSocket.new(@socket, ctx)
-        @socket.hostname = @config[:hostname] if @socket.respond_to?(:hostname=)
+        @socket.hostname = @config[:hostname]
         @socket.sync_close = true
         @socket.connect
-        @socket.post_connection_check(@config[:hostname]) if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+        if ctx.verify_mode != OpenSSL::SSL::VERIFY_NONE
+          @socket.post_connection_check(@config[:hostname])
+        end
 
         @socket.alpn_protocol == "h2"
       end
@@ -151,18 +124,12 @@ module Plum
 
     def _start
       @started = true
-
-      klass = @config[:http2] ? ClientSession : LegacyClientSession
       nego = @socket || _connect
 
-      if @config[:http2]
-        if @config[:scheme] == "https"
-          klass = nego ? ClientSession : LegacyClientSession
-        else
-          klass = UpgradeClientSession
-        end
+      if @config[:https]
+        klass = nego ? ClientSession : LegacyClientSession
       else
-        klass = LegacyClientSession
+        klass = UpgradeClientSession
       end
 
       @session = klass.new(@socket, @config)
@@ -175,10 +142,8 @@ module Plum
       cert_store = OpenSSL::X509::Store.new
       cert_store.set_default_paths
       ctx.cert_store = cert_store
-      if @config[:http2]
-        ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
-        ctx.alpn_protocols = ["h2", "http/1.1"]
-      end
+      ctx.ciphers = "ALL:!" + SSLSocketServerConnection::CIPHER_BLACKLIST.join(":!")
+      ctx.alpn_protocols = ["h2", "http/1.1"]
       ctx
     end
 

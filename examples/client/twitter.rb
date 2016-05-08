@@ -41,10 +41,12 @@ Plum::Client.start("userstream.twitter.com", 443) { |streaming|
         if /にゃーん/ =~ json["text"]
           args = { "status" => "@#{json["user"]["screen_name"]} にゃーん",
                    "in_reply_to_status_id" => json["id"].to_s }
-          rest.post!("/1.1/statuses/update.json",
-                     args.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join("&"),
-                     headers: { "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
-                                "content-type" => "application/x-www-form-urlencoded" })
+          rest.post(
+            "/1.1/statuses/update.json",
+            args.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join("&"),
+            headers: { "authorization" => SimpleOAuth::Header.new(:post, "https://api.twitter.com/1.1/statuses/update.json", args, credentials).to_s,
+                       "content-type" => "application/x-www-form-urlencoded" }
+          ).join
         end
       end
     }

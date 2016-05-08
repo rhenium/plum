@@ -51,15 +51,11 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
 
 ```
    +-----------------+
-   |:http2 option    | false
-   |(default: true)  |-------> HTTP/1.x
+   |:https option    | false
+   |(default: true)  |-------> Try Upgrade from HTTP/1.1
    +-----------------+
-            v true
-   +-----------------+
-   |:scheme option   | "http"
-   |(default:"https")|-------> Try Upgrade from HTTP/1.1
-   +-----------------+
-            v "https"
+            | true
+            v
    +-----------------+
    | ALPN            | failed
    | negotiation     |-------> HTTP/1.x
@@ -71,10 +67,10 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
 
 ##### Sequential request
 ```ruby
-client = Plum::Client.start("http2.rhe.jp", 443, user_agent: "nyaan")
-res1 = client.get!("/", headers: { "accept" => "*/*" })
+client = Plum::Client.start("http2.rhe.jp", user_agent: "nyaan")
+res1 = client.get("/", headers: { "accept" => "*/*" }).join
 puts res1.body # => "..."
-res2 = client.post!("/post", "data")
+res2 = client.post("/post", "data").join
 puts res2.body # => "..."
 
 client.close
