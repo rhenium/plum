@@ -33,7 +33,7 @@ module Plum
         @host = host
         @port = port || (config[:https] ? 443 : 80)
       end
-      @config = DEFAULT_CONFIG.merge(hostname: host).merge(config)
+      @config = DEFAULT_CONFIG.merge(hostname: host).merge!(config)
       @started = false
     end
 

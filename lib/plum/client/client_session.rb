@@ -42,7 +42,7 @@ module Plum
                   ":scheme" => @config[:https] ? "https" : "http",
       }.merge(headers)
 
-      response = Response.new(**options, &headers_cb)
+      response = Response.new(self, **options, &headers_cb)
       @responses << response
       stream = @plum.open_stream
       stream.send_headers(headers, end_stream: !body)

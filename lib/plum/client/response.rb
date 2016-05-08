@@ -6,9 +6,9 @@ module Plum
     attr_reader :headers
 
     # @api private
-    def initialize(auto_decode: true, **options, &on_headers)
+    def initialize(session, auto_decode: true, **options, &on_headers)
+      @session = session
       @headers = nil
-      @body = Queue.new
       @finished = false
       @failed = false
       @body = []
@@ -48,6 +48,7 @@ module Plum
       raise ArgumentError, "block must be given" unless block_given?
       @on_headers = block
       yield self if @headers
+      self
     end
 
     # Set callback that will be called when received a chunk of response body.
@@ -60,6 +61,7 @@ module Plum
         @body.each(&block)
         @body.clear
       end
+      self
     end
 
     # Set callback that will be called when the response finished.
@@ -70,6 +72,7 @@ module Plum
       else
         @on_finish = block
       end
+      self
     end
 
     # Returns the complete response body. Use #each_body instead if the body can be very large.
@@ -78,6 +81,11 @@ module Plum
       raise "Body already read" if @on_chunk
       raise "Response body is not complete" unless finished?
       @body.join
+    end
+
+    def join
+      @session.succ until (@finished || @failed)
+      self
     end
 
     private

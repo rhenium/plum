@@ -39,7 +39,7 @@ module Plum
         end
       end
 
-      response = Response.new(**options, &headers_cb)
+      response = Response.new(self, **options, &headers_cb)
       @requests << [response, headers, body, chunked]
       consume_queue
       response
