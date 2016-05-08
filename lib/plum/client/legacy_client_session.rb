@@ -16,8 +16,9 @@ module Plum
 
     def succ
       @parser << @socket.readpartial(16384)
-    rescue => e # including HTTP::Parser::Error
-      fail(e)
+    rescue # including HTTP::Parser::Error
+      close
+      raise
     end
 
     def empty?
@@ -47,11 +48,6 @@ module Plum
     end
 
     private
-    def fail(exception)
-      close
-      raise exception
-    end
-
     def consume_queue
       return if @response || @requests.empty?
 

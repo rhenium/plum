@@ -41,8 +41,8 @@ module Plum
             sess = LegacySession.new(svc, e, sock)
             sess.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, EOFError # closed
-          rescue => e
-            svc.log_exception(e)
+          rescue
+            svc.log_exception $!
           ensure
             sock.close
           end
@@ -103,8 +103,8 @@ module Plum
             sess = LegacySession.new(svc, e, sock)
             sess.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, EOFError # closed
-          rescue => e
-            svc.log_exception(e)
+          rescue
+            svc.log_exception $!
           ensure
             sock.close if sock
           end
@@ -172,8 +172,8 @@ module Plum
             sess = Session.new(svc, sock, plum)
             sess.run
           rescue Errno::ECONNRESET, Errno::ECONNABORTED, EOFError # closed
-          rescue => e
-            svc.log_exception(e)
+          rescue
+            svc.log_exception $!
           ensure
             sock.close if sock
           end

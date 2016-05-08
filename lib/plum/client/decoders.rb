@@ -17,14 +17,14 @@ module Plum
 
       def decode(chunk)
         @inflate.inflate(chunk)
-      rescue Zlib::Error => e
-        raise DecoderError.new("failed to decode chunk", e)
+      rescue Zlib::Error
+        raise DecoderError.new("failed to decode chunk", $!)
       end
 
       def finish
         @inflate.finish
-      rescue Zlib::Error => e
-        raise DecoderError.new("failed to finalize", e)
+      rescue Zlib::Error
+        raise DecoderError.new("failed to finalize", $!)
       end
     end
 
@@ -35,14 +35,14 @@ module Plum
 
       def decode(chunk)
         @stream.inflate(chunk)
-      rescue Zlib::Error => e
-        raise DecoderError.new("failed to decode chunk", e)
+      rescue Zlib::Error
+        raise DecoderError.new("failed to decode chunk", $!)
       end
 
       def finish
         @stream.finish
-      rescue Zlib::Error => e
-        raise DecoderError.new("failed to finalize", e)
+      rescue Zlib::Error
+        raise DecoderError.new("failed to finalize", $!)
       end
     end
 

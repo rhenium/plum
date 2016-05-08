@@ -4,7 +4,7 @@ using BinaryString
 
 class ServerConnectionUtilsTest < Minitest::Test
   def test_server_ping
-    open_server_connection {|con|
+    open_server_connection { |con|
       con.ping("ABCABCAB")
 
       last = sent_frames.last
@@ -15,7 +15,7 @@ class ServerConnectionUtilsTest < Minitest::Test
   end
 
   def test_server_goaway
-    open_server_connection {|con|
+    open_server_connection { |con|
       con << Frame.headers(3, "", end_stream: true, end_headers: true).assemble
       con.goaway(:stream_closed)
 
@@ -28,7 +28,7 @@ class ServerConnectionUtilsTest < Minitest::Test
   end
 
   def test_push_enabled
-    open_server_connection {|con|
+    open_server_connection { |con|
       con << Frame.settings(enable_push: 0).assemble
       assert_equal(false, con.push_enabled?)
       con << Frame.settings(enable_push: 1).assemble

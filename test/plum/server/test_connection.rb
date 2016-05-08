@@ -68,7 +68,7 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     client_thread = Thread.new {
       sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
       begin
-        ctx = OpenSSL::SSL::SSLContext.new.tap {|ctx|
+        ctx = OpenSSL::SSL::SSLContext.new.tap { |ctx|
           ctx.alpn_protocols = ["h2"]
           ctx.ciphers = "AES256-GCM-SHA384"
         }

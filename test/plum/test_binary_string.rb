@@ -52,7 +52,7 @@ class BinaryStringTest < Minitest::Test
   def test_each_byteslice_block
     ret = []
     string = "12345678"
-    string.each_byteslice(3) {|part| ret << part }
+    string.each_byteslice(3) { |part| ret << part }
     assert_equal(["123", "456", "78"], ret)
   end
 

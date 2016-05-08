@@ -13,22 +13,22 @@ class ConnectionTest < Minitest::Test
       blk.call c
     }
 
-    new_con.call {|con|
+    new_con.call { |con|
       assert_no_error {
         con << Frame.new(type: :settings, stream_id: 0, payload: _settings * (limit / 6)).assemble
       }
     }
-    new_con.call {|con|
+    new_con.call { |con|
       assert_connection_error(:frame_size_error) {
         con << Frame.new(type: :settings, stream_id: 0, payload: _settings * (limit / 6 + 1)).assemble
       }
     }
-    new_con.call {|con|
+    new_con.call { |con|
       assert_connection_error(:frame_size_error) {
         con << Frame.new(type: :headers, stream_id: 3, payload: "\x00" * (limit + 1)).assemble
       }
     }
-    new_con.call {|con|
+    new_con.call { |con|
       assert_stream_error(:frame_size_error) {
         con << Frame.new(type: :headers, stream_id: 3, flags: [:end_headers], payload: "").assemble
         con << Frame.new(type: :data, stream_id: 3, payload: "\x00" * (limit + 1)).assemble
@@ -46,7 +46,7 @@ class ConnectionTest < Minitest::Test
   end
 
   def test_server_ignore_unknown_frame_type
-    open_server_connection {|con|
+    open_server_connection { |con|
       assert_no_error {
         con << "\x00\x00\x00\x0f\x00\x00\x00\x00\x00" # type: 0x0f, no flags, no payload, stream 0
       }
@@ -76,17 +76,17 @@ class ConnectionTest < Minitest::Test
       blk.call(con)
     }
 
-    prepare.call {|con|
+    prepare.call { |con|
       assert_connection_error(:protocol_error) {
         con << Frame.new(type: :data, stream_id: 1, payload: "hello").assemble
       }
     }
-    prepare.call {|con|
+    prepare.call { |con|
       assert_connection_error(:protocol_error) {
         con << Frame.new(type: :data, stream_id: 3, payload: "hello").assemble
       }
     }
-    prepare.call {|con|
+    prepare.call { |con|
       assert_equal(:waiting_continuation, con.state)
       con << Frame.new(type: :continuation, flags: [:end_headers], stream_id: 3, payload: "").assemble
       assert_equal(:open, con.state)

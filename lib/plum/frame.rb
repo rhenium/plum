@@ -116,8 +116,8 @@ module Plum
     def flags
       fs = FRAME_FLAGS[type]
       [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]
-        .select {|v| @flags_value & v > 0 }
-        .map {|val| fs && fs.key(val) || ("unknown_%02x" % val).to_sym }
+        .select { |v| @flags_value & v > 0 }
+        .map { |val| fs && fs.key(val) || ("unknown_%02x" % val).to_sym }
     end
 
     # Sets the frame flags.

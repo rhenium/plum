@@ -33,14 +33,14 @@ module Plum
                 begin
                   svr.accept(self)
                 rescue Errno::ECONNRESET, Errno::ECONNABORTED # closed
-                rescue => e
-                  log_exception(e)
+                rescue
+                  log_exception $!
                 end
               }
             end
           rescue Errno::EBADF # closed
-          rescue => e
-            log_exception(e)
+          rescue
+            log_exception $!
           end
         end
         #}

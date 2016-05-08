@@ -66,7 +66,7 @@ module Plum
           end
         else
           Enumerator.new do |y|
-            each_byteslice(n) {|ss| y << ss }
+            each_byteslice(n) { |ss| y << ss }
           end
           # I want to write `enum_for(__method__, n)`!
         end

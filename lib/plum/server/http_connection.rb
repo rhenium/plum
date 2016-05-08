@@ -26,7 +26,7 @@ module Plum
 
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc { |_headers|
-        headers = _headers.map {|n, v| [n.downcase, v] }.to_h
+        headers = _headers.map { |n, v| [n.downcase, v] }.to_h
       }
       parser.on_body = proc { |chunk| body << chunk }
       parser.on_message_complete = proc { |env|
@@ -69,7 +69,7 @@ module Plum
       nheaders = headers.merge({ ":method" => parser.http_method,
                                  ":path" => parser.request_url,
                                  ":authority" => headers["host"] })
-                        .reject {|n, v| ["connection", "http2-settings", "upgrade", "host"].include?(n) }
+                        .reject { |n, v| ["connection", "http2-settings", "upgrade", "host"].include?(n) }
 
       stream.receive_frame Frame.headers(1, encoder.encode(nheaders), end_headers: true)
       stream.receive_frame Frame.data(1, body, end_stream: true)

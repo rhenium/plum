@@ -21,8 +21,9 @@ module Plum
 
     def succ
       @plum << @socket.readpartial(16384)
-    rescue => e
-      fail(e)
+    rescue
+      close
+      raise
     end
 
     def empty?
@@ -73,15 +74,11 @@ module Plum
     end
 
     private
-    def fail(exception)
-      close
-      raise exception
-    end
-
     def setup_plum
       plum = ClientConnection.new(@socket.method(:write), @http2_settings)
       plum.on(:connection_error) { |ex|
-        fail(ex)
+        close
+        raise ex
       }
       plum.window_update(@http2_settings[:initial_window_size])
       plum
