@@ -17,7 +17,7 @@ module Plum
     # Creates a SETTINGS frame.
     # @param args [Hash<Symbol, Integer>] The settings values to send.
     def initialize(**args)
-      payload = String.new
+      payload = "".b
       args.each { |key, value|
         id = SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type: #{key}")
         payload.push_uint16(id)

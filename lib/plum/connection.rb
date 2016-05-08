@@ -27,7 +27,7 @@ module Plum
       @writer = writer
       @local_settings = Hash.new { |hash, key| DEFAULT_SETTINGS[key] }.merge!(local_settings)
       @remote_settings = Hash.new { |hash, key| DEFAULT_SETTINGS[key] }
-      @buffer = String.new
+      @buffer = "".b
       @streams = {}
       @hpack_decoder = HPACK::Decoder.new(@local_settings[:header_table_size])
       @hpack_encoder = HPACK::Encoder.new(@remote_settings[:header_table_size])

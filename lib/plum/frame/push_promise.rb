@@ -11,7 +11,7 @@ module Plum
     # @param encoded [String] Request headers.
     # @param end_headers [Boolean] add END_HEADERS flag
     def initialize(stream_id, new_id, encoded, end_headers: false)
-      payload = String.new.push_uint32(new_id)
+      payload = "".b.push_uint32(new_id)
                           .push(encoded)
       fval = end_headers ? 4 : 0
       initialize_base(type: :push_promise, stream_id: stream_id, flags_value: fval, payload: payload)

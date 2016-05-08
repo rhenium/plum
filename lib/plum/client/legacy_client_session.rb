@@ -68,7 +68,7 @@ module Plum
     end
 
     def construct_request(headers)
-      out = String.new
+      out = "".b
       out << "%s %s HTTP/1.1\r\n" % [headers[":method"], headers[":path"]]
       headers.each { |key, value|
         next if key.start_with?(":") # HTTP/2 psuedo headers

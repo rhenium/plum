@@ -6,7 +6,7 @@ module Plum
   class HTTPServerConnection < ServerConnection
     def initialize(writer, local_settings = {})
       require "http/parser"
-      @negobuf = String.new
+      @negobuf = "".b
       @_http_parser = setup_parser
       super(writer, local_settings)
     end
@@ -22,7 +22,7 @@ module Plum
 
     def setup_parser
       headers = nil
-      body = String.new
+      body = "".b
 
       parser = HTTP::Parser.new
       parser.on_headers_complete = proc { |_headers|

@@ -75,7 +75,7 @@ loop do
 
     stream.on(:open) do
       headers = nil
-      data = String.new
+      data = "".b
     end
 
     stream.on(:headers) do |headers_|
