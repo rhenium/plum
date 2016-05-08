@@ -22,7 +22,7 @@ class UpgradeClientSessionTest < Minitest::Test
     sock = StringSocket.new("HTTP/1.1 101\r\n\r\n")
     session = UpgradeClientSession.new(sock, Client::DEFAULT_CONFIG)
     sock.rio.string << Frame::Settings.new.assemble
-    sock.rio.string << Frame::Settings.new(:ack).assemble
+    sock.rio.string << Frame::Settings.ack.assemble
     res = session.request({ ":method" => "GET", ":path" => "/aa" }, "aa", {})
     sock.rio.string << Frame::Headers.new(3, HPACK::Encoder.new(3).encode(":status" => "200", "content-length" => "3"), end_headers: true).assemble
     sock.rio.string << Frame::Data.new(3, "aaa", end_stream: true).assemble

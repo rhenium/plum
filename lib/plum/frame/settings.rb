@@ -15,16 +15,22 @@ module Plum
     }.freeze
 
     # Creates a SETTINGS frame.
-    # @param ack [Symbol] Pass :ack to create an ACK frame.
     # @param args [Hash<Symbol, Integer>] The settings values to send.
-    def initialize(ack = nil, **args)
+    def initialize(**args)
       payload = String.new
       args.each { |key, value|
         id = SETTINGS_TYPE[key] or raise ArgumentError.new("invalid settings type: #{key}")
         payload.push_uint16(id)
         payload.push_uint32(value)
       }
-      initialize_base(type: :settings, stream_id: 0, flags: [ack], payload: payload)
+      initialize_base(type: :settings, stream_id: 0, payload: payload)
+    end
+
+    # Creates a SETTINGS frame with ACK flag.
+    def self.ack
+      frame = allocate
+      frame.send(:initialize_base, type: :settings, stream_id: 0, flags_value: 0x01)
+      frame
     end
 
     # Parses SETTINGS frame payload. Ignores unknown settings type (see RFC7540 6.5.2).
