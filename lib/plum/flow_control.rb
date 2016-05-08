@@ -9,7 +9,7 @@ module Plum
     # Sends frame respecting inner-stream flow control.
     # @param frame [Frame] The frame to be sent.
     def send(frame)
-      if frame.type == :data
+      if Frame::Data === frame
         @send_buffer << frame
         if @send_remaining_window < frame.length
           if Stream === self
@@ -62,7 +62,7 @@ module Plum
     end
 
     def consume_recv_window(frame)
-      if frame.type == :data
+      if Frame::Data === frame
         @recv_remaining_window -= frame.length
         if @recv_remaining_window < 0
           local_error = (Connection === self) ? RemoteConnectionError : RemoteStreamError
