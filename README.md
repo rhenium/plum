@@ -51,15 +51,11 @@ If the server does't support HTTP/2, `Plum::Client` tries to use HTTP/1.x instea
 
 ```
    +-----------------+
-   |:http2 option    | false
-   |(default: true)  |-------> HTTP/1.x
+   |:https option    | false
+   |(default: true)  |-------> Try Upgrade from HTTP/1.1
    +-----------------+
-            v true
-   +-----------------+
-   |:scheme option   | "http"
-   |(default:"https")|-------> Try Upgrade from HTTP/1.1
-   +-----------------+
-            v "https"
+            | true
+            v
    +-----------------+
    | ALPN            | failed
    | negotiation     |-------> HTTP/1.x
