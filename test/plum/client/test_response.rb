@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class ResponseTest < Minitest::Test
+using BinaryString
+class ResponseTest < Test::Unit::TestCase
   def test_finished
     resp = Response.new(nil)
     resp.send(:set_headers, {})

@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../utils"
 
-class ErrorTest < Minitest::Test
+class ErrorTest < Test::Unit::TestCase
   def test_http_error_http2_error_code
     test = -> klass {
       e = klass.new(:cancel)

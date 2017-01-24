@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../../utils"
 
-class HPACKDecoderTest < Minitest::Test
+class HPACKDecoderTest < Test::Unit::TestCase
   # C.1.1
   def test_hpack_read_integer_small
     buf = [0b11001010, 0b00001111].pack("C*")

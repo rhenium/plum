@@ -1,14 +1,11 @@
 language: ruby
-addons:
-  code_climate:
-    repo_token: f5092ab344fac7f2de9d7332e00597642a4d24e3d560f7d7f329172a2e5a2def
 install:
-  - echo openssl_url=https://www.openssl.org/source >> $rvm_path/user/db
-  - echo openssl_version=1.0.2g >> $rvm_path/user/db
-  - rvm pkg install openssl
-  - $rvm_path/usr/bin/openssl version
-  - rvm install ruby-head --with-openssl-dir=$rvm_path/usr
-  - rvm use ruby-head
-  - bundle install
+  - rvm install ruby-2.4.0
+  - rvm use ruby-2.4.0
+  - curl -s https://www.openssl.org/source/openssl-1.1.0c.tar.gz | tar xzvf -
+  - (cd openssl-1.1.0c && ./config --prefix=$HOME/openssl -Wl,-rpath=$HOME/openssl/lib && make -j8 && make install_sw)
+  - $HOME/openssl/bin/openssl version
+  - gem install openssl http_parser.rb rack test-unit -- --with-openssl-dir=$HOME/openssl
+  - ruby -e'gem "openssl"; require "openssl"; p OpenSSL::OPENSSL_LIBRARY_VERSION'
 script:
-  - bundle exec rake test
+  - rake test

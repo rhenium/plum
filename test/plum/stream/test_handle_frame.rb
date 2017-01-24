@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-
-class StreamHandleFrameTest < Minitest::Test
+using BinaryString
+class StreamHandleFrameTest < Test::Unit::TestCase
   ## DATA
   def test_stream_handle_data
     payload = "ABC" * 5

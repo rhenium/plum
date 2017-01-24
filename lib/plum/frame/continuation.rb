@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 using Plum::BinaryString
 module Plum
   class Frame::Continuation < Frame

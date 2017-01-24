@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../utils"
 
-class FrameTest < Minitest::Test
+class FrameTest < Test::Unit::TestCase
   # Frame.parse!
   def test_parse_header_uncomplete
     buffer = "\x00\x00\x00" << "\x00" << "\x00"

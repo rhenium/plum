@@ -1,4 +1,4 @@
-module CustomAssertions
+module Test::Unit::Assertions
   def assert_connection_error(type, &blk)
     assert_http_error(Plum::RemoteConnectionError, type, &blk)
   end
@@ -36,7 +36,6 @@ module CustomAssertions
     assert_equal(type, last, "#{klass.name} type: #{type} expected but type: #{last} was raised.")
   end
 end
-Minitest::Test.__send__(:prepend, CustomAssertions)
 
 module LastErrorExtension
   def initialize(type, message = nil)

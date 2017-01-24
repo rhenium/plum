@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../utils"
 
 using BinaryString
-class StreamUtilsTest < Minitest::Test
+class StreamUtilsTest < Test::Unit::TestCase
   def test_stream_promise
     open_new_stream { |stream|
       push_stream = stream.promise([])

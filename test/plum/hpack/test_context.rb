@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../../utils"
 
-class HPACKContextTest < Minitest::Test
+class HPACKContextTest < Test::Unit::TestCase
   def test_store
     context = new_context
     context.store("あああ", "いい")
@@ -58,7 +58,7 @@ class HPACKContextTest < Minitest::Test
   def new_context(limit = 1 << 31)
     klass = Class.new {
       include Plum::HPACK::Context
-      public *Plum::HPACK::Context.private_instance_methods
+      public(*Plum::HPACK::Context.private_instance_methods)
     }
     klass.new(limit)
   end

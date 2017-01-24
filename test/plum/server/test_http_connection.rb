@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-
-class HTTPConnectionNegotiationTest < Minitest::Test
+using BinaryString
+class HTTPConnectionNegotiationTest < Test::Unit::TestCase
   ## with Prior Knowledge (same as over TLS)
   def test_server_must_raise_cprotocol_error_non_settings_after_magic
     io = StringIO.new

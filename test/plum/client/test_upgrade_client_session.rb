@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class UpgradeClientSessionTest < Minitest::Test
+using BinaryString
+class UpgradeClientSessionTest < Test::Unit::TestCase
   def test_empty?
     sock = StringSocket.new("HTTP/1.1 101\r\n\r\n")
     session = UpgradeClientSession.new(sock, Client::DEFAULT_CONFIG)

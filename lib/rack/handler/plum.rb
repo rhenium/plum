@@ -1,6 +1,4 @@
-# frozen-string-literal: true
-
-require "plum/rack"
+require_relative "../../plum/rack"
 
 module Rack
   module Handler

@@ -1,7 +1,3 @@
-/.bundle
-/.yardoc
-/Gemfile.lock
-/coverage
 /doc
-/pkg
+/html
 /tmp

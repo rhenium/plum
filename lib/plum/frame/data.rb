@@ -1,6 +1,5 @@
-# frozen-string-literal: true
-
 using Plum::BinaryString
+
 module Plum
   class Frame::Data < Frame
     register_subclass 0x00

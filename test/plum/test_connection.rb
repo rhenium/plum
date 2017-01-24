@@ -1,8 +1,8 @@
-require "test_helper"
+require_relative "../utils"
 
 using Plum::BinaryString
 
-class ConnectionTest < Minitest::Test
+class ConnectionTest < Test::Unit::TestCase
   def test_server_must_raise_frame_size_error_when_exeeeded_max_size
     _settings = "".push_uint16(Frame::Settings::SETTINGS_TYPE[:max_frame_size]).push_uint32(2**14)
     limit = 2 ** 14

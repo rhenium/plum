@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../utils"
 
-class FrameUtilsTest < Minitest::Test
+class FrameUtilsTest < Test::Unit::TestCase
   def test_frame_enough_short
     frame = Frame::Data.new(1, "123")
     ret = frame.to_enum(:split, 3).to_a

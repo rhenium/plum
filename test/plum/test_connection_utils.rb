@@ -1,8 +1,8 @@
-require "test_helper"
+require_relative "../utils"
 
-using BinaryString
+using Plum::BinaryString
 
-class ServerConnectionUtilsTest < Minitest::Test
+class ServerConnectionUtilsTest < Test::Unit::TestCase
   def test_server_ping
     open_server_connection { |con|
       con.ping("ABCABCAB")

@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 module Plum
   module Rack
     class Config

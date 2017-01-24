@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 module Plum
   # HTTP/1.x client session.
   class LegacyClientSession

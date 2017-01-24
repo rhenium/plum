@@ -1,33 +1,20 @@
-# frozen-string-literal: true
-
-lib = File.expand_path("../lib", __FILE__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "plum/version"
-
 Gem::Specification.new do |spec|
   spec.name          = "plum"
-  spec.version       = Plum::VERSION
-  spec.authors       = ["rhenium"]
+  spec.version       = ENV["VERSION"]
+  spec.authors       = ["Kazuki Yamaguchi"]
   spec.email         = ["k@rhe.jp"]
 
-  spec.summary       = %q{An HTTP/2 Library for Ruby}
+  spec.summary       = "An HTTP/2 Library for Ruby"
   spec.description   = spec.summary
   spec.homepage      = "https://github.com/rhenium/plum"
   spec.license       = "MIT"
 
-  spec.files         = `git ls-files -z`.split("\x00")
+  spec.files         = Dir["bin/plum", "lib/**/*.rb", "*.md", "LICENSE"]
   spec.executables   = spec.files.grep(%r{^bin/[^.]}) { |f| File.basename(f) }
-  spec.test_files    = spec.files.grep(%r{^test/})
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "bundler", "~> 1.10"
+  spec.add_dependency "openssl", "~> 2.0"
+  spec.add_development_dependency "test-unit", "~> 3.0"
   spec.add_development_dependency "http_parser.rb"
   spec.add_development_dependency "rack"
-  spec.add_development_dependency "rake"
-  spec.add_development_dependency "yard"
-  spec.add_development_dependency "minitest", "~> 5.8.0"
-  spec.add_development_dependency "simplecov"
-  spec.add_development_dependency "codeclimate-test-reporter"
-  spec.add_development_dependency "guard"
-  spec.add_development_dependency "guard-minitest"
 end

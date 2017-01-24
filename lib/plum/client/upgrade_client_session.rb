@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 module Plum
   # Try upgrade to HTTP/2
   class UpgradeClientSession

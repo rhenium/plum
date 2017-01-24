@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-
-class ServerConnectionHandleFrameTest < Minitest::Test
+using BinaryString
+class ServerConnectionHandleFrameTest < Test::Unit::TestCase
   ## SETTINGS
   def test_server_handle_settings
     open_server_connection { |con|
@@ -12,7 +11,7 @@ class ServerConnectionHandleFrameTest < Minitest::Test
     }
   end
 
-  def test_server_handle_settings
+  def test_server_handle_settings_ack
     open_server_connection { |con|
       assert_no_error {
         con << Frame.craft(type: :settings, stream_id: 0, flags: [:ack], payload: "").assemble

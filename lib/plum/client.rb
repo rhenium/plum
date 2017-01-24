@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 module Plum
   class Client
     DEFAULT_CONFIG = {

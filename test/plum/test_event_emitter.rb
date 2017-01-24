@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../utils"
 
 using BinaryString
-class EventEmitterTest < Minitest::Test
+class EventEmitterTest < Test::Unit::TestCase
   def test_simple
     ret = nil
     emitter = new_emitter
@@ -24,7 +24,7 @@ class EventEmitterTest < Minitest::Test
   def new_emitter
     klass = Class.new {
       include EventEmitter
-      public *EventEmitter.private_instance_methods
+      public(*EventEmitter.private_instance_methods)
     }
     klass.new
   end

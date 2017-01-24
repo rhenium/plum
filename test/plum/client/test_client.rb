@@ -1,15 +1,15 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class ClientTest < Minitest::Test
+using BinaryString
+class ClientTest < Test::Unit::TestCase
   def test_request_async
     res2 = nil
     client = nil
     server_thread = start_tls_server
     Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) { |c|
       client = c
-      res1 = client.request({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1|
-        assert(res1.headers)
+      res1 = client.request({ ":path" => "/", ":method" => "GET", ":scheme" => "https", "header" => "ccc" }, nil) { |res1x|
+        assert(res1x.headers)
       }
       assert_nil(res1.headers)
 
@@ -35,7 +35,7 @@ class ClientTest < Minitest::Test
   def test_raise_error_async_seq_resume
     server_thread = start_tls_server
     client = Client.start("127.0.0.1", LISTEN_PORT, https: true, verify_mode: OpenSSL::SSL::VERIFY_NONE)
-    res = client.get("/error_in_data")
+    client.get("/error_in_data")
     assert_raises(LocalConnectionError) {
       client.resume
     }
@@ -73,12 +73,12 @@ class ClientTest < Minitest::Test
   def start_tls_server(&block)
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = TLS_CERT
-    ctx.key = TLS_KEY
+    ctx.cert = issue_cert("CN=localhost", rsa2048)
+    ctx.key = rsa2048
     tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
-    server_thread = Thread.new {
+    Thread.new {
       plum = nil
       begin
         Timeout.timeout(1) {
@@ -117,7 +117,7 @@ class ClientTest < Minitest::Test
       rescue OpenSSL::SSL::SSLError
       rescue Timeout::Error
         flunk "server timeout"
-      rescue ExampleError => e
+      rescue ExampleError
         plum.goaway(:internal_error) if plum
       ensure
         tcp_server.close

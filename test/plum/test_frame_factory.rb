@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../utils"
 
-using Plum::BinaryString
-class FrameFactoryTest < Minitest::Test
+using BinaryString
+class FrameFactoryTest < Test::Unit::TestCase
   def test_rst_stream
     frame = Frame::RstStream.new(123, :stream_closed)
     assert_frame(frame,

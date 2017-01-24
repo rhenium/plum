@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../utils"
 
-using Plum::BinaryString
-
-class StreamTest < Minitest::Test
+using BinaryString
+class StreamTest < Test::Unit::TestCase
   def test_stream_illegal_frame_type
     open_new_stream { |stream|
       assert_connection_error(:protocol_error) {

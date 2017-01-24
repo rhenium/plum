@@ -1,6 +1,5 @@
-# frozen-string-literal: true
-
 using Plum::BinaryString
+
 module Plum
   class Frame::RstStream < Frame
     register_subclass 0x03

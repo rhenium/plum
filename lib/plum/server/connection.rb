@@ -1,6 +1,5 @@
-# frozen-string-literal: true
-
 using Plum::BinaryString
+
 module Plum
   class ServerConnection < Connection
     def initialize(writer, local_settings = {})

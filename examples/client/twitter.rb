@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 # client/twitter.rb
 # Twitter の User stream に（現在はサーバーが非対応のため）HTTP/1.1 を使用して接続する。
 # 「にゃーん」を含むツイートを受信したら、REST API で HTTP/2 を使用して返信する。

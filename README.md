@@ -4,12 +4,9 @@ A pure Ruby HTTP/2 server and client implementation.
 
 WARNING: Plum is currently under heavy development. You *will* encounter bugs when using it.
 
-[![Circle CI](https://circleci.com/gh/rhenium/plum.svg?style=svg)](https://circleci.com/gh/rhenium/plum) [![Build Status](https://travis-ci.org/rhenium/plum.png?branch=master)](https://travis-ci.org/rhenium/plum) [![Code Climate](https://codeclimate.com/github/rhenium/plum/badges/gpa.svg)](https://codeclimate.com/github/rhenium/plum) [![Test Coverage](https://codeclimate.com/github/rhenium/plum/badges/coverage.svg)](https://codeclimate.com/github/rhenium/plum/coverage)
-
-
 ## Requirements
 
-* Ruby 2.3
+* Ruby/OpenSSL 2.0
 * OpenSSL 1.0.2 or newer
 * [http_parser.rb gem](https://rubygems.org/gems/http_parser.rb) - if you need HTTP/2 without TLS or HTTP/1.1 support
 * [rack gem](https://rubygems.org/gems/rack) - if you use plum as a Rack server

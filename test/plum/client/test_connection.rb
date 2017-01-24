@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class ClientConnectionTest < Minitest::Test
+using BinaryString
+class ClientConnectionTest < Test::Unit::TestCase
   def test_open_stream
     con = open_client_connection
     stream = con.open_stream

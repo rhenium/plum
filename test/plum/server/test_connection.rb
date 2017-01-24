@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-
-class HTTPSConnectionNegotiationTest < Minitest::Test
+using BinaryString
+class HTTPSConnectionNegotiationTest < Test::Unit::TestCase
   def test_server_must_raise_cprotocol_error_invalid_magic_short
     con = ServerConnection.new(StringIO.new.method(:write))
     assert_connection_error(:protocol_error) {
@@ -40,8 +39,8 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
 
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.alpn_select_cb = -> protocols { "h2" }
-    ctx.cert = TLS_CERT
-    ctx.key = TLS_KEY
+    ctx.cert = issue_cert("CN=localhost", rsa2048)
+    ctx.key = rsa2048
     tcp_server = TCPServer.new("127.0.0.1", LISTEN_PORT)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ctx)
 
@@ -67,9 +66,9 @@ class HTTPSConnectionNegotiationTest < Minitest::Test
     client_thread = Thread.new {
       sock = TCPSocket.new("127.0.0.1", LISTEN_PORT)
       begin
-        ctx = OpenSSL::SSL::SSLContext.new.tap { |ctx|
-          ctx.alpn_protocols = ["h2"]
-          ctx.ciphers = "AES256-GCM-SHA384"
+        ctx = OpenSSL::SSL::SSLContext.new.tap { |c|
+          c.alpn_protocols = ["h2"]
+          c.ciphers = "AES256-GCM-SHA384"
         }
         ssl = OpenSSL::SSL::SSLSocket.new(sock, ctx)
         ssl.connect

@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 # client/large.rb: download 3 large files in parallel
 $LOAD_PATH.unshift File.expand_path("../../../lib", __FILE__)
 require "plum"

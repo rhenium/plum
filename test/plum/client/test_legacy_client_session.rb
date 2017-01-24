@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class LegacyClientSessionTest < Minitest::Test
+using BinaryString
+class LegacyClientSessionTest < Test::Unit::TestCase
   def test_empty?
     io = StringIO.new
     session = LegacyClientSession.new(io, Client::DEFAULT_CONFIG)
@@ -48,7 +48,7 @@ class LegacyClientSessionTest < Minitest::Test
   def test_chunked_chunked_string
     io = StringIO.new
     session = LegacyClientSession.new(io, Client::DEFAULT_CONFIG.merge(hostname: "hostname"))
-    res = session.request({ ":method" => "GET", ":path" => "/aa" }, "a" * 1025, {})
+    session.request({ ":method" => "GET", ":path" => "/aa" }, "a" * 1025, {})
     assert_equal(<<-EOR, io.string)
 GET /aa HTTP/1.1\r
 host: hostname\r
@@ -62,7 +62,7 @@ transfer-encoding: chunked\r
   def test_chunked_chunked_io
     io = StringIO.new
     session = LegacyClientSession.new(io, Client::DEFAULT_CONFIG.merge(hostname: "hostname"))
-    res = session.request({ ":method" => "GET", ":path" => "/aa" }, StringIO.new("a" * 1025), {})
+    session.request({ ":method" => "GET", ":path" => "/aa" }, StringIO.new("a" * 1025), {})
     assert_equal(<<-EOR, io.string)
 GET /aa HTTP/1.1\r
 host: hostname\r
@@ -78,7 +78,7 @@ a\r
   def test_chunked_sized
     io = StringIO.new
     session = LegacyClientSession.new(io, Client::DEFAULT_CONFIG.merge(hostname: "hostname"))
-    res = session.request({ ":method" => "GET", ":path" => "/aa", "content-length" => 1025 }, StringIO.new("a" * 1025), {})
+    session.request({ ":method" => "GET", ":path" => "/aa", "content-length" => 1025 }, StringIO.new("a" * 1025), {})
     assert_equal((<<-EOR).chomp, io.string)
 GET /aa HTTP/1.1\r
 content-length: 1025\r

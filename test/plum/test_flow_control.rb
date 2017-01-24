@@ -1,8 +1,7 @@
-require "test_helper"
+require_relative "../utils"
 
 using BinaryString
-
-class FlowControlTest < Minitest::Test
+class FlowControlTest < Test::Unit::TestCase
   def test_flow_control_window_update_server
     open_server_connection { |con|
       before_ws = con.recv_remaining_window

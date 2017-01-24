@@ -1,6 +1,5 @@
-# frozen-string-literal: true
-
 using Plum::BinaryString
+
 module Plum
   class Frame::Unknown < Frame
     # Creates a frame with unknown type value.

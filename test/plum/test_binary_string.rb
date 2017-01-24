@@ -1,8 +1,8 @@
-require "test_helper"
+require_relative "../utils"
 
 using BinaryString
 
-class BinaryStringTest < Minitest::Test
+class BinaryStringTest < Test::Unit::TestCase
   def test_uint8
     assert_equal(0x67, "\x67".uint8)
     assert_equal(0x75, "\x67\x75".uint8(1))

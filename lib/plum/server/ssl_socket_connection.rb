@@ -1,5 +1,3 @@
-# frozen-string-literal: true
-
 module Plum
   class SSLSocketServerConnection < ServerConnection
     attr_reader :sock

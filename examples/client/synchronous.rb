@@ -1,4 +1,3 @@
-# frozen-string-literal: true
 # client/synchronous.rb: download 3 files in sequence
 $LOAD_PATH.unshift File.expand_path("../../../lib", __FILE__)
 require "plum"

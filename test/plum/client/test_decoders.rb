@@ -1,7 +1,7 @@
-require "test_helper"
+require_relative "../../utils"
 
-using Plum::BinaryString
-class DecodersTest < Minitest::Test
+using BinaryString
+class DecodersTest < Test::Unit::TestCase
   def test_base_decode
     decoder = Decoders::Base.new
     assert_equal("abc", decoder.decode("abc"))

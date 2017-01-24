@@ -1,6 +1,6 @@
-require "test_helper"
+require_relative "../../utils"
 
-class HPACKEncoderTest < Minitest::Test
+class HPACKEncoderTest < Test::Unit::TestCase
   # C.1.1
   def test_hpack_encode_integer_small
     result = new_encoder(1 << 31).__send__(:encode_integer, 10, 5, 0b00000000)
@@ -41,10 +41,10 @@ class HPACKEncoderTest < Minitest::Test
   def test_hpack_encode_without_indexing
     encoder = new_encoder(1 << 31, indexing: false)
     headers1 = [["custom-key", "custom-header"]]
-    ret1 = encoder.encode(headers1)
+    encoder.encode(headers1)
     assert_equal([], encoder.dynamic_table)
     headers2 = [[":method", "custom-header"]]
-    ret2 = encoder.encode(headers2)
+    encoder.encode(headers2)
     assert_equal([], encoder.dynamic_table)
   end
 
